@@ -22,12 +22,12 @@ export interface EraseRule {
 
 /**
  * Where the erased output goes.
- * - `export`: write a stripped copy to `targetPath`; the original is never touched.
- * - `in_place`: modify the original; `keepBackup` keeps ExifTool's `<name>_original` backup.
+ * - `export`: write a stripped copy to `targetPath`; the original is never touched (it is the
+ *   backup). This is the safe default.
+ * - `in_place`: overwrite the original with no backup — destructive. (A backup would just
+ *   duplicate what `export` already gives you, so it isn't offered.)
  */
-export type EraseTarget =
-  | { kind: 'export'; targetPath: string }
-  | { kind: 'in_place'; keepBackup: boolean }
+export type EraseTarget = { kind: 'export'; targetPath: string } | { kind: 'in_place' }
 
 export type EraseStatus = 'success' | 'failed' | 'skipped'
 

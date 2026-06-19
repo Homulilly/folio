@@ -11,13 +11,47 @@ import type { ErasePresetId, EraseRule, ExifGroup } from '@folio/shared-types'
 export const ERASE_CATEGORIES = {
   gps: ['GPS:all'],
   device: ['Make', 'Model', '*SerialNumber*', '*Serial*', 'CameraID', 'InternalSerialNumber'],
+  uniqueid: ['ImageUniqueID'],
   datetime: ['DateTimeOriginal', 'CreateDate', 'ModifyDate', 'AllDates'],
   software: ['Software', 'ProcessingSoftware', 'HostComputer', 'CreatorTool'],
   thumbnail: ['ThumbnailImage', 'PreviewImage', 'JpgFromRaw', 'OtherImage'],
-  identity: ['OwnerName', 'Artist', 'Copyright', 'UserComment', 'Creator', 'Rights'],
+  description: [
+    'ImageDescription',
+    'Description',
+    'Caption-Abstract',
+    'UserComment',
+    'XPComment',
+    'XPSubject',
+    'XPTitle',
+    'Headline',
+  ],
+  identity: ['OwnerName', 'Artist', 'Copyright', 'Creator', 'Rights'],
 } as const
 
 export type EraseCategory = keyof typeof ERASE_CATEGORIES
+
+/** Display order of category checkboxes in the erase dialog. */
+export const ERASE_CATEGORY_ORDER: EraseCategory[] = [
+  'gps',
+  'device',
+  'uniqueid',
+  'datetime',
+  'software',
+  'thumbnail',
+  'description',
+  'identity',
+]
+
+/**
+ * Which categories the category-based presets pre-select. Single source of truth shared by
+ * `presetRule` (core) and the dialog's checkbox state (renderer), so they can't drift. share/full
+ * are keep-mode presets and aren't represented here.
+ */
+export const CATEGORY_PRESETS: Partial<Record<ErasePresetId, EraseCategory[]>> = {
+  privacy: ['gps', 'device', 'uniqueid', 'datetime', 'software', 'thumbnail', 'description'],
+  copyright: ['gps', 'device', 'uniqueid'],
+  custom: [],
+}
 
 /** Tags every preset keeps — display-intrinsic and non-identifying (PRD §11.2 保留). */
 const KEEP_BASELINE = ['Orientation', 'ColorSpace', 'ICC_Profile', 'ImageWidth', 'ImageHeight']
@@ -32,13 +66,6 @@ export function tagsForCategories(categories: readonly EraseCategory[]): string[
 /** Resolve a built-in preset to a concrete rule (`custom` resolves to an empty remove list). */
 export function presetRule(preset: ErasePresetId): EraseRule {
   switch (preset) {
-    case 'privacy':
-      // Remove GPS, device, dates, software, thumbnails, identity — keep the rest.
-      return {
-        mode: 'remove_selected',
-        removeTags: tagsForCategories(['gps', 'device', 'datetime', 'software', 'thumbnail']),
-        keepTags: [],
-      }
     case 'share':
       // Keep only orientation + colour profile; strip everything else.
       return { mode: 'remove_all_except_keep', removeTags: [], keepTags: [...KEEP_BASELINE] }
@@ -49,21 +76,39 @@ export function presetRule(preset: ErasePresetId): EraseRule {
       // Remove GPS + device, but keep copyright/author/ICC (so don't strip identity wholesale).
       return {
         mode: 'remove_selected',
-        removeTags: tagsForCategories(['gps', 'device']),
+        removeTags: tagsForCategories(CATEGORY_PRESETS.copyright ?? []),
         keepTags: ['Copyright', 'Artist', 'Creator', 'Rights', 'ICC_Profile'],
       }
-    case 'custom':
-      return { mode: 'remove_selected', removeTags: [], keepTags: [] }
+    default:
+      // privacy / custom — remove the preset's categories (custom starts empty).
+      return {
+        mode: 'remove_selected',
+        removeTags: tagsForCategories(CATEGORY_PRESETS[preset] ?? []),
+        keepTags: [],
+      }
   }
 }
 
 // Tag patterns become `-pattern=` args, passed to ExifTool as discrete array elements (never a
 // shell string), so they can't inject extra arguments. We still validate to reject obvious junk
-// and keep error messages clean. Valid: letters, digits, `_`, `:`, `*`.
-const TAG_PATTERN = /^[A-Za-z0-9_:*]+$/
+// and keep error messages clean. Valid: letters, digits, `_`, `:`, `*`, and internal `-` (IPTC
+// tags like `Caption-Abstract`). A leading `-` is disallowed so a tag can't look like a flag.
+const TAG_PATTERN = /^[A-Za-z0-9_:*][A-Za-z0-9_:*-]*$/
 
 export function isValidTagPattern(tag: string): boolean {
   return TAG_PATTERN.test(tag)
+}
+
+/** Parse a free-text tag list (comma/whitespace-separated) into valid and invalid patterns. */
+export function parseTagList(input: string): { valid: string[]; invalid: string[] } {
+  const tokens = input
+    .split(/[\s,]+/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+  const valid: string[] = []
+  const invalid: string[] = []
+  for (const tok of tokens) (isValidTagPattern(tok) ? valid : invalid).push(tok)
+  return { valid: [...new Set(valid)], invalid }
 }
 
 /** Split a rule's tags into valid/invalid; the caller refuses to run if anything is invalid. */

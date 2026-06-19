@@ -5,6 +5,7 @@ import {
   ERASE_CATEGORIES,
   isValidTagPattern,
   matchesTagPattern,
+  parseTagList,
   partitionExifByRule,
   presetRule,
   tagsForCategories,
@@ -55,18 +56,32 @@ describe('presetRule', () => {
   it('custom is an empty remove_selected rule', () => {
     expect(presetRule('custom')).toEqual({ mode: 'remove_selected', removeTags: [], keepTags: [] })
   })
+
+  it('uniqueid is its own category; description covers caption/description fields', () => {
+    expect(ERASE_CATEGORIES.uniqueid).toEqual(['ImageUniqueID'])
+    expect(ERASE_CATEGORIES.device).not.toContain('ImageUniqueID')
+    expect(ERASE_CATEGORIES.description).toContain('ImageDescription')
+    expect(ERASE_CATEGORIES.description).toContain('Caption-Abstract')
+  })
+
+  it('privacy removes description/caption fields too', () => {
+    expect(presetRule('privacy').removeTags).toContain('ImageDescription')
+    expect(presetRule('privacy').removeTags).toContain('ImageUniqueID')
+  })
 })
 
 describe('isValidTagPattern / validateRule', () => {
-  it('accepts ExifTool tag patterns', () => {
+  it('accepts ExifTool tag patterns incl. internal hyphen', () => {
     expect(isValidTagPattern('GPS:all')).toBe(true)
     expect(isValidTagPattern('*Serial*')).toBe(true)
     expect(isValidTagPattern('DateTimeOriginal')).toBe(true)
+    expect(isValidTagPattern('Caption-Abstract')).toBe(true)
   })
 
-  it('rejects injection-ish / malformed tokens', () => {
+  it('rejects injection-ish / malformed / leading-hyphen tokens', () => {
     expect(isValidTagPattern('GPS= -delete_original!')).toBe(false)
     expect(isValidTagPattern('a b')).toBe(false)
+    expect(isValidTagPattern('-overwrite_original')).toBe(false)
     expect(isValidTagPattern('')).toBe(false)
   })
 
@@ -83,6 +98,20 @@ describe('isValidTagPattern / validateRule', () => {
   it('every built-in category pattern is valid', () => {
     for (const patterns of Object.values(ERASE_CATEGORIES))
       for (const p of patterns) expect(isValidTagPattern(p)).toBe(true)
+  })
+})
+
+describe('parseTagList', () => {
+  it('splits on commas/whitespace, dedupes, and partitions valid/invalid', () => {
+    const res = parseTagList(
+      'ImageUniqueID, *Description*  Caption-Abstract, foo=bar, ImageUniqueID',
+    )
+    expect(res.valid).toEqual(['ImageUniqueID', '*Description*', 'Caption-Abstract'])
+    expect(res.invalid).toEqual(['foo=bar'])
+  })
+
+  it('returns empty arrays for blank input', () => {
+    expect(parseTagList('   ')).toEqual({ valid: [], invalid: [] })
   })
 })
 

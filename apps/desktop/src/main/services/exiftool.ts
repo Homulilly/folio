@@ -66,7 +66,7 @@ export async function readMetadata(filePath: string): Promise<ExifMetadata | nul
  * Erase metadata from one file per `rule`, honouring the §13 safety baseline:
  * - `export` writes a stripped copy to a target path; the original is never modified, and a
  *   partial copy is removed if the write fails. Refuses to clobber an existing target.
- * - `in_place` modifies the original; `keepBackup` retains ExifTool's `<name>_original`.
+ * - `in_place` overwrites the original with no backup (export is the safe alternative).
  * On success the output is re-read and the requested removals are verified (§6.5). The original
  * is never deleted on failure.
  */
@@ -88,7 +88,6 @@ export async function eraseMetadata(
   }
 
   const output = target.kind === 'export' ? target.targetPath : filePath
-  const overwriteOriginal = target.kind === 'export' || !target.keepBackup
 
   try {
     if (target.kind === 'export') {
@@ -99,14 +98,17 @@ export async function eraseMetadata(
       await copyFile(filePath, target.targetPath)
     }
 
+    // Always overwrite the target in place (the export copy, or the original) — no `_original`
+    // sidecar; the safe path is `export`, where the untouched original is the backup.
     if (rule.mode === 'remove_selected') {
-      const writeArgs = buildRemoveArgs(rule)
-      if (overwriteOriginal) writeArgs.push('-overwrite_original')
-      await exiftool.write(output, {}, { writeArgs })
+      await exiftool.write(
+        output,
+        {},
+        { writeArgs: [...buildRemoveArgs(rule), '-overwrite_original'] },
+      )
     } else {
       await exiftool.deleteAllTags(output, { retain: rule.keepTags })
-      // deleteAllTags always leaves an `<output>_original`; drop it unless it's the kept backup.
-      if (overwriteOriginal) await unlink(`${output}_original`).catch(() => {})
+      await unlink(`${output}_original`).catch(() => {})
     }
 
     cache.delete(output)

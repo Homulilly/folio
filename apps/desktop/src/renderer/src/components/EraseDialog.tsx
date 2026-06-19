@@ -1,6 +1,6 @@
 import {
-  type EraseCategory,
   type EraseField,
+  parseTagList,
   partitionExifByRule,
   presetRule,
   tagsForCategories,
@@ -29,12 +29,12 @@ export function EraseDialog(): React.JSX.Element | null {
   const fileName = useEraseStore((s) => s.fileName)
   const preset = useEraseStore((s) => s.preset)
   const categories = useEraseStore((s) => s.categories)
+  const customTags = useEraseStore((s) => s.customTags)
+  const setCustomTags = useEraseStore((s) => s.setCustomTags)
   const exportNew = useEraseStore((s) => s.exportNew)
-  const keepBackup = useEraseStore((s) => s.keepBackup)
   const setPreset = useEraseStore((s) => s.setPreset)
   const toggleCategory = useEraseStore((s) => s.toggleCategory)
   const setExportNew = useEraseStore((s) => s.setExportNew)
-  const setKeepBackup = useEraseStore((s) => s.setKeepBackup)
   const close = useEraseStore((s) => s.close)
 
   const [preview, setPreview] = useState<PreviewState>({ status: 'loading' })
@@ -71,25 +71,24 @@ export function EraseDialog(): React.JSX.Element | null {
   }, [open, running, close])
 
   const keepMode = preset === 'share' || preset === 'full'
+  const parsedCustom = useMemo(() => parseTagList(customTags), [customTags])
   const rule: EraseRule = useMemo(() => {
     if (keepMode) return presetRule(preset)
     const checked = ERASE_CATEGORY_LIST.filter((c) => categories[c])
-    return { mode: 'remove_selected', removeTags: tagsForCategories(checked), keepTags: [] }
-  }, [keepMode, preset, categories])
+    const removeTags = [...new Set([...tagsForCategories(checked), ...parsedCustom.valid])]
+    return { mode: 'remove_selected', removeTags, keepTags: [] }
+  }, [keepMode, preset, categories, parsedCustom])
 
   const groups = preview.status === 'loaded' ? preview.groups : []
   const { removed, keptCount } = useMemo(() => partitionExifByRule(groups, rule), [groups, rule])
 
   if (!open || !filePath) return null
 
-  const canErase = !running && (keepMode || removed.length > 0)
+  const canErase = !running && (keepMode || rule.removeTags.length > 0)
 
   const onErase = async (): Promise<void> => {
-    const target: EraseTarget = exportNew
-      ? exportPath
-        ? { kind: 'export', targetPath: exportPath }
-        : { kind: 'in_place', keepBackup: true } // shouldn't happen; export path always resolves
-      : { kind: 'in_place', keepBackup }
+    const target: EraseTarget =
+      exportNew && exportPath ? { kind: 'export', targetPath: exportPath } : { kind: 'in_place' }
     setRunning(true)
     const res = await window.gv.metadata.erase(filePath, rule, target)
     setRunning(false)
@@ -181,6 +180,23 @@ export function EraseDialog(): React.JSX.Element | null {
                   />
                 ))}
               </div>
+
+              {/* Free-text extra tags (PRD §6.5 custom fields) — added on top of the categories. */}
+              <div className="mt-3 mb-1 text-[11px] font-semibold uppercase tracking-wide text-[rgba(235,235,245,0.45)]">
+                {t('erase.customLabel')}
+              </div>
+              <input
+                type="text"
+                value={customTags}
+                onChange={(e) => setCustomTags(e.target.value)}
+                placeholder={t('erase.customPlaceholder')}
+                className="w-full rounded-lg bg-[#2C2C2E] px-3 py-2 font-mono text-[12px] text-white outline-none placeholder:font-sans placeholder:text-[rgba(235,235,245,0.35)]"
+              />
+              {parsedCustom.invalid.length > 0 && (
+                <p className="mt-1 text-[11px] text-[#FF453A]">
+                  {t('erase.customInvalid', { tags: parsedCustom.invalid.join(', ') })}
+                </p>
+              )}
             </>
           )}
 
@@ -225,20 +241,10 @@ export function EraseDialog(): React.JSX.Element | null {
             />
           </div>
 
-          {/* In-place warning + backup option */}
+          {/* In-place overwrite warning (destructive, no backup) */}
           {!exportNew && (
             <div className="mt-2 rounded-lg border border-[#FF453A]/30 bg-[#FF453A]/10 px-3.5 py-2.5">
               <p className="text-[12px] leading-4 text-[#FF6961]">{t('erase.overwriteWarn')}</p>
-              <label className="mt-2.5 flex cursor-pointer items-center gap-2.5 text-[12px] text-[rgba(235,235,245,0.8)]">
-                <Box checked={keepBackup} />
-                <input
-                  type="checkbox"
-                  checked={keepBackup}
-                  onChange={(e) => setKeepBackup(e.currentTarget.checked)}
-                  className="sr-only"
-                />
-                {t('erase.keepBackup')}
-              </label>
             </div>
           )}
         </div>

@@ -103,17 +103,44 @@
 
 ## M4 — Exif 擦除 + 自动模式 + 任务系统（PRD §6.5 / §6.6）
 
-- [ ] Task Scheduler 完整化：状态机 + 进度 + 暂停/取消/重试 + 日志
-- [ ] 批处理任务页（PRD §8.4）：进度条/已完成/失败/当前文件/错误列表/导出日志
-- [ ] `metadata.remove(filePath, rule)`：字段级擦除
-- [ ] 擦除模式：全部/GPS/设备/时间/软件/缩略图/自定义/保留指定
-- [ ] 内置预设：隐私模式 / 分享模式 / 完全清理 / 保留版权（PRD §11.2）
-- [ ] 🔴 安全：默认导出新文件不覆盖原图；擦除前预览差异；失败不删原文件
-- [ ] 擦除后验证字段已移除
-- [ ] 自动模式：当前目录应用 + 弹窗选项 + `ExifAutoRule` 结构 + 状态提示 + 一键关闭
-- [ ] 多图：默认只操作焦点图；批量当前组须二次确认 + 日志
+> 拆分为四个阶段推进：**A 擦除基础 + B 擦除弹窗已落地**;**C 任务调度器 + 批处理页**、**D 自动模式**待做。
 
-**验收**（PRD §17.3）：能擦 GPS/指定字段并验证移除；默认不覆盖原图；自动模式可应用同目录、可关闭；批量有确认+日志。
+### 已完成（Phase A — 擦除基础）
+
+- [x] `metadata.erase(filePath, rule, target)`：字段级擦除（remove_selected / remove_all_except_keep 两种模式）
+- [x] 擦除模式：全部/GPS/设备/唯一ID/时间/软件/缩略图/描述/作者版权（核心按「分类」组合,见 `ERASE_CATEGORIES`;`ImageUniqueID` 独立常驻分类,description 分类含 `Caption-Abstract` 等）
+- [x] 自定义字段（PRD §6.5 mode 7）：弹窗内自由输入标签（`parseTagList` 校验,无效项忽略并提示），叠加在勾选分类之上
+- [~] 保留指定字段（PRD §6.5 mode 8）：核心 `remove_all_except_keep` + keepTags 已支持,目前仅经 分享/完全 预设暴露;字段级 keep-list 编辑器待后续
+- [x] 内置预设：隐私 / 分享 / 完全清理 / 保留版权 / 自定义（`presetRule` + `CATEGORY_PRESETS` 单一来源,PRD §11.2）
+- [x] 🔴 安全：默认导出新文件不覆盖原图（拒绝覆盖已存在目标 + 失败清理半成品副本）；就地覆盖保留 `_original` 备份；失败绝不动原文件
+- [x] 擦除后验证字段已移除（`verifyRemoval`,擦除后重读比对,残留则告警）
+- [x] 标签模式校验防命令注入（`isValidTagPattern`;exiftool-vendored 以参数数组传递,本身不过 shell）
+
+### 已完成（Phase B — 擦除弹窗）
+
+- [x] 居中模态擦除弹窗（`EraseDialog`）：预设行 + 8 类勾选 + 自定义标签输入 + 擦除前差异预览（`partitionExifByRule`,显示将移除/保留项与字段名）
+- [x] 输出选项：导出新文件（默认,`-noexif` 后缀同目录,冲突自动递增,原图即备份）/ 就地覆盖（无备份销毁性操作,红色警告 + 红色确认按钮二次确认）
+- [x] 入口：Exif 抽屉底部「擦除元信息」;就地擦除后抽屉自动重读
+- [x] `file:suggestExportPath` IPC（主进程计算无冲突导出路径）
+
+### 待做（Phase C — 任务调度器 + 批处理页）
+
+- [ ] Task Scheduler 完整化：状态机 + 进度 + 暂停/取消/重试 + 日志（PRD §9.3）
+- [ ] 批处理任务页（PRD §8.4）：进度条/已完成/失败/当前文件/错误列表/导出日志（`AppViewMode` 新增 `batch_tasks` 视图）
+- [ ] 当前文件夹 / 当前组批量擦除接入调度器
+- [ ] 多图：默认只操作焦点图（已是默认）；批量当前组须二次确认 + 日志（PRD §13.10）
+
+### 待做（Phase D — 自动模式，PRD §6.6）
+
+- [ ] 自动模式：首张擦除后弹出「应用到其他图片?」选项（仅当前 / 当前文件夹 / 同目录自动 / 存为默认规则）
+- [ ] `ExifAutoRule` 结构 + scope（session_directory / directory / directory_recursive / global）+ applyOn + 持久化（`packages/config`）
+- [ ] 防误操作：明确状态提示 + 当前目录启用标识 + 执行前确认 + 一键关闭
+
+**验收**（PRD §17.3）：能擦 GPS/指定字段并验证移除（✅ A）；默认不覆盖原图（✅ A/B）；自动模式可应用同目录、可关闭（待 D）；批量有确认+日志（待 C）。
+> M4 范围说明：
+> - **分层**：擦除规则/预设/校验/差异/验证纯逻辑全在 `packages/core/erase.ts`（25 单测）;主进程 `services/exiftool.ts` 的 `eraseMetadata` 负责 fs 编排（copyFile→strip→verify）。
+> - **exiftool 写入**：`remove_selected` 走 `write(file,{},{writeArgs:['-tag=',…]})`;`remove_all_except_keep` 走 `deleteAllTags(file,{retain})`。导出/无备份就地追加 `-overwrite_original`,保留备份则不加（exiftool 自动留 `_original`）。写入参数已 headless 验证（GPS/设备剥离、Orientation 保留、原图不变）。
+> - **持久化 Exif 摘要缓存**仍随 **M7**;自动规则持久化（Phase D）落 `packages/config` 的 settings。
 
 ---
 

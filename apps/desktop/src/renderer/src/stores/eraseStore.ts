@@ -1,22 +1,9 @@
-import type { EraseCategory } from '@folio/core'
+import { CATEGORY_PRESETS, ERASE_CATEGORY_ORDER, type EraseCategory } from '@folio/core'
 import type { ErasePresetId } from '@folio/shared-types'
 import { create } from 'zustand'
 
-export const ERASE_CATEGORY_LIST: EraseCategory[] = [
-  'gps',
-  'device',
-  'datetime',
-  'software',
-  'thumbnail',
-  'identity',
-]
-
-/** Which categories each remove-by-category preset pre-checks. share/full are keep-mode (no boxes). */
-const PRESET_CATEGORIES: Partial<Record<ErasePresetId, EraseCategory[]>> = {
-  privacy: ['gps', 'device', 'datetime', 'software', 'thumbnail'],
-  copyright: ['gps', 'device'],
-  custom: [],
-}
+/** Display order of the category checkboxes (re-exported from core's single source of truth). */
+export const ERASE_CATEGORY_LIST = ERASE_CATEGORY_ORDER
 
 type CategoryFlags = Record<EraseCategory, boolean>
 
@@ -30,16 +17,16 @@ interface EraseDialogState {
   fileName: string | null
   preset: ErasePresetId
   categories: CategoryFlags
+  /** Free-text extra tags (comma/space-separated) added on top of the checked categories. */
+  customTags: string
   /** true = export a new file (safe default); false = overwrite the original in place. */
   exportNew: boolean
-  /** When overwriting in place, keep ExifTool's `<name>_original` backup. */
-  keepBackup: boolean
   openFor: (filePath: string, fileName: string) => void
   close: () => void
   setPreset: (preset: ErasePresetId) => void
   toggleCategory: (cat: EraseCategory) => void
+  setCustomTags: (v: string) => void
   setExportNew: (v: boolean) => void
-  setKeepBackup: (v: boolean) => void
 }
 
 export const useEraseStore = create<EraseDialogState>((set) => ({
@@ -47,28 +34,28 @@ export const useEraseStore = create<EraseDialogState>((set) => ({
   filePath: null,
   fileName: null,
   preset: 'privacy',
-  categories: flagsFor(PRESET_CATEGORIES.privacy),
+  categories: flagsFor(CATEGORY_PRESETS.privacy),
+  customTags: '',
   exportNew: true,
-  keepBackup: true,
   openFor: (filePath, fileName) =>
     set({
       open: true,
       filePath,
       fileName,
       preset: 'privacy',
-      categories: flagsFor(PRESET_CATEGORIES.privacy),
+      categories: flagsFor(CATEGORY_PRESETS.privacy),
+      customTags: '',
       exportNew: true,
-      keepBackup: true,
     }),
   close: () => set({ open: false }),
   setPreset: (preset) =>
     set(
       preset === 'share' || preset === 'full'
         ? { preset }
-        : { preset, categories: flagsFor(PRESET_CATEGORIES[preset]) },
+        : { preset, categories: flagsFor(CATEGORY_PRESETS[preset]) },
     ),
   toggleCategory: (cat) =>
     set((s) => ({ preset: 'custom', categories: { ...s.categories, [cat]: !s.categories[cat] } })),
+  setCustomTags: (customTags) => set({ customTags }),
   setExportNew: (exportNew) => set({ exportNew }),
-  setKeepBackup: (keepBackup) => set({ keepBackup }),
 }))
