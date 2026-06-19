@@ -118,13 +118,22 @@ export function validateRule(rule: EraseRule): { valid: boolean; invalid: string
 }
 
 /**
- * ExifTool write args for `remove_selected` mode: one `-<tag>=` per pattern. The caller decides
- * whether to append `-overwrite_original` (export and no-backup in-place do; keep-backup doesn't).
- * The `remove_all_except_keep` mode uses ExifTool's `deleteAllTags({ retain })` instead.
+ * ExifTool write args for `remove_selected` mode: one `-<tag>=` per pattern. The caller appends
+ * `-overwrite_original`. The `remove_all_except_keep` mode uses `deleteAllTags({ retain })`.
+ *
+ * EXIF tags (ImageDescription, Artist, Copyright, Make, …) are commonly duplicated in IFD1, the
+ * thumbnail IFD; a bare `-Tag=` only clears the IFD0 copy and leaves the IFD1 one behind. So for
+ * each *concrete* tag we also emit `-IFD1:Tag=`. Prefixing IFD1 onto a tag that doesn't live
+ * there is a harmless no-op (verified), so no whitelist is needed; wildcard/`group:all` patterns
+ * are skipped since they target groups, not IFD1 fields.
  */
 export function buildRemoveArgs(rule: EraseRule): string[] {
   if (rule.mode !== 'remove_selected') return []
-  return rule.removeTags.map((t) => `-${t}=`)
+  const base = rule.removeTags.map((t) => `-${t}=`)
+  const ifd1 = rule.removeTags
+    .filter((t) => !t.includes('*') && !t.includes(':'))
+    .map((t) => `-IFD1:${t}=`)
+  return [...base, ...ifd1]
 }
 
 // ---- Erase preview (PRD §6.5 擦除前预览差异) ----

@@ -116,13 +116,14 @@ describe('parseTagList', () => {
 })
 
 describe('buildRemoveArgs', () => {
-  it('maps remove_selected tags to -tag= args (caller adds overwrite flag)', () => {
+  it('maps remove_selected tags to -tag= args plus IFD1 variants for concrete tags', () => {
     const args = buildRemoveArgs({
       mode: 'remove_selected',
-      removeTags: ['GPS:all', 'Make'],
+      removeTags: ['GPS:all', 'Make', 'Copyright'],
       keepTags: [],
     })
-    expect(args).toEqual(['-GPS:all=', '-Make='])
+    // bare removals first, then IFD1 dupes for concrete tags only (GPS:all is a group, skipped)
+    expect(args).toEqual(['-GPS:all=', '-Make=', '-Copyright=', '-IFD1:Make=', '-IFD1:Copyright='])
   })
 
   it('returns nothing for keep-only mode (handled via deleteAllTags)', () => {
