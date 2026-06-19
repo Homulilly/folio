@@ -1,7 +1,12 @@
 import { SUPPORTED_EXTENSIONS } from '@folio/image-processing'
 import { IpcChannel, type ScanResult, type SystemInfo, type TrashResult } from '@folio/shared-types'
 import { app, type BrowserWindow, clipboard, dialog, ipcMain, nativeImage, shell } from 'electron'
-import { addRecentFolder, clearRecentFolders, listRecentFolders } from './services/recent'
+import {
+  addRecentFolder,
+  clearRecentFolders,
+  listRecentFolders,
+  removeRecentFolder,
+} from './services/recent'
 import { buildScanResult } from './services/scan'
 
 const IMAGE_EXTENSIONS = [...SUPPORTED_EXTENSIONS]
@@ -81,6 +86,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
 
   // --- recent folders ---
   ipcMain.handle(IpcChannel.recentList, (): Promise<string[]> => listRecentFolders())
+  ipcMain.handle(
+    IpcChannel.recentRemove,
+    (_e, directory: string): Promise<void> => removeRecentFolder(directory),
+  )
   ipcMain.handle(IpcChannel.recentClear, (): Promise<void> => clearRecentFolders())
 
   // --- window controls ---

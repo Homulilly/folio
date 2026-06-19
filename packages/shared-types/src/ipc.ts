@@ -51,6 +51,7 @@ export interface FolioApi {
   }
   recent: {
     list: () => Promise<string[]>
+    remove: (directory: string) => Promise<void>
     clear: () => Promise<void>
   }
   win: {
@@ -71,6 +72,7 @@ export const IpcChannel = {
   fileCopyPath: 'file:copyPath',
   fileCopyImage: 'file:copyImage',
   recentList: 'recent:list',
+  recentRemove: 'recent:remove',
   recentClear: 'recent:clear',
   winToggleFullscreen: 'win:toggleFullscreen',
   winIsFullscreen: 'win:isFullscreen',

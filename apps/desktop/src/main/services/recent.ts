@@ -35,6 +35,11 @@ export async function addRecentFolder(directory: string): Promise<void> {
   await write(next)
 }
 
+export async function removeRecentFolder(directory: string): Promise<void> {
+  const list = await read()
+  await write(list.filter((d) => d !== directory))
+}
+
 export async function clearRecentFolders(): Promise<void> {
   await write([])
 }

@@ -44,6 +44,12 @@ const en = {
   'empty.openFolder': 'Open Folder',
   'empty.openFile': 'Open File',
   'empty.recentFolders': 'Recent folders',
+  'empty.removeRecentFolder': 'Remove from recent folders',
+  'empty.clearRecentFolders': 'Clear all',
+  'empty.clearRecentFoldersTitle': 'Clear all recent folders?',
+  'empty.clearRecentFoldersDetail':
+    'This only removes the recent-folder history. Your folders and images will not be deleted.',
+  'empty.clearRecentFoldersConfirm': 'Clear all',
 
   'queue.title': 'Queue',
   'queue.images': '{count} images',
@@ -136,6 +142,11 @@ const zhCN: Record<keyof typeof en, string> = {
   'empty.openFolder': '打开文件夹',
   'empty.openFile': '打开文件',
   'empty.recentFolders': '最近文件夹',
+  'empty.removeRecentFolder': '从最近文件夹中移除',
+  'empty.clearRecentFolders': '删除全部',
+  'empty.clearRecentFoldersTitle': '删除全部最近文件夹？',
+  'empty.clearRecentFoldersDetail': '这只会清除最近文件夹记录，不会删除真实文件夹或图片。',
+  'empty.clearRecentFoldersConfirm': '删除全部',
 
   'queue.title': '队列',
   'queue.images': '{count} 张图片',

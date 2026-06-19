@@ -24,6 +24,7 @@ const api: Bridge = {
   },
   recent: {
     list: () => ipcRenderer.invoke(IpcChannel.recentList),
+    remove: (directory) => ipcRenderer.invoke(IpcChannel.recentRemove, directory),
     clear: () => ipcRenderer.invoke(IpcChannel.recentClear),
   },
   win: {
