@@ -26,7 +26,8 @@ export function Canvas(): React.JSX.Element {
 
   // Mouse wheel zooms the image. A native, non-passive listener is required because React's
   // onWheel is passive, so preventDefault() there can't stop the canvas from scrolling. Canvas
-  // only mounts when an image exists, so the container is stable — attach once.
+  // only mounts when an image exists, so the container is stable — attach once. The same effect
+  // tracks the viewport size so the store can resume zoom from the actual fit scale.
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
@@ -36,7 +37,14 @@ export function Canvas(): React.JSX.Element {
       useViewerStore.getState().zoomBy(-e.deltaY * unit * 0.25)
     }
     el.addEventListener('wheel', onWheel, { passive: false })
-    return () => el.removeEventListener('wheel', onWheel)
+    const ro = new ResizeObserver(() => {
+      useViewerStore.getState().setViewport(el.clientWidth, el.clientHeight)
+    })
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('wheel', onWheel)
+      ro.disconnect()
+    }
   }, [])
 
   if (!item) return <div className="flex-1" />
