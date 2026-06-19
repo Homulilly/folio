@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useT } from '../i18n'
 import { canRenderNatively, formatLabel, imageUrl } from '../lib/format'
 import { useMultiViewStore } from '../stores/multiViewStore'
@@ -55,8 +55,10 @@ export function Canvas(): React.JSX.Element {
   const clearZoomAnchorTimer = useRef<number | null>(null)
   const lastWheelZoomAt = useRef(0)
   const scaleReady = useRef(false)
+  // The live, possibly-mid-animation scale. Single source of truth: the rAF loop writes it
+  // (and the DOM) directly, and the render reads it — so a re-render during a zoom animation
+  // re-applies the same value rather than fighting the in-flight DOM mutation.
   const displayScaleRef = useRef(1)
-  const [displayScale, setDisplayScale] = useState(1)
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: setFailed is stable; reset on image change
   useEffect(() => {
@@ -150,16 +152,38 @@ export function Canvas(): React.JSX.Element {
     if (!itemId) return
     scaleReady.current = false
     displayScaleRef.current = 1
-    setDisplayScale(1)
   }, [itemId])
 
+  // Animate the displayed scale toward targetScale by mutating the <img> (and anchor scroll)
+  // directly inside the rAF loop — no per-frame setState, so React doesn't reconcile the whole
+  // canvas subtree 60×/s. The render reads displayScaleRef, so any re-render mid-animation
+  // (e.g. continuous wheeling) just re-applies the live value instead of snapping back.
   useEffect(() => {
     if (targetScale === null) return
 
+    const el = scrollRef.current
+
+    const apply = (s: number): void => {
+      displayScaleRef.current = s
+      if (!el || naturalWidth == null || naturalHeight == null) return
+      const img = el.querySelector<HTMLImageElement>('img')
+      if (!img) return
+      img.style.width = `${naturalWidth * s}px`
+      img.style.height = `${naturalHeight * s}px`
+      // Reading the rect forces the just-set size to lay out, then we keep the wheel anchor
+      // point pinned under the cursor — one reflow per frame, co-located with the resize.
+      const anchor = activeZoomAnchor.current
+      if (anchor) {
+        const after = img.getBoundingClientRect()
+        el.scrollLeft += after.left + after.width * anchor.x - anchor.pointerX
+        el.scrollTop += after.top + after.height * anchor.y - anchor.pointerY
+      }
+    }
+
     if (!scaleReady.current) {
+      // First scale for this image — snap, don't animate (the render already used targetScale).
       scaleReady.current = true
       displayScaleRef.current = targetScale
-      setDisplayScale(targetScale)
       return
     }
 
@@ -168,8 +192,7 @@ export function Canvas(): React.JSX.Element {
     const from = displayScaleRef.current
     const to = targetScale
     if (Math.abs(from - to) < ZOOM_EPSILON) {
-      displayScaleRef.current = to
-      setDisplayScale(to)
+      apply(to)
       return
     }
 
@@ -181,17 +204,14 @@ export function Canvas(): React.JSX.Element {
 
     const animate = (now: number): void => {
       const progress = Math.min(1, (now - start) / duration)
-      const next = from + (to - from) * easeOutCubic(progress)
-      displayScaleRef.current = next
-      setDisplayScale(next)
+      apply(from + (to - from) * easeOutCubic(progress))
 
       if (progress < 1) {
         zoomAnimationRaf.current = requestAnimationFrame(animate)
         return
       }
 
-      displayScaleRef.current = to
-      setDisplayScale(to)
+      apply(to)
       zoomAnimationRaf.current = null
     }
 
@@ -203,33 +223,18 @@ export function Canvas(): React.JSX.Element {
         zoomAnimationRaf.current = null
       }
     }
-  }, [targetScale])
-
-  useLayoutEffect(() => {
-    if (displayScale <= 0) return
-    const anchor = activeZoomAnchor.current
-    const el = scrollRef.current
-    if (!anchor || !el) return
-
-    const img = el.querySelector<HTMLImageElement>('img')
-    if (!img) return
-
-    const after = img.getBoundingClientRect()
-    el.scrollLeft += after.left + after.width * anchor.x - anchor.pointerX
-    el.scrollTop += after.top + after.height * anchor.y - anchor.pointerY
-  }, [displayScale])
+  }, [targetScale, naturalWidth, naturalHeight])
 
   let imgClassName = 'max-h-full max-w-full object-contain'
   let imgStyle: React.CSSProperties = { transform }
   if (naturalWidth && naturalHeight && targetScale !== null) {
-    const scale = scaleReady.current ? displayScale : targetScale
+    const scale = scaleReady.current ? displayScaleRef.current : targetScale
     imgClassName = 'flex-none object-contain'
     imgStyle = {
       width: naturalWidth * scale,
       height: naturalHeight * scale,
       maxWidth: 'none',
       transform,
-      willChange: 'width, height, transform',
     }
   }
 
