@@ -1,4 +1,4 @@
-import { GV_IMG_SCHEME } from '@galleryviewer/shared-types'
+import { GV_IMG_SCHEME } from '@folio/shared-types'
 
 /** Extensions Chromium can decode in an <img>. Others need a sharp-generated preview (later milestone). */
 const RENDERABLE = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'avif', 'svg', 'ico'])

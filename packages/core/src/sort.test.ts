@@ -1,4 +1,4 @@
-import type { ImageQueueItem } from '@galleryviewer/shared-types'
+import type { ImageQueueItem } from '@folio/shared-types'
 import { describe, expect, it } from 'vitest'
 import { sortItems } from './sort'
 

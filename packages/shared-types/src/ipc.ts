@@ -28,7 +28,7 @@ export interface ScanResult {
  * The full surface exposed on `window.gv` by the preload bridge.
  * Async methods are backed by ipcRenderer.invoke. Renderer has zero direct fs access.
  */
-export interface GalleryViewerApi {
+export interface FolioApi {
   system: {
     ping: () => Promise<'pong'>
     getInfo: () => Promise<SystemInfo>

@@ -1,5 +1,5 @@
-import { sortItems } from '@galleryviewer/core'
-import type { ImageQueueItem, ScanResult, SortMode } from '@galleryviewer/shared-types'
+import { sortItems } from '@folio/core'
+import type { ImageQueueItem, ScanResult, SortMode } from '@folio/shared-types'
 import { create } from 'zustand'
 
 interface QueueState {

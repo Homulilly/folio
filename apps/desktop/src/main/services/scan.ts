@@ -1,8 +1,8 @@
 import type { Stats } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
-import { extOf, isSupportedImage } from '@galleryviewer/image-processing'
-import type { ImageQueueItem, ScanResult } from '@galleryviewer/shared-types'
+import { extOf, isSupportedImage } from '@folio/image-processing'
+import type { ImageQueueItem, ScanResult } from '@folio/shared-types'
 
 const STAT_CONCURRENCY = 32
 

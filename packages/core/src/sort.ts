@@ -1,4 +1,4 @@
-import type { ImageQueueItem, SortMode } from '@galleryviewer/shared-types'
+import type { ImageQueueItem, SortMode } from '@folio/shared-types'
 
 /** Natural-ish, case-insensitive filename comparison (so img2 < img10). */
 function compareName(a: string, b: string): number {

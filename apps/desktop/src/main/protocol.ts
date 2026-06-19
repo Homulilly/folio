@@ -1,7 +1,7 @@
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { Readable } from 'node:stream'
-import { GV_IMG_SCHEME } from '@galleryviewer/shared-types'
+import { GV_IMG_SCHEME } from '@folio/shared-types'
 import { protocol } from 'electron'
 
 /**

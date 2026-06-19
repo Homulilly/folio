@@ -1,4 +1,4 @@
-import type { ScanResult } from '@galleryviewer/shared-types'
+import type { ScanResult } from '@folio/shared-types'
 import { useQueueStore } from '../stores/queueStore'
 import { useToastStore } from '../stores/toastStore'
 

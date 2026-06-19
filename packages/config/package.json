@@ -1,5 +1,5 @@
 {
-  "name": "@galleryviewer/config",
+  "name": "@folio/config",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -12,6 +12,6 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
-    "@galleryviewer/shared-types": "workspace:*"
+    "@folio/shared-types": "workspace:*"
   }
 }

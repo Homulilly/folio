@@ -1,5 +1,5 @@
-import { SUPPORTED_EXTENSIONS } from '@galleryviewer/image-processing'
-import { IpcChannel, type ScanResult, type SystemInfo } from '@galleryviewer/shared-types'
+import { SUPPORTED_EXTENSIONS } from '@folio/image-processing'
+import { IpcChannel, type ScanResult, type SystemInfo } from '@folio/shared-types'
 import { app, type BrowserWindow, clipboard, dialog, ipcMain, nativeImage, shell } from 'electron'
 import { addRecentFolder, clearRecentFolders, listRecentFolders } from './services/recent'
 import { buildScanResult } from './services/scan'

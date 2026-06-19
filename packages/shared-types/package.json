@@ -1,5 +1,5 @@
 {
-  "name": "@galleryviewer/shared-types",
+  "name": "@folio/shared-types",
   "version": "0.0.0",
   "private": true,
   "type": "module",

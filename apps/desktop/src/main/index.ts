@@ -3,6 +3,8 @@ import { app, BrowserWindow, shell } from 'electron'
 import { registerIpcHandlers } from './ipc'
 import { handleImageProtocol, registerImageProtocolSchemes } from './protocol'
 
+app.setName('Folio')
+
 // Must run before app `ready`.
 registerImageProtocolSchemes()
 

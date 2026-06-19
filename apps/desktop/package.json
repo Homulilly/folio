@@ -1,6 +1,7 @@
 {
-  "name": "@galleryviewer/desktop",
+  "name": "@folio/desktop",
   "version": "0.0.0",
+  "productName": "Folio",
   "private": true,
   "type": "module",
   "main": "./out/main/index.js",
@@ -13,10 +14,10 @@
     "typecheck": "pnpm run typecheck:node && pnpm run typecheck:web"
   },
   "dependencies": {
-    "@galleryviewer/config": "workspace:*",
-    "@galleryviewer/core": "workspace:*",
-    "@galleryviewer/image-processing": "workspace:*",
-    "@galleryviewer/shared-types": "workspace:*",
+    "@folio/config": "workspace:*",
+    "@folio/core": "workspace:*",
+    "@folio/image-processing": "workspace:*",
+    "@folio/shared-types": "workspace:*",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "zustand": "^5.0.14"

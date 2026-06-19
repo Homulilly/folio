@@ -23,16 +23,16 @@ importers:
 
   apps/desktop:
     dependencies:
-      '@galleryviewer/config':
+      '@folio/config':
         specifier: workspace:*
         version: link:../../packages/config
-      '@galleryviewer/core':
+      '@folio/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@galleryviewer/image-processing':
+      '@folio/image-processing':
         specifier: workspace:*
         version: link:../../packages/image-processing
-      '@galleryviewer/shared-types':
+      '@folio/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types
       react:
@@ -75,19 +75,19 @@ importers:
 
   packages/config:
     dependencies:
-      '@galleryviewer/shared-types':
+      '@folio/shared-types':
         specifier: workspace:*
         version: link:../shared-types
 
   packages/core:
     dependencies:
-      '@galleryviewer/shared-types':
+      '@folio/shared-types':
         specifier: workspace:*
         version: link:../shared-types
 
   packages/image-processing:
     dependencies:
-      '@galleryviewer/shared-types':
+      '@folio/shared-types':
         specifier: workspace:*
         version: link:../shared-types
 

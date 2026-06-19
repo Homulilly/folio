@@ -1,5 +1,5 @@
-import { SORT_MODE_LABELS, SORT_MODES } from '@galleryviewer/core'
-import type { SortMode } from '@galleryviewer/shared-types'
+import { SORT_MODE_LABELS, SORT_MODES } from '@folio/core'
+import type { SortMode } from '@folio/shared-types'
 import { openFile, openFolder, toggleFullscreen } from '../lib/actions'
 import { useQueueStore } from '../stores/queueStore'
 import { useViewerStore } from '../stores/viewerStore'

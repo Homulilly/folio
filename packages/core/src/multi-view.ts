@@ -1,4 +1,4 @@
-import type { MultiViewMode } from '@galleryviewer/shared-types'
+import type { MultiViewMode } from '@folio/shared-types'
 
 /** How many items advance per group step in each multi-view mode (PRD §6.2). */
 export function viewCountForMode(mode: MultiViewMode): 1 | 2 | 3 | 4 {

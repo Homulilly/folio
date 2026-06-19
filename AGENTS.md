@@ -1,4 +1,4 @@
-# GalleryViewer — Agent 指南
+# Folio — Agent 指南
 
 > 通用项目说明,适用于任意 AI 编码助手(Claude Code / codex / 等)。
 > Claude Code 专属内容见 `CLAUDE.md`(已 `@` 引用本文件)。
@@ -45,7 +45,7 @@
 ## 仓库结构(pnpm workspace)
 
 ```
-galleryviewer/
+folio/
 ├── apps/desktop/          # electron-vite 工程
 │   └── src/{main,preload,workers,renderer}
 │       └── renderer/{components,features,stores}

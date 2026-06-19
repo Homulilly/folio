@@ -1,4 +1,4 @@
-import type { MultiViewLayout, MultiViewMode, SortMode } from '@galleryviewer/shared-types'
+import type { MultiViewLayout, MultiViewMode, SortMode } from '@folio/shared-types'
 
 /** User settings persisted to settings.json (PRD §10.1). */
 export interface AppSettings {

@@ -144,7 +144,7 @@
 **仓库结构（pnpm workspace）**，落地 §19.1：
 
 ```
-galleryviewer/
+folio/
 ├── pnpm-workspace.yaml
 ├── package.json              # 根：脚本、devDeps、biome、husky
 ├── apps/
@@ -1739,7 +1739,7 @@ ImageHeight
 ### 19.1 仓库结构（pnpm workspace）
 
 ```txt
-galleryviewer
+folio
 ├── pnpm-workspace.yaml
 ├── package.json              # 根：脚本、devDeps、biome、husky
 ├── apps

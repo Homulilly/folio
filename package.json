@@ -1,5 +1,5 @@
 {
-  "name": "galleryviewer",
+  "name": "folio",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,8 +7,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "pnpm --filter @galleryviewer/desktop dev",
-    "build": "pnpm --filter @galleryviewer/desktop build",
+    "dev": "pnpm --filter @folio/desktop dev",
+    "build": "pnpm --filter @folio/desktop build",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "test:watch": "vitest",

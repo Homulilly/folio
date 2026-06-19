@@ -1,8 +1,8 @@
-import { type GalleryViewerApi, IpcChannel } from '@galleryviewer/shared-types'
+import { type FolioApi, IpcChannel } from '@folio/shared-types'
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
 /** The IPC contract plus preload-local DOM helpers (getPathForFile is a direct webUtils call). */
-export type Bridge = GalleryViewerApi & {
+export type Bridge = FolioApi & {
   getPathForFile: (file: File) => string
 }
 

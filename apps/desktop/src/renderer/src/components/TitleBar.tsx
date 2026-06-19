@@ -6,7 +6,7 @@ export function TitleBar(): React.JSX.Element {
   return (
     <div className="flex h-[38px] flex-none items-center justify-center border-b border-white/[0.06] bg-[#1C1C1E] [-webkit-app-region:drag]">
       <span className="truncate px-4 text-[13px] font-semibold text-[rgba(235,235,245,0.6)]">
-        {item ? `GalleryViewer — ${item.fileName}` : 'GalleryViewer'}
+        {item ? `Folio — ${item.fileName}` : 'Folio'}
       </span>
     </div>
   )
