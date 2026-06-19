@@ -37,6 +37,7 @@ function Slot({
   fit,
   zoom,
   onFocus,
+  onExpand,
 }: {
   item: ImageQueueItem | null
   slot: number
@@ -46,6 +47,8 @@ function Slot({
   fit: boolean
   zoom: number
   onFocus: () => void
+  /** Double-click: focus this slot and blow it up to the single view (same as Enter). */
+  onExpand: () => void
 }): React.JSX.Element {
   // Slot is remounted (keyed by image id) whenever its image changes, so load state
   // starts fresh and the offscreen <img> unmounts to release its decoded bitmap.
@@ -67,6 +70,7 @@ function Slot({
     <button
       type="button"
       onClick={onFocus}
+      onDoubleClick={onExpand}
       className={`group relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-black ${ring}`}
       style={{ background: 'radial-gradient(circle at 50% 38%, #131315 0%, #000 80%)' }}
     >
@@ -121,6 +125,7 @@ export function MultiView(): React.JSX.Element {
   const layout = useMultiViewStore((s) => s.layout)
   const syncZoom = useMultiViewStore((s) => s.syncZoom)
   const focusSlot = useMultiViewStore((s) => s.focusSlot)
+  const expand = useMultiViewStore((s) => s.expand)
   const fit = useViewerStore((s) => s.fit)
   const zoom = useViewerStore((s) => s.zoom)
 
@@ -144,6 +149,10 @@ export function MultiView(): React.JSX.Element {
             fit={fit}
             zoom={zoom}
             onFocus={() => focusSlot(slot)}
+            onExpand={() => {
+              focusSlot(slot)
+              expand()
+            }}
           />
         </div>
       ))}

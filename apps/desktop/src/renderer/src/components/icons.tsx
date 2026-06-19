@@ -75,6 +75,13 @@ export const FullscreenIcon = (p: IconProps) =>
     p,
   )
 
+// Arrows pointing inward — collapse the expanded focus view back to the grid.
+export const ShrinkIcon = (p: IconProps) =>
+  svg(
+    <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3m8 0v-3a2 2 0 0 1 2-2h3" />,
+    p,
+  )
+
 export const InfoIcon = (p: IconProps) =>
   svg(
     <>

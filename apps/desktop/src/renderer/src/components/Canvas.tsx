@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { canRenderNatively, formatLabel, imageUrl } from '../lib/format'
+import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
 import { useViewerStore } from '../stores/viewerStore'
+import { ShrinkIcon } from './icons'
 
 export function Canvas(): React.JSX.Element {
   const item = useQueueStore((s) => s.items[s.currentIndex])
+  const expanded = useMultiViewStore((s) => s.expanded)
+  const collapse = useMultiViewStore((s) => s.collapse)
   const fit = useViewerStore((s) => s.fit)
   const zoom = useViewerStore((s) => s.zoom)
   const rotation = useViewerStore((s) => s.rotation)
@@ -97,6 +101,19 @@ export function Canvas(): React.JSX.Element {
       <div className="pointer-events-none absolute bottom-2.5 left-2.5 rounded-lg border border-white/[0.08] bg-black/55 px-2.5 py-1 font-mono text-[11px] text-white/90 backdrop-blur">
         {item.fileName}
       </div>
+
+      {/* Only shown while a grid slot is temporarily expanded — click (or Esc) returns to the grid. */}
+      {expanded && (
+        <button
+          type="button"
+          title="Back to grid (Esc)"
+          onClick={collapse}
+          onPointerDown={(e) => e.stopPropagation()}
+          className="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.08] bg-black/45 text-white/70 backdrop-blur transition-colors hover:bg-black/70 hover:text-white"
+        >
+          <ShrinkIcon size={18} />
+        </button>
+      )}
     </div>
   )
 }
