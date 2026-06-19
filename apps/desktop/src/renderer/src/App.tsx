@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Canvas } from './components/Canvas'
 import { ContextMenu } from './components/ContextMenu'
 import { EmptyState } from './components/EmptyState'
+import { MultiView } from './components/MultiView'
 import { QueueRail } from './components/QueueRail'
 import { StatusBar } from './components/StatusBar'
 import { TitleBar } from './components/TitleBar'
@@ -9,6 +10,7 @@ import { Toast } from './components/Toast'
 import { Toolbar } from './components/Toolbar'
 import { useShortcuts } from './hooks/useShortcuts'
 import { openPaths } from './lib/actions'
+import { useMultiViewStore } from './stores/multiViewStore'
 import { useQueueStore } from './stores/queueStore'
 import { useViewerStore } from './stores/viewerStore'
 
@@ -17,13 +19,18 @@ export function App(): React.JSX.Element {
 
   const hasImages = useQueueStore((s) => s.items.length > 0)
   const currentId = useQueueStore((s) => s.items[s.currentIndex]?.id)
+  const mode = useMultiViewStore((s) => s.mode)
+  const expanded = useMultiViewStore((s) => s.expanded)
   const resetViewer = useViewerStore((s) => s.reset)
 
-  // Reset zoom/fit/rotation whenever the focused image changes.
+  // Single image: reset zoom/fit/rotation on each image. In the grid we keep zoom across
+  // focus/group changes so a sync-zoom comparison survives stepping.
   // biome-ignore lint/correctness/useExhaustiveDependencies: reset is stable; key off the image id
   useEffect(() => {
-    resetViewer()
+    if (useMultiViewStore.getState().mode === 'single') resetViewer()
   }, [currentId])
+
+  const single = mode === 'single' || expanded
 
   const onDrop = (e: React.DragEvent): void => {
     e.preventDefault()
@@ -40,9 +47,7 @@ export function App(): React.JSX.Element {
         {hasImages ? (
           <>
             <QueueRail />
-            <ContextMenu>
-              <Canvas />
-            </ContextMenu>
+            <ContextMenu>{single ? <Canvas /> : <MultiView />}</ContextMenu>
           </>
         ) : (
           <EmptyState />

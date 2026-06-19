@@ -1,6 +1,7 @@
 import { SORT_MODE_LABELS, SORT_MODES } from '@folio/core'
-import type { SortMode } from '@folio/shared-types'
+import type { MultiViewMode, SortMode } from '@folio/shared-types'
 import { openFile, openFolder, toggleFullscreen } from '../lib/actions'
+import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
 import { useViewerStore } from '../stores/viewerStore'
 import {
@@ -9,8 +10,15 @@ import {
   FolderIcon,
   FullscreenIcon,
   ImageIcon,
+  LayoutDual,
+  LayoutQuad,
+  LayoutSingle,
+  LayoutSwap,
+  LayoutTriple,
+  LoopIcon,
   RotateIcon,
   ShuffleIcon,
+  SyncIcon,
   ZoomIn,
   ZoomOut,
 } from './icons'
@@ -19,11 +27,13 @@ function TbButton({
   title,
   onClick,
   disabled,
+  active,
   children,
 }: {
   title: string
   onClick: () => void
   disabled?: boolean
+  active?: boolean
   children: React.ReactNode
 }): React.JSX.Element {
   return (
@@ -32,7 +42,11 @@ function TbButton({
       title={title}
       onClick={onClick}
       disabled={disabled}
-      className="flex h-8 w-8 items-center justify-center rounded-lg text-[rgba(235,235,245,0.85)] transition-colors hover:bg-white/[0.08] disabled:opacity-30 disabled:hover:bg-transparent"
+      className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent ${
+        active
+          ? 'bg-[#0A84FF]/20 text-[#0A84FF]'
+          : 'text-[rgba(235,235,245,0.85)] hover:bg-white/[0.08]'
+      }`}
     >
       {children}
     </button>
@@ -41,14 +55,31 @@ function TbButton({
 
 const Divider = () => <div className="mx-1 h-[22px] w-px bg-white/[0.08]" />
 
+const MODE_BUTTONS: { mode: MultiViewMode; title: string; Icon: typeof LayoutSingle }[] = [
+  { mode: 'single', title: 'Single (⌘1)', Icon: LayoutSingle },
+  { mode: 'dual', title: 'Dual (⌘2)', Icon: LayoutDual },
+  { mode: 'triple', title: 'Triple (⌘3)', Icon: LayoutTriple },
+  { mode: 'quad', title: 'Quad (⌘4)', Icon: LayoutQuad },
+]
+
+const MODE_HAS_LAYOUTS: Partial<Record<MultiViewMode, boolean>> = { dual: true, triple: true }
+
 export function Toolbar(): React.JSX.Element {
   const items = useQueueStore((s) => s.items)
   const currentIndex = useQueueStore((s) => s.currentIndex)
   const sortMode = useQueueStore((s) => s.sortMode)
   const setSortMode = useQueueStore((s) => s.setSortMode)
-  const next = useQueueStore((s) => s.next)
-  const prev = useQueueStore((s) => s.prev)
   const random = useQueueStore((s) => s.random)
+
+  const mode = useMultiViewStore((s) => s.mode)
+  const setMode = useMultiViewStore((s) => s.setMode)
+  const cycleLayout = useMultiViewStore((s) => s.cycleLayout)
+  const syncZoom = useMultiViewStore((s) => s.syncZoom)
+  const toggleSync = useMultiViewStore((s) => s.toggleSync)
+  const loopEnabled = useMultiViewStore((s) => s.loopEnabled)
+  const toggleLoop = useMultiViewStore((s) => s.toggleLoop)
+  const nextGroup = useMultiViewStore((s) => s.nextGroup)
+  const prevGroup = useMultiViewStore((s) => s.prevGroup)
 
   const fit = useViewerStore((s) => s.fit)
   const zoom = useViewerStore((s) => s.zoom)
@@ -71,18 +102,57 @@ export function Toolbar(): React.JSX.Element {
 
       <Divider />
 
-      <TbButton title="Previous (←)" onClick={prev} disabled={!hasImages}>
+      {MODE_BUTTONS.map(({ mode: m, title, Icon }) => (
+        <TbButton
+          key={m}
+          title={title}
+          onClick={() => setMode(m)}
+          active={mode === m}
+          disabled={!hasImages}
+        >
+          <Icon size={17} />
+        </TbButton>
+      ))}
+      {MODE_HAS_LAYOUTS[mode] && (
+        <TbButton title="Swap layout" onClick={cycleLayout} disabled={!hasImages}>
+          <LayoutSwap size={16} />
+        </TbButton>
+      )}
+
+      <Divider />
+
+      <TbButton title="Previous group (←)" onClick={prevGroup} disabled={!hasImages}>
         <ChevronLeft />
       </TbButton>
       <div className="min-w-[62px] text-center font-mono text-[13px] text-[rgba(235,235,245,0.6)] tabular-nums">
         {posLabel}
       </div>
-      <TbButton title="Next (→)" onClick={next} disabled={!hasImages}>
+      <TbButton title="Next group (→)" onClick={nextGroup} disabled={!hasImages}>
         <ChevronRight />
       </TbButton>
       <TbButton title="Random (Shift+R)" onClick={random} disabled={!hasImages}>
         <ShuffleIcon size={16} />
       </TbButton>
+      {mode !== 'single' && (
+        <>
+          <TbButton
+            title="Sync zoom (S)"
+            onClick={toggleSync}
+            active={syncZoom}
+            disabled={!hasImages}
+          >
+            <SyncIcon size={17} />
+          </TbButton>
+          <TbButton
+            title="Loop browsing"
+            onClick={toggleLoop}
+            active={loopEnabled}
+            disabled={!hasImages}
+          >
+            <LoopIcon size={16} />
+          </TbButton>
+        </>
+      )}
 
       <Divider />
 

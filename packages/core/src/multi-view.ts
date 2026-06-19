@@ -55,3 +55,30 @@ export function previousGroupStart({
   // Wrap to the last aligned group: the largest multiple of step that is < total.
   return Math.floor((total - 1) / step) * step
 }
+
+/**
+ * Align an arbitrary item index to the start of the group it belongs to. Groups are
+ * aligned to the mode's step from 0 (e.g. quad → 0,4,8,…), so the focused image keeps its
+ * slot when switching modes and the group recomputes after sort/delete.
+ */
+export function groupStartForIndex(index: number, mode: MultiViewMode): number {
+  if (index <= 0) return 0
+  const step = viewCountForMode(mode)
+  return Math.floor(index / step) * step
+}
+
+/**
+ * The items that fill the current group, padded with `null` for trailing blank slots when
+ * the queue runs out (PRD: end-of-queue shows remaining images, blanks read "no more images").
+ * Returns exactly `viewCountForMode(mode)` entries.
+ */
+export function groupSlots<T>(
+  items: readonly T[],
+  startIndex: number,
+  mode: MultiViewMode,
+): (T | null)[] {
+  const step = viewCountForMode(mode)
+  const slots: (T | null)[] = []
+  for (let i = 0; i < step; i++) slots.push(items[startIndex + i] ?? null)
+  return slots
+}

@@ -101,3 +101,56 @@ export const CopyIcon = (p: IconProps) =>
 
 export const ShuffleIcon = (p: IconProps) =>
   svg(<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />, p)
+
+// --- multi-view layout glyphs (outlined panes) ---
+export const LayoutSingle = (p: IconProps) =>
+  svg(<rect x="4" y="5" width="16" height="14" rx="1.6" />, p, 1.6)
+
+export const LayoutDual = (p: IconProps) =>
+  svg(
+    <>
+      <rect x="3.5" y="5" width="7.5" height="14" rx="1.4" />
+      <rect x="13" y="5" width="7.5" height="14" rx="1.4" />
+    </>,
+    p,
+    1.6,
+  )
+
+export const LayoutTriple = (p: IconProps) =>
+  svg(
+    <>
+      <rect x="3.5" y="5" width="8.5" height="14" rx="1.4" />
+      <rect x="14" y="5" width="6.5" height="6.3" rx="1.4" />
+      <rect x="14" y="12.7" width="6.5" height="6.3" rx="1.4" />
+    </>,
+    p,
+    1.6,
+  )
+
+export const LayoutQuad = (p: IconProps) =>
+  svg(
+    <>
+      <rect x="3.5" y="5" width="7.5" height="6.3" rx="1.3" />
+      <rect x="13" y="5" width="7.5" height="6.3" rx="1.3" />
+      <rect x="3.5" y="12.7" width="7.5" height="6.3" rx="1.3" />
+      <rect x="13" y="12.7" width="7.5" height="6.3" rx="1.3" />
+    </>,
+    p,
+    1.6,
+  )
+
+export const SyncIcon = (p: IconProps) => svg(<path d="M4 8h13l-3-3M20 16H7l3 3" />, p)
+
+export const LoopIcon = (p: IconProps) =>
+  svg(
+    <>
+      <path d="M17 2l4 4-4 4" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <path d="M7 22l-4-4 4-4" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    </>,
+    p,
+  )
+
+export const LayoutSwap = (p: IconProps) =>
+  svg(<path d="M16 3l4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16" />, p)
