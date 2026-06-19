@@ -84,6 +84,13 @@ pnpm build          # electron-vite 构建(打包用 electron-builder,M7)
 - 渲染进程状态按 slice 拆:`queueStore` / `multiViewStore` / `viewerStore` / `settingsStore`。
 - 写代码前对齐周边风格(命名、注释密度、目录习惯);纯逻辑优先放 `packages/core` 并补单测。
 
+## 提交规范
+
+- 提交信息使用 Conventional Commits: `<type>: <summary>`。
+- 常用类型:`feat`(新功能)、`fix`(缺陷修复)、`docs`(文档)、`refactor`(重构)、`test`(测试)、`chore`(工程杂项)。
+- 修复类提交必须使用 `fix:` 前缀,例如 `fix: handle Windows image protocol paths`。
+- summary 使用英文祈使句或简短动词短语,不加句号;一次提交只描述一个清晰变更。
+
 ## 设计系统(来自 `.dev/design/GalleryViewer.dc.html`)
 
 macOS 原生深色风格。原型用 `.dc.html`(Design Component)格式编写,**仅供视觉/交互参考,非生产代码**;落地时用 React + Tailwind 重写。原型目前只覆盖**单图模式**,多图并列需按 prd §6.2 自行设计。
