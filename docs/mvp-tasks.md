@@ -21,10 +21,14 @@
 - [x] 类型化 IPC 框架：preload contextBridge + main invoke 路由 + 共享契约类型（`system` 命名空间）
 - [x] 注册自定义协议 `gv-img://` 骨架（先直接返回原文件流）
 
-**验收**：✅ `pnpm typecheck` / `pnpm test`(8 passed) / `pnpm build` / `pnpm lint` 全绿。`pnpm dev` 启动空窗口需在有 GUI 的环境由你本地确认（见下方说明）。
+**验收**：✅ `pnpm typecheck` / `pnpm test`(8 passed) / `pnpm build` / `pnpm lint` 全绿；✅ `pnpm dev` 正常启动 Electron 窗口,contextBridge IPC(`window.gv.system.ping`)打通。
 
 > 实际栈版本:Electron 42 · electron-vite 5 · Vite 8 · React 19 · Tailwind 4 · TypeScript 6 · Biome 2.5 · Vitest 4 · Node 25 / pnpm 11。
-> M0 调整记录:pnpm 11 用 `pnpm-workspace.yaml` 的 `allowBuilds` 审批原生构建脚本;tsconfig 采用 bundler 解析、不依赖 project-reference 输出。
+> M0 踩坑记录:
+> 1. pnpm 11 用 `pnpm-workspace.yaml` 的 `allowBuilds` 审批原生构建脚本;Electron 二进制下载若被跳过,跑 `electron/install.js` 补回。
+> 2. tsconfig 采用 bundler 解析、不依赖 project-reference 输出。
+> 3. `electron` 是 devDependency,externalizeDepsPlugin 不会自动 external,需在 main/preload 的 `rollupOptions.external` 显式声明,否则其 launcher stub 被打包进主进程并尝试下载二进制。
+> 4. sandbox 渲染进程的 preload 必须是 CommonJS;`"type": "module"` 下 `.js` 为 ESM 会被静默拒绝(`window.gv` 变 undefined),preload 须输出 `.cjs`。
 
 ---
 
