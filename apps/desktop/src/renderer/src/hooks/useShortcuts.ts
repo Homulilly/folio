@@ -42,15 +42,27 @@ export function useShortcuts(): void {
       }
 
       switch (e.key) {
+        // Left/Right step one image (within the group, then into the next); Shift jumps a whole
+        // group. Up/Down jump whole groups. In single mode all of these are prev/next image.
         case 'ArrowRight':
         case 'd':
         case 'D':
           e.preventDefault()
-          mv.nextGroup()
+          if (e.shiftKey) mv.nextGroup()
+          else mv.nextImage()
           break
         case 'ArrowLeft':
         case 'a':
         case 'A':
+          e.preventDefault()
+          if (e.shiftKey) mv.prevGroup()
+          else mv.prevImage()
+          break
+        case 'ArrowDown':
+          e.preventDefault()
+          mv.nextGroup()
+          break
+        case 'ArrowUp':
           e.preventDefault()
           mv.prevGroup()
           break

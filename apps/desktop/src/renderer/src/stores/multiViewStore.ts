@@ -48,6 +48,9 @@ interface MultiViewStore {
   focusSlot: (slot: number) => void
   focusNext: () => void
   focusPrev: () => void
+  /** Step one image forward/back across the whole queue (within a group, then into the next). */
+  nextImage: () => void
+  prevImage: () => void
   nextGroup: () => void
   prevGroup: () => void
   toggleSync: () => void
@@ -113,6 +116,20 @@ export const useMultiViewStore = create<MultiViewStore>((set, get) => ({
     if (filled <= 1) return
     const slot = (currentIndex - start - 1 + filled) % filled
     queue().select(start + slot)
+  },
+
+  // Single-image step. The group is derived from currentIndex, so stepping by 1 walks within
+  // the current group and rolls into the adjacent group when crossing a boundary.
+  nextImage: () => {
+    const { items, currentIndex } = queue()
+    if (currentIndex < items.length - 1) queue().select(currentIndex + 1)
+    else if (get().loopEnabled) queue().select(0)
+  },
+
+  prevImage: () => {
+    const { items, currentIndex } = queue()
+    if (currentIndex > 0) queue().select(currentIndex - 1)
+    else if (get().loopEnabled) queue().select(items.length - 1)
   },
 
   nextGroup: () => {
