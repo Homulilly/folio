@@ -4,6 +4,7 @@ import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
 import { useViewerStore } from '../stores/viewerStore'
 import { ShrinkIcon } from './icons'
+import { ScrollOverlay } from './ScrollOverlay'
 
 export function Canvas(): React.JSX.Element {
   const item = useQueueStore((s) => s.items[s.currentIndex])
@@ -82,7 +83,7 @@ export function Canvas(): React.JSX.Element {
     >
       <div
         ref={scrollRef}
-        className={`absolute inset-0 overflow-auto ${canPan ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        className={`no-scrollbar absolute inset-0 overflow-auto ${canPan ? 'cursor-grab active:cursor-grabbing' : ''}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
@@ -130,6 +131,8 @@ export function Canvas(): React.JSX.Element {
           )}
         </div>
       </div>
+
+      <ScrollOverlay scrollRef={scrollRef} />
 
       <div className="pointer-events-none absolute bottom-2.5 left-2.5 rounded-lg border border-white/[0.08] bg-black/55 px-2.5 py-1 font-mono text-[11px] text-white/90 backdrop-blur">
         {item.fileName}

@@ -18,3 +18,12 @@ body {
     -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
   user-select: none;
 }
+
+/* Hide the native scrollbar so it takes no layout space (no shift when it appears);
+   a custom translucent overlay thumb is drawn on top instead. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
