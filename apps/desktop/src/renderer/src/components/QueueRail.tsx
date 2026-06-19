@@ -39,7 +39,7 @@ export function QueueRail(): React.JSX.Element {
               }`}
             >
               <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md bg-white/[0.06] font-mono text-[9px] font-bold text-[rgba(235,235,245,0.6)]">
-                {it.ext.toUpperCase().slice(0, 4)}
+                {formatLabel(it).toUpperCase().slice(0, 4)}
               </span>
               <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <span
@@ -48,7 +48,7 @@ export function QueueRail(): React.JSX.Element {
                   {it.fileName}
                 </span>
                 <span className="truncate font-mono text-[11px] text-[rgba(235,235,245,0.3)]">
-                  {formatBytes(it.size)} · {formatLabel(it.ext)}
+                  {formatBytes(it.size)} · {formatLabel(it)}
                 </span>
               </span>
             </button>

@@ -1,10 +1,15 @@
-import { GV_IMG_SCHEME } from '@folio/shared-types'
+import { GV_IMG_SCHEME, type ImageFormat } from '@folio/shared-types'
 
-/** Extensions Chromium can decode in an <img>. Others need a sharp-generated preview (later milestone). */
-const RENDERABLE = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'avif', 'svg', 'ico'])
+/** What the renderable / label helpers need from a queue item: prefer the sniffed format, fall back to ext. */
+type FormatInfo = { format?: ImageFormat; ext: string }
 
-export function canRenderNatively(ext: string): boolean {
-  return RENDERABLE.has(ext.toLowerCase())
+/** True formats Chromium can decode in an <img>. Others need a sharp-generated preview (later milestone). */
+const RENDERABLE_FORMATS = new Set<ImageFormat>(['jpeg', 'png', 'webp', 'gif', 'bmp', 'avif'])
+/** Extension fallback for items whose format couldn't be sniffed (incl. svg/ico, which we don't sniff). */
+const RENDERABLE_EXTS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'avif', 'svg', 'ico'])
+
+export function canRenderNatively({ format, ext }: FormatInfo): boolean {
+  return format ? RENDERABLE_FORMATS.has(format) : RENDERABLE_EXTS.has(ext.toLowerCase())
 }
 
 /** Build a gv-img:// URL, percent-encoding each path segment while keeping separators. */
@@ -15,7 +20,20 @@ export function imageUrl(variant: 'original' | 'thumb' | 'preview', filePath: st
   return `${GV_IMG_SCHEME}://${variant}${encoded}`
 }
 
-const FORMAT_LABELS: Record<string, string> = {
+const FORMAT_LABELS: Record<ImageFormat, string> = {
+  jpeg: 'JPEG',
+  png: 'PNG',
+  webp: 'WebP',
+  gif: 'GIF',
+  bmp: 'BMP',
+  tiff: 'TIFF',
+  avif: 'AVIF',
+  heic: 'HEIC',
+  heif: 'HEIF',
+  jxl: 'JPEG XL',
+}
+
+const EXT_LABELS: Record<string, string> = {
   jpg: 'JPEG',
   jpeg: 'JPEG',
   png: 'PNG',
@@ -25,13 +43,14 @@ const FORMAT_LABELS: Record<string, string> = {
   tiff: 'TIFF',
   tif: 'TIFF',
   avif: 'AVIF',
-  heic: 'HEIF',
+  heic: 'HEIC',
   heif: 'HEIF',
   jxl: 'JPEG XL',
 }
 
-export function formatLabel(ext: string): string {
-  return FORMAT_LABELS[ext.toLowerCase()] ?? ext.toUpperCase()
+export function formatLabel({ format, ext }: FormatInfo): string {
+  if (format) return FORMAT_LABELS[format]
+  return EXT_LABELS[ext.toLowerCase()] ?? ext.toUpperCase()
 }
 
 export function formatBytes(bytes: number): string {

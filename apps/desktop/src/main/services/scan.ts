@@ -2,21 +2,28 @@ import type { Stats } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { extOf, isSupportedImage } from '@folio/image-processing'
-import type { ImageQueueItem, ScanResult } from '@folio/shared-types'
+import type { ImageFormat, ImageQueueItem, ScanResult } from '@folio/shared-types'
+import { detectFileFormat } from './format'
 
 const STAT_CONCURRENCY = 32
 
-function toItem(filePath: string, s: Stats): ImageQueueItem {
+function toItem(filePath: string, s: Stats, format: ImageFormat | null): ImageQueueItem {
   return {
     id: filePath,
     filePath,
     fileName: basename(filePath),
     ext: extOf(filePath),
+    format: format ?? undefined,
     size: s.size,
     modifiedAt: s.mtimeMs,
     createdAt: s.birthtimeMs || undefined,
     metadataStatus: 'pending',
   }
+}
+
+/** Stat a file and sniff its true format from magic bytes in one bounded step. */
+async function inspect(filePath: string, s: Stats): Promise<ImageQueueItem> {
+  return toItem(filePath, s, await detectFileFormat(filePath))
 }
 
 /** Map over items with a bounded number of concurrent async calls. */
@@ -44,7 +51,7 @@ export async function scanDirectory(directory: string): Promise<ImageQueueItem[]
   const names = entries.filter((e) => e.isFile() && isSupportedImage(e.name)).map((e) => e.name)
   const items = await mapLimit(names, STAT_CONCURRENCY, async (name) => {
     const filePath = join(directory, name)
-    return toItem(filePath, await stat(filePath))
+    return inspect(filePath, await stat(filePath))
   })
   return items
 }
@@ -84,7 +91,7 @@ export async function buildScanResult(paths: readonly string[]): Promise<ScanRes
     paths.map(async (p) => {
       try {
         const s = await stat(p)
-        if (s.isFile() && isSupportedImage(p)) items.push(toItem(p, s))
+        if (s.isFile() && isSupportedImage(p)) items.push(await inspect(p, s))
       } catch {
         /* skip unreadable paths */
       }

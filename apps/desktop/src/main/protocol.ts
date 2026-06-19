@@ -1,8 +1,10 @@
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { Readable } from 'node:stream'
+import { mimeTypeForFormat } from '@folio/image-processing'
 import { GV_IMG_SCHEME } from '@folio/shared-types'
 import { protocol } from 'electron'
+import { detectFileFormat } from './services/format'
 
 /**
  * Declare gv-img:// as a privileged, streaming scheme. MUST run before app `ready`.
@@ -39,8 +41,11 @@ export function handleImageProtocol(): void {
     try {
       const info = await stat(filePath)
       if (!info.isFile()) return new Response('Not found', { status: 404 })
+      // Label the response by the file's true format (magic bytes), not its extension.
+      const format = await detectFileFormat(filePath)
+      const headers = format ? { 'Content-Type': mimeTypeForFormat(format) } : undefined
       const stream = Readable.toWeb(createReadStream(filePath)) as ReadableStream
-      return new Response(stream, { status: 200 })
+      return new Response(stream, { status: 200, headers })
     } catch {
       return new Response('Not found', { status: 404 })
     }

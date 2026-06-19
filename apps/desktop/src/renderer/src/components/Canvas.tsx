@@ -21,7 +21,7 @@ export function Canvas(): React.JSX.Element {
 
   if (!item) return <div className="flex-1" />
 
-  const renderable = canRenderNatively(item.ext)
+  const renderable = canRenderNatively(item)
   const transform = `rotate(${rotation}deg)`
   const canPan = !fit
 
@@ -59,7 +59,7 @@ export function Canvas(): React.JSX.Element {
       {!renderable ? (
         <div className="max-w-sm px-6 text-center">
           <div className="text-base font-medium text-[rgba(235,235,245,0.85)]">
-            {formatLabel(item.ext)} preview not available yet
+            {formatLabel(item)} preview not available yet
           </div>
           <div className="mt-2 text-[13px] text-[rgba(235,235,245,0.45)]">
             {item.fileName} — rendering for this format arrives with the sharp preview pipeline

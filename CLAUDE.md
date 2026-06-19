@@ -44,8 +44,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 渲染进程零 fs 访问;拖拽文件拿绝对路径用 preload 的 `webUtils.getPathForFile`(Electron 已移除 `File.path`)。
 
 ### 扫描与队列
-- `services/scan.ts` 的 `buildScanResult(paths)` 统一入口:单目录→扫该目录;单图片→扫其所在文件夹并把该图设为 `currentIndex`;多路径→只收其中受支持的图片。**扫描非递归**,只读 stat、不碰图片字节,并发受 `mapLimit` 限流。
-- 受支持扩展名的唯一来源是 `@folio/image-processing` 的 `SUPPORTED_EXTENSIONS`;判断用 `isSupportedImage` / `extOf`,勿另写一份。
+- `services/scan.ts` 的 `buildScanResult(paths)` 统一入口:单目录→扫该目录;单图片→扫其所在文件夹并把该图设为 `currentIndex`;多路径→只收其中受支持的图片。**扫描非递归**,并发受 `mapLimit` 限流。
+- **扩展名只用于「枚举/筛选」,真实格式靠 magic bytes**:目录枚举用 `isSupportedImage`/`extOf`(`@folio/image-processing` 的 `SUPPORTED_EXTENSIONS` 是唯一来源)挑出候选;每个入队图片再经 `services/format.ts` 的 `detectFileFormat` 只读文件头(`MAGIC_BYTES_LENGTH` 字节)嗅探真实格式,写入 `ImageQueueItem.format`。纯检测逻辑 `detectImageFormat`/`mimeTypeForFormat` 在 `@folio/image-processing`(纯函数 + 单测),fs 读取留在主进程 service。
+- 渲染进程的 `lib/format.ts`(`canRenderNatively`/`formatLabel`)**优先用 `item.format`,无则回退 `ext`**;`gv-img://` 协议也用 `detectFileFormat` 设置正确的 `Content-Type`。扩展名说谎的图片(如 `.png` 实为 JPEG)因此能正确判定与显示。
 - 队列 / viewer 状态在 `renderer/src/stores`(`queueStore` / `viewerStore` / `toastStore`),纯排序/分组逻辑在 `packages/core`(`sortItems`、`nextGroupStart` 等,带 Vitest)。`queueStore.version` 每次 mutation 自增,供后续 worker 丢弃过期结果(PRD §9.3)。
 
 ### electron-vite 配置坑(`electron.vite.config.ts`)

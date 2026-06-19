@@ -2,12 +2,31 @@
 
 export type MetadataStatus = 'pending' | 'loaded' | 'failed'
 
+/**
+ * Canonical image formats Folio recognises, identified from a file's magic bytes
+ * (content) rather than its extension. `jpg`→`jpeg`, `tif`→`tiff` are normalised away.
+ */
+export type ImageFormat =
+  | 'jpeg'
+  | 'png'
+  | 'gif'
+  | 'webp'
+  | 'bmp'
+  | 'tiff'
+  | 'avif'
+  | 'heic'
+  | 'heif'
+  | 'jxl'
+
 /** A single item in the browse queue. Holds path + index metadata only — never raw image bytes. */
 export interface ImageQueueItem {
   id: string
   filePath: string
   fileName: string
+  /** Lower-cased extension from the file name (no dot). May lie about the real content. */
   ext: string
+  /** True format sniffed from magic bytes; undefined when the header matched nothing or was unreadable. */
+  format?: ImageFormat
   size: number
   width?: number
   height?: number

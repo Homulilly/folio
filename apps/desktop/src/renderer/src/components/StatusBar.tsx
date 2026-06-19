@@ -19,7 +19,7 @@ export function StatusBar(): React.JSX.Element {
         <>
           <span className="truncate text-[rgba(235,235,245,0.75)]">{item.fileName}</span>
           <span>{dims}</span>
-          <span>{formatLabel(item.ext)}</span>
+          <span>{formatLabel(item)}</span>
           <span>{formatBytes(item.size)}</span>
           <div className="ml-auto flex items-center gap-3.5">
             <span>{fit ? 'Fit' : `${zoom}%`}</span>
