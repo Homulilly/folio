@@ -27,7 +27,10 @@ export function handleImageProtocol(): void {
     const url = new URL(request.url)
     // host = variant (original|thumb|preview); pathname = the source file path.
     const variant = url.hostname
-    const filePath = decodeURIComponent(url.pathname)
+    let filePath = decodeURIComponent(url.pathname)
+    if (process.platform === 'win32' && /^\/[a-zA-Z]:\//.test(filePath)) {
+      filePath = filePath.slice(1)
+    }
 
     if (variant !== 'original') {
       return new Response('Not implemented', { status: 501 })

@@ -9,7 +9,9 @@ export function canRenderNatively(ext: string): boolean {
 
 /** Build a gv-img:// URL, percent-encoding each path segment while keeping separators. */
 export function imageUrl(variant: 'original' | 'thumb' | 'preview', filePath: string): string {
-  const encoded = filePath.split('/').map(encodeURIComponent).join('/')
+  const normalized = filePath.replaceAll('\\', '/')
+  const absolutePath = normalized.startsWith('/') ? normalized : `/${normalized}`
+  const encoded = absolutePath.split('/').map(encodeURIComponent).join('/')
   return `${GV_IMG_SCHEME}://${variant}${encoded}`
 }
 

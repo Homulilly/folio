@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { canRenderNatively, formatLabel, imageUrl } from '../lib/format'
 import { useQueueStore } from '../stores/queueStore'
 import { useViewerStore } from '../stores/viewerStore'
@@ -14,6 +14,10 @@ export function Canvas(): React.JSX.Element {
   const [failed, setFailed] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
+
+  useEffect(() => {
+    setFailed(false)
+  }, [item?.id])
 
   if (!item) return <div className="flex-1" />
 
