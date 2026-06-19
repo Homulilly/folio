@@ -17,6 +17,7 @@ import {
   LayoutTriple,
   LoopIcon,
   RotateIcon,
+  RotateResetIcon,
   ShuffleIcon,
   SyncIcon,
   ZoomIn,
@@ -87,6 +88,8 @@ export function Toolbar(): React.JSX.Element {
   const zoomOut = useViewerStore((s) => s.zoomOut)
   const toggleFit = useViewerStore((s) => s.toggleFit)
   const rotateCW = useViewerStore((s) => s.rotateCW)
+  const rotation = useViewerStore((s) => s.rotation)
+  const resetRotation = useViewerStore((s) => s.resetRotation)
 
   const hasImages = items.length > 0
   const posLabel = hasImages ? `${currentIndex + 1} / ${items.length}` : '0 / 0'
@@ -173,6 +176,13 @@ export function Toolbar(): React.JSX.Element {
       </TbButton>
       <TbButton title="Rotate (R)" onClick={rotateCW} disabled={!hasImages}>
         <RotateIcon />
+      </TbButton>
+      <TbButton
+        title="Reset orientation"
+        onClick={resetRotation}
+        disabled={!hasImages || rotation === 0}
+      >
+        <RotateResetIcon />
       </TbButton>
 
       <div className="ml-auto flex items-center gap-2">

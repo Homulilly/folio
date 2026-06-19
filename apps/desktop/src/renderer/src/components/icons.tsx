@@ -60,11 +60,22 @@ export const ZoomOut = (p: IconProps) =>
     p,
   )
 
+// Rotate clockwise — a near-full circular arrow.
 export const RotateIcon = (p: IconProps) =>
   svg(
     <>
-      <path d="M21 2v6h-6" />
-      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+      <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+      <path d="M21 3v5h-5" />
+    </>,
+    p,
+  )
+
+// Reset orientation — mirrored (counter-clockwise) circular arrow back to upright.
+export const RotateResetIcon = (p: IconProps) =>
+  svg(
+    <>
+      <path d="M3 12a9 9 0 1 0 9-9c-2.52 0-4.93 1-6.74 2.74L3 8" />
+      <path d="M3 3v5h5" />
     </>,
     p,
   )

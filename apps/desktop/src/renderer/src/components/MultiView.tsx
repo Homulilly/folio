@@ -36,6 +36,7 @@ function Slot({
   active,
   fit,
   zoom,
+  rotation,
   onFocus,
   onExpand,
 }: {
@@ -46,6 +47,8 @@ function Slot({
   active: boolean
   fit: boolean
   zoom: number
+  /** Shared rotation applied to every slot; carried into the focused single view. */
+  rotation: number
   onFocus: () => void
   /** Double-click: focus this slot and blow it up to the single view (same as Enter). */
   onExpand: () => void
@@ -65,6 +68,9 @@ function Slot({
   const renderable = canRenderNatively(item)
   const scaled = active && !fit
   const ring = focused ? 'ring-2 ring-[#0A84FF]' : 'ring-1 ring-white/[0.06]'
+  const transform =
+    `${rotation ? `rotate(${rotation}deg)` : ''} ${scaled ? `scale(${zoom / 100})` : ''}`.trim() ||
+    undefined
 
   return (
     <button
@@ -95,10 +101,7 @@ function Slot({
             onLoad={() => setStatus('loaded')}
             onError={() => setStatus('error')}
             className="max-h-full max-w-full object-contain transition-opacity"
-            style={{
-              opacity: status === 'loaded' ? 1 : 0,
-              transform: scaled ? `scale(${zoom / 100})` : undefined,
-            }}
+            style={{ opacity: status === 'loaded' ? 1 : 0, transform }}
           />
         </>
       )}
@@ -128,6 +131,7 @@ export function MultiView(): React.JSX.Element {
   const expand = useMultiViewStore((s) => s.expand)
   const fit = useViewerStore((s) => s.fit)
   const zoom = useViewerStore((s) => s.zoom)
+  const rotation = useViewerStore((s) => s.rotation)
 
   const start = groupStartForIndex(currentIndex, mode)
   const slots = groupSlots(items, start, mode)
@@ -148,6 +152,7 @@ export function MultiView(): React.JSX.Element {
             active={slot === focusedSlot || syncZoom}
             fit={fit}
             zoom={zoom}
+            rotation={rotation}
             onFocus={() => focusSlot(slot)}
             onExpand={() => {
               focusSlot(slot)
