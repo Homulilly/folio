@@ -1,6 +1,6 @@
 import { groupSlots, groupStartForIndex } from '@folio/core'
 import type { ImageQueueItem, MultiViewLayout } from '@folio/shared-types'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { canRenderNatively, formatBytes, formatLabel, imageUrl } from '../lib/format'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
@@ -129,6 +129,8 @@ export function MultiView(): React.JSX.Element {
   const syncZoom = useMultiViewStore((s) => s.syncZoom)
   const focusSlot = useMultiViewStore((s) => s.focusSlot)
   const expand = useMultiViewStore((s) => s.expand)
+  const nextGroup = useMultiViewStore((s) => s.nextGroup)
+  const prevGroup = useMultiViewStore((s) => s.prevGroup)
   const fit = useViewerStore((s) => s.fit)
   const zoom = useViewerStore((s) => s.zoom)
   const rotation = useViewerStore((s) => s.rotation)
@@ -138,8 +140,19 @@ export function MultiView(): React.JSX.Element {
   const focusedSlot = currentIndex - start
   const { container, slotClass } = LAYOUTS[layout]
 
+  // Wheel over the grid steps whole groups (down → next, up → previous), throttled so a
+  // single mouse notch or trackpad flick doesn't fly through many groups at once.
+  const lastWheel = useRef(0)
+  const onWheel = (e: React.WheelEvent): void => {
+    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+    if (Math.abs(delta) < 2 || e.timeStamp - lastWheel.current < 140) return
+    lastWheel.current = e.timeStamp
+    if (delta > 0) nextGroup()
+    else prevGroup()
+  }
+
   return (
-    <div className={`grid min-h-0 flex-1 gap-1.5 p-1.5 ${container}`}>
+    <div className={`grid min-h-0 flex-1 gap-1.5 p-1.5 ${container}`} onWheel={onWheel}>
       {slots.map((item, slot) => (
         <div
           key={item ? item.id : `blank-${slot}`}
