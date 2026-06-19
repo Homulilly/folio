@@ -191,7 +191,7 @@ export function Canvas(): React.JSX.Element {
           type="button"
           title={t('canvas.previous')}
           onClick={prevGroup}
-          className="group/nav absolute inset-y-0 left-0 flex w-16 items-center justify-start pl-3 opacity-0 transition-opacity hover:opacity-100"
+          className="group/nav absolute inset-y-0 left-0 flex w-[20%] items-center justify-start pl-3 opacity-0 transition-opacity hover:opacity-100"
         >
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white/85 backdrop-blur transition-colors group-hover/nav:bg-black/65 group-hover/nav:text-white">
             <ChevronLeft size={22} />
@@ -203,7 +203,7 @@ export function Canvas(): React.JSX.Element {
           type="button"
           title={t('canvas.next')}
           onClick={nextGroup}
-          className="group/nav absolute inset-y-0 right-0 flex w-16 items-center justify-end pr-3 opacity-0 transition-opacity hover:opacity-100"
+          className="group/nav absolute inset-y-0 right-0 flex w-[20%] items-center justify-end pr-3 opacity-0 transition-opacity hover:opacity-100"
         >
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white/85 backdrop-blur transition-colors group-hover/nav:bg-black/65 group-hover/nav:text-white">
             <ChevronRight size={22} />
