@@ -24,6 +24,28 @@ interface ZoomAnchor {
 
 const easeOutCubic = (t: number): number => 1 - (1 - t) ** 3
 
+/**
+ * Anchor that keeps the canvas viewport's centre fixed during a zoom — used for button/keyboard
+ * zoom, which (unlike the wheel) has no pointer to pin. Computed from the pre-zoom geometry: the
+ * image fraction currently under the viewport centre, plus that centre in client coords.
+ */
+function viewportCenterAnchor(el: HTMLDivElement | null): ZoomAnchor | null {
+  if (!el) return null
+  const img = el.querySelector<HTMLImageElement>('img')
+  if (!img) return null
+  const before = img.getBoundingClientRect()
+  if (before.width <= 0 || before.height <= 0) return null
+  const view = el.getBoundingClientRect()
+  const pointerX = view.left + view.width / 2
+  const pointerY = view.top + view.height / 2
+  return {
+    x: Math.max(0, Math.min(1, (pointerX - before.left) / before.width)),
+    y: Math.max(0, Math.min(1, (pointerY - before.top) / before.height)),
+    pointerX,
+    pointerY,
+  }
+}
+
 export function Canvas(): React.JSX.Element {
   const t = useT()
   const item = useQueueStore((s) => s.items[s.currentIndex])
@@ -163,16 +185,15 @@ export function Canvas(): React.JSX.Element {
 
     const el = scrollRef.current
 
-    const apply = (s: number): void => {
+    const apply = (s: number, anchor: ZoomAnchor | null): void => {
       displayScaleRef.current = s
       if (!el || naturalWidth == null || naturalHeight == null) return
       const img = el.querySelector<HTMLImageElement>('img')
       if (!img) return
       img.style.width = `${naturalWidth * s}px`
       img.style.height = `${naturalHeight * s}px`
-      // Reading the rect forces the just-set size to lay out, then we keep the wheel anchor
-      // point pinned under the cursor — one reflow per frame, co-located with the resize.
-      const anchor = activeZoomAnchor.current
+      // Reading the rect forces the just-set size to lay out, then we keep the anchor point
+      // pinned in the viewport — one reflow per frame, co-located with the resize.
       if (anchor) {
         const after = img.getBoundingClientRect()
         el.scrollLeft += after.left + after.width * anchor.x - anchor.pointerX
@@ -191,8 +212,11 @@ export function Canvas(): React.JSX.Element {
 
     const from = displayScaleRef.current
     const to = targetScale
+    // Wheel zoom pins the point under the cursor; button/keyboard zoom has none, so fall back
+    // to the viewport centre. Captured once from the pre-zoom geometry and held for the run.
+    const anchor = activeZoomAnchor.current ?? viewportCenterAnchor(el)
     if (Math.abs(from - to) < ZOOM_EPSILON) {
-      apply(to)
+      apply(to, anchor)
       return
     }
 
@@ -204,14 +228,14 @@ export function Canvas(): React.JSX.Element {
 
     const animate = (now: number): void => {
       const progress = Math.min(1, (now - start) / duration)
-      apply(from + (to - from) * easeOutCubic(progress))
+      apply(from + (to - from) * easeOutCubic(progress), anchor)
 
       if (progress < 1) {
         zoomAnimationRaf.current = requestAnimationFrame(animate)
         return
       }
 
-      apply(to)
+      apply(to, anchor)
       zoomAnimationRaf.current = null
     }
 
