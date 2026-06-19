@@ -4,6 +4,7 @@ import { useQueueStore } from '../stores/queueStore'
 import { useToastStore } from '../stores/toastStore'
 import { useTrashConfirmStore } from '../stores/trashConfirmStore'
 import { useUiStore } from '../stores/uiStore'
+import { trashTextKeys } from './platform'
 
 const queue = () => useQueueStore.getState()
 const toast = () => useToastStore.getState()
@@ -42,15 +43,16 @@ function currentPath(): string | undefined {
 export async function trashCurrent(): Promise<void> {
   const item = currentItem()
   if (!item) return
+  const trashText = trashTextKeys()
   const confirmed = await useTrashConfirmStore.getState().confirmTrash(item.fileName)
   if (!confirmed) return
 
   const result = await window.gv.file.trash(item.filePath)
   if (result === 'trashed') {
     queue().removeItem(item.id)
-    toast().show(tNow('toast.movedToTrash'), 'success')
+    toast().show(tNow(trashText.success), 'success')
   } else if (result === 'failed') {
-    toast().show(tNow('toast.trashFailed'), 'error')
+    toast().show(tNow(trashText.failed), 'error')
   }
 }
 

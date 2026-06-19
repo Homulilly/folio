@@ -1,24 +1,18 @@
 import { useEffect, useState } from 'react'
 import { type I18nKey, useT } from '../i18n'
 import { copyImageCurrent, copyPathCurrent, revealCurrent, trashCurrent } from '../lib/actions'
+import { revealLabelKey, trashTextKeys } from '../lib/platform'
 
 interface MenuPos {
   x: number
   y: number
 }
 
-function revealLabelKey(): I18nKey {
-  const platform = navigator.platform.toLowerCase()
-  if (platform.includes('mac')) return 'context.revealInFinder'
-  if (platform.includes('win')) return 'context.revealInExplorer'
-  return 'context.revealInFolder'
-}
-
 const items: { labelKey: I18nKey; run: () => void; danger?: boolean }[] = [
   { labelKey: 'context.copyImage', run: () => void copyImageCurrent() },
   { labelKey: 'context.copyPath', run: () => void copyPathCurrent() },
   { labelKey: revealLabelKey(), run: () => void revealCurrent() },
-  { labelKey: 'context.moveToTrash', run: () => void trashCurrent(), danger: true },
+  { labelKey: trashTextKeys().context, run: () => void trashCurrent(), danger: true },
 ]
 
 /** Lightweight right-click menu for the canvas. Replace with Radix when the design system lands. */

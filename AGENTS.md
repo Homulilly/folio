@@ -83,6 +83,7 @@ pnpm build          # electron-vite 构建(打包用 electron-builder,M7)
 - Electron 安全基线:`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`;preload 仅用 `contextBridge`。
 - 渲染进程状态按 slice 拆:`queueStore` / `multiViewStore` / `viewerStore` / `settingsStore`。
 - 写代码前对齐周边风格(命名、注释密度、目录习惯);纯逻辑优先放 `packages/core` 并补单测。
+- 跨平台 UI 文案不要写死 macOS 术语。涉及系统文件管理器/删除位置时按平台区分:macOS 用「访达 / 废纸篓」(Finder / Trash),Windows 用「资源管理器 / 回收站」(File Explorer / Recycle Bin),其他平台用通用「文件夹 / Trash」;相关文案统一走 i18n 与平台 helper。
 
 ## 提交规范
 
