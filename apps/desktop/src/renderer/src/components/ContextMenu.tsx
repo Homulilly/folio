@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { type I18nKey, useT } from '../i18n'
 import { copyImageCurrent, copyPathCurrent, revealCurrent, trashCurrent } from '../lib/actions'
 
 interface MenuPos {
@@ -6,15 +7,16 @@ interface MenuPos {
   y: number
 }
 
-const items: { label: string; run: () => void; danger?: boolean }[] = [
-  { label: 'Copy Image', run: () => void copyImageCurrent() },
-  { label: 'Copy Path', run: () => void copyPathCurrent() },
-  { label: 'Reveal in Finder', run: () => void revealCurrent() },
-  { label: 'Move to Trash', run: () => void trashCurrent(), danger: true },
+const items: { labelKey: I18nKey; run: () => void; danger?: boolean }[] = [
+  { labelKey: 'context.copyImage', run: () => void copyImageCurrent() },
+  { labelKey: 'context.copyPath', run: () => void copyPathCurrent() },
+  { labelKey: 'context.revealInFolder', run: () => void revealCurrent() },
+  { labelKey: 'context.moveToTrash', run: () => void trashCurrent(), danger: true },
 ]
 
 /** Lightweight right-click menu for the canvas. Replace with Radix when the design system lands. */
 export function ContextMenu({ children }: { children: React.ReactNode }): React.JSX.Element {
+  const t = useT()
   const [pos, setPos] = useState<MenuPos | null>(null)
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export function ContextMenu({ children }: { children: React.ReactNode }): React.
           {items.map((it) => (
             <button
               type="button"
-              key={it.label}
+              key={it.labelKey}
               onClick={() => {
                 it.run()
                 setPos(null)
@@ -55,7 +57,7 @@ export function ContextMenu({ children }: { children: React.ReactNode }): React.
                 it.danger ? 'text-[#FF6961] hover:text-white' : 'text-[rgba(235,235,245,0.9)]'
               }`}
             >
-              {it.label}
+              {t(it.labelKey)}
             </button>
           ))}
         </div>

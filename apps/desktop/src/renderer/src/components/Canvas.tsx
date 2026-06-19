@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useT } from '../i18n'
 import { canRenderNatively, formatLabel, imageUrl } from '../lib/format'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
@@ -7,6 +8,7 @@ import { ChevronLeft, ChevronRight, ShrinkIcon } from './icons'
 import { ScrollOverlay } from './ScrollOverlay'
 
 export function Canvas(): React.JSX.Element {
+  const t = useT()
   const item = useQueueStore((s) => s.items[s.currentIndex])
   const currentIndex = useQueueStore((s) => s.currentIndex)
   const total = useQueueStore((s) => s.items.length)
@@ -153,16 +155,15 @@ export function Canvas(): React.JSX.Element {
           {!renderable ? (
             <div className="max-w-sm px-6 text-center">
               <div className="text-base font-medium text-[rgba(235,235,245,0.85)]">
-                {formatLabel(item)} preview not available yet
+                {t('canvas.previewUnavailable', { format: formatLabel(item) })}
               </div>
               <div className="mt-2 text-[13px] text-[rgba(235,235,245,0.45)]">
-                {item.fileName} — rendering for this format arrives with the sharp preview pipeline
-                (M6/M7).
+                {t('canvas.previewUnavailableDetail', { fileName: item.fileName })}
               </div>
             </div>
           ) : failed ? (
             <div className="px-6 text-center text-[13px] text-[#FF453A]">
-              Failed to decode {item.fileName}
+              {t('canvas.failedToDecode', { fileName: item.fileName })}
             </div>
           ) : (
             <img
@@ -188,7 +189,7 @@ export function Canvas(): React.JSX.Element {
       {showPrev && (
         <button
           type="button"
-          title="Previous (←)"
+          title={t('canvas.previous')}
           onClick={prevGroup}
           className="group/nav absolute inset-y-0 left-0 flex w-16 items-center justify-start pl-3 opacity-0 transition-opacity hover:opacity-100"
         >
@@ -200,7 +201,7 @@ export function Canvas(): React.JSX.Element {
       {showNext && (
         <button
           type="button"
-          title="Next (→)"
+          title={t('canvas.next')}
           onClick={nextGroup}
           className="group/nav absolute inset-y-0 right-0 flex w-16 items-center justify-end pr-3 opacity-0 transition-opacity hover:opacity-100"
         >
@@ -218,7 +219,7 @@ export function Canvas(): React.JSX.Element {
       {expanded && (
         <button
           type="button"
-          title="Back to grid (Esc)"
+          title={t('canvas.backToGrid')}
           onClick={collapse}
           className="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.08] bg-black/45 text-white/70 backdrop-blur transition-colors hover:bg-black/70 hover:text-white"
         >

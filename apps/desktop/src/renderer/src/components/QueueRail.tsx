@@ -1,11 +1,13 @@
 import { groupStartForIndex, viewCountForMode } from '@folio/core'
 import { useEffect, useRef } from 'react'
+import { useT } from '../i18n'
 import { formatBytes, formatLabel } from '../lib/format'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
 import { ScrollOverlay } from './ScrollOverlay'
 
 export function QueueRail(): React.JSX.Element {
+  const t = useT()
   const items = useQueueStore((s) => s.items)
   const currentIndex = useQueueStore((s) => s.currentIndex)
   const select = useQueueStore((s) => s.select)
@@ -26,10 +28,10 @@ export function QueueRail(): React.JSX.Element {
     <div className="flex w-72 flex-none flex-col border-r border-white/[0.06] bg-[#161618]">
       <div className="flex h-10 flex-none items-center justify-between border-b border-white/[0.06] px-3.5">
         <span className="text-xs font-semibold uppercase tracking-wide text-[rgba(235,235,245,0.6)]">
-          Queue
+          {t('queue.title')}
         </span>
         <span className="font-mono text-[11px] text-[rgba(235,235,245,0.3)]">
-          {items.length} images
+          {t('queue.images', { count: items.length })}
         </span>
       </div>
       <div className="relative min-h-0 flex-1">

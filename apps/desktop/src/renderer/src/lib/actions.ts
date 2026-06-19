@@ -1,17 +1,20 @@
 import type { ImageQueueItem, ScanResult } from '@folio/shared-types'
+import { tNow } from '../i18n'
 import { useQueueStore } from '../stores/queueStore'
 import { useToastStore } from '../stores/toastStore'
 import { useTrashConfirmStore } from '../stores/trashConfirmStore'
+import { useUiStore } from '../stores/uiStore'
 
 const queue = () => useQueueStore.getState()
 const toast = () => useToastStore.getState()
 
 function applyResult(result: ScanResult | null): void {
   if (!result) {
-    toast().show('No supported images found', 'error')
+    toast().show(tNow('toast.noSupportedImages'), 'error')
     return
   }
   useQueueStore.getState().loadResult(result)
+  useUiStore.getState().showViewer()
 }
 
 export async function openFolder(): Promise<void> {
@@ -45,9 +48,9 @@ export async function trashCurrent(): Promise<void> {
   const result = await window.gv.file.trash(item.filePath)
   if (result === 'trashed') {
     queue().removeItem(item.id)
-    toast().show('Moved to Trash', 'success')
+    toast().show(tNow('toast.movedToTrash'), 'success')
   } else if (result === 'failed') {
-    toast().show('Could not move to Trash', 'error')
+    toast().show(tNow('toast.trashFailed'), 'error')
   }
 }
 
@@ -55,14 +58,17 @@ export async function copyPathCurrent(): Promise<void> {
   const path = currentPath()
   if (!path) return
   await window.gv.file.copyPath(path)
-  toast().show('Path copied', 'success')
+  toast().show(tNow('toast.pathCopied'), 'success')
 }
 
 export async function copyImageCurrent(): Promise<void> {
   const path = currentPath()
   if (!path) return
   const ok = await window.gv.file.copyImage(path)
-  toast().show(ok ? 'Image copied' : 'This format can’t be copied yet', ok ? 'success' : 'error')
+  toast().show(
+    ok ? tNow('toast.imageCopied') : tNow('toast.imageCopyUnsupported'),
+    ok ? 'success' : 'error',
+  )
 }
 
 export async function revealCurrent(): Promise<void> {

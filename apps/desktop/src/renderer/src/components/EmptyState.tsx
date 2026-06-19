@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useT } from '../i18n'
 import { openFile, openFolder, openPaths } from '../lib/actions'
 import { FolderIcon, ImageIcon } from './icons'
 
@@ -7,6 +8,7 @@ function basename(p: string): string {
 }
 
 export function EmptyState(): React.JSX.Element {
+  const t = useT()
   const [recent, setRecent] = useState<string[]>([])
 
   useEffect(() => {
@@ -19,10 +21,8 @@ export function EmptyState(): React.JSX.Element {
       style={{ background: 'radial-gradient(circle at 50% 38%, #131315 0%, #000 78%)' }}
     >
       <div>
-        <div className="text-2xl font-semibold tracking-tight">No images open</div>
-        <div className="mt-2 text-sm text-[rgba(235,235,245,0.5)]">
-          Open a folder or drag images here to start browsing.
-        </div>
+        <div className="text-2xl font-semibold tracking-tight">{t('empty.title')}</div>
+        <div className="mt-2 text-sm text-[rgba(235,235,245,0.5)]">{t('empty.subtitle')}</div>
       </div>
 
       <div className="flex gap-3">
@@ -32,7 +32,7 @@ export function EmptyState(): React.JSX.Element {
           className="flex items-center gap-2 rounded-xl bg-[#0A84FF] px-4 py-2.5 text-sm font-semibold text-white"
         >
           <FolderIcon size={17} />
-          Open Folder
+          {t('empty.openFolder')}
         </button>
         <button
           type="button"
@@ -40,14 +40,14 @@ export function EmptyState(): React.JSX.Element {
           className="flex items-center gap-2 rounded-xl bg-[#2C2C2E] px-4 py-2.5 text-sm font-semibold text-[rgba(235,235,245,0.85)]"
         >
           <ImageIcon size={17} />
-          Open File
+          {t('empty.openFile')}
         </button>
       </div>
 
       {recent.length > 0 && (
         <div className="w-full max-w-md">
           <div className="mb-2 text-left text-[11px] font-semibold uppercase tracking-wide text-[rgba(235,235,245,0.4)]">
-            Recent folders
+            {t('empty.recentFolders')}
           </div>
           <div className="overflow-hidden rounded-xl bg-[#1C1C1E]">
             {recent.slice(0, 6).map((dir) => (

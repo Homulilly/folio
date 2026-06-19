@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
+import { useT } from '../i18n'
 import { useTrashConfirmStore } from '../stores/trashConfirmStore'
 import { TrashIcon } from './icons'
 
 export function TrashConfirmDialog(): React.JSX.Element | null {
+  const t = useT()
   const request = useTrashConfirmStore((s) => s.request)
   const accept = useTrashConfirmStore((s) => s.accept)
   const cancel = useTrashConfirmStore((s) => s.cancel)
@@ -46,7 +48,7 @@ export function TrashConfirmDialog(): React.JSX.Element | null {
           </div>
           <div className="min-w-0 flex-1">
             <h2 id="trash-confirm-title" className="text-[15px] font-semibold text-white">
-              Move image to Trash?
+              {t('trash.title')}
             </h2>
             <p className="mt-1 truncate font-mono text-[12px] text-[rgba(235,235,245,0.55)]">
               {request.fileName}
@@ -55,9 +57,7 @@ export function TrashConfirmDialog(): React.JSX.Element | null {
         </div>
 
         <div className="px-5 py-4">
-          <p className="text-[13px] leading-5 text-[rgba(235,235,245,0.65)]">
-            The file will be removed from the queue and moved to the system Trash.
-          </p>
+          <p className="text-[13px] leading-5 text-[rgba(235,235,245,0.65)]">{t('trash.detail')}</p>
           <label className="mt-4 flex cursor-pointer items-center gap-2.5 text-[13px] text-[rgba(235,235,245,0.78)]">
             <input
               type="checkbox"
@@ -78,7 +78,7 @@ export function TrashConfirmDialog(): React.JSX.Element | null {
                 }`}
               />
             </span>
-            <span>Don&apos;t ask again until Folio restarts</span>
+            <span>{t('trash.skipUntilRestart')}</span>
           </label>
         </div>
 
@@ -88,14 +88,14 @@ export function TrashConfirmDialog(): React.JSX.Element | null {
             onClick={close}
             className="rounded-lg bg-white/[0.06] px-3.5 py-2 text-[13px] font-medium text-[rgba(235,235,245,0.86)] transition-colors hover:bg-white/[0.1]"
           >
-            Cancel
+            {t('trash.cancel')}
           </button>
           <button
             type="button"
             onClick={confirm}
             className="rounded-lg bg-[#FF453A] px-3.5 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-[#ff5b51]"
           >
-            Move to Trash
+            {t('trash.confirm')}
           </button>
         </div>
       </div>

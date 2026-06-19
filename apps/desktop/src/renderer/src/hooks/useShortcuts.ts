@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 import { copyImageCurrent, copyPathCurrent, toggleFullscreen, trashCurrent } from '../lib/actions'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
+import { useUiStore } from '../stores/uiStore'
 import { useViewerStore } from '../stores/viewerStore'
 
 function isEditable(target: EventTarget | null): boolean {
@@ -23,6 +24,7 @@ export function useShortcuts(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
       if (isEditable(e.target)) return
+      if (useUiStore.getState().activeView !== 'viewer') return
       const queue = useQueueStore.getState()
       const viewer = useViewerStore.getState()
       const mv = useMultiViewStore.getState()

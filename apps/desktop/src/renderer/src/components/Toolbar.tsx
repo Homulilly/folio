@@ -1,5 +1,6 @@
-import { SORT_MODE_LABELS, SORT_MODES } from '@folio/core'
+import { SORT_MODES } from '@folio/core'
 import type { MultiViewMode, SortMode } from '@folio/shared-types'
+import { type I18nKey, SORT_LABEL_KEYS, useT } from '../i18n'
 import { openFile, openFolder, toggleFullscreen } from '../lib/actions'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
@@ -19,6 +20,7 @@ import {
   LoopIcon,
   RotateIcon,
   RotateResetIcon,
+  SettingsIcon,
   ShuffleIcon,
   SidebarIcon,
   SyncIcon,
@@ -58,16 +60,17 @@ function TbButton({
 
 const Divider = () => <div className="mx-1 h-[22px] w-px bg-white/[0.08]" />
 
-const MODE_BUTTONS: { mode: MultiViewMode; title: string; Icon: typeof LayoutSingle }[] = [
-  { mode: 'single', title: 'Single (⌘1)', Icon: LayoutSingle },
-  { mode: 'dual', title: 'Dual (⌘2)', Icon: LayoutDual },
-  { mode: 'triple', title: 'Triple (⌘3)', Icon: LayoutTriple },
-  { mode: 'quad', title: 'Quad (⌘4)', Icon: LayoutQuad },
+const MODE_BUTTONS: { mode: MultiViewMode; titleKey: I18nKey; Icon: typeof LayoutSingle }[] = [
+  { mode: 'single', titleKey: 'toolbar.mode.single', Icon: LayoutSingle },
+  { mode: 'dual', titleKey: 'toolbar.mode.dual', Icon: LayoutDual },
+  { mode: 'triple', titleKey: 'toolbar.mode.triple', Icon: LayoutTriple },
+  { mode: 'quad', titleKey: 'toolbar.mode.quad', Icon: LayoutQuad },
 ]
 
 const MODE_HAS_LAYOUTS: Partial<Record<MultiViewMode, boolean>> = { dual: true, triple: true }
 
 export function Toolbar(): React.JSX.Element {
+  const t = useT()
   const items = useQueueStore((s) => s.items)
   const currentIndex = useQueueStore((s) => s.currentIndex)
   const sortMode = useQueueStore((s) => s.sortMode)
@@ -85,6 +88,9 @@ export function Toolbar(): React.JSX.Element {
   const prevGroup = useMultiViewStore((s) => s.prevGroup)
 
   const queueCollapsed = useUiStore((s) => s.queueCollapsed)
+  const activeView = useUiStore((s) => s.activeView)
+  const showViewer = useUiStore((s) => s.showViewer)
+  const showSettings = useUiStore((s) => s.showSettings)
   const toggleQueue = useUiStore((s) => s.toggleQueue)
 
   const fit = useViewerStore((s) => s.fit)
@@ -102,7 +108,7 @@ export function Toolbar(): React.JSX.Element {
   return (
     <div className="flex h-12 flex-none items-center gap-1.5 border-b border-white/[0.06] bg-[#1C1C1E] px-3 [-webkit-app-region:no-drag]">
       <TbButton
-        title={queueCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+        title={queueCollapsed ? t('toolbar.showSidebar') : t('toolbar.hideSidebar')}
         onClick={toggleQueue}
         active={!queueCollapsed}
       >
@@ -111,19 +117,19 @@ export function Toolbar(): React.JSX.Element {
 
       <Divider />
 
-      <TbButton title="Open Folder (⌘⇧O)" onClick={openFolder}>
+      <TbButton title={t('toolbar.openFolder')} onClick={openFolder}>
         <FolderIcon />
       </TbButton>
-      <TbButton title="Open File (⌘O)" onClick={openFile}>
+      <TbButton title={t('toolbar.openFile')} onClick={openFile}>
         <ImageIcon />
       </TbButton>
 
       <Divider />
 
-      {MODE_BUTTONS.map(({ mode: m, title, Icon }) => (
+      {MODE_BUTTONS.map(({ mode: m, titleKey, Icon }) => (
         <TbButton
           key={m}
-          title={title}
+          title={t(titleKey)}
           onClick={() => setMode(m)}
           active={mode === m}
           disabled={!hasImages}
@@ -132,29 +138,29 @@ export function Toolbar(): React.JSX.Element {
         </TbButton>
       ))}
       {MODE_HAS_LAYOUTS[mode] && (
-        <TbButton title="Swap layout" onClick={cycleLayout} disabled={!hasImages}>
+        <TbButton title={t('toolbar.swapLayout')} onClick={cycleLayout} disabled={!hasImages}>
           <LayoutSwap size={16} />
         </TbButton>
       )}
 
       <Divider />
 
-      <TbButton title="Previous group (←)" onClick={prevGroup} disabled={!hasImages}>
+      <TbButton title={t('toolbar.previousGroup')} onClick={prevGroup} disabled={!hasImages}>
         <ChevronLeft />
       </TbButton>
       <div className="min-w-[62px] text-center font-mono text-[13px] text-[rgba(235,235,245,0.6)] tabular-nums">
         {posLabel}
       </div>
-      <TbButton title="Next group (→)" onClick={nextGroup} disabled={!hasImages}>
+      <TbButton title={t('toolbar.nextGroup')} onClick={nextGroup} disabled={!hasImages}>
         <ChevronRight />
       </TbButton>
-      <TbButton title="Random (Shift+R)" onClick={random} disabled={!hasImages}>
+      <TbButton title={t('toolbar.random')} onClick={random} disabled={!hasImages}>
         <ShuffleIcon size={16} />
       </TbButton>
       {mode !== 'single' && (
         <>
           <TbButton
-            title="Sync zoom (S)"
+            title={t('toolbar.syncZoom')}
             onClick={toggleSync}
             active={syncZoom}
             disabled={!hasImages}
@@ -162,7 +168,7 @@ export function Toolbar(): React.JSX.Element {
             <SyncIcon size={17} />
           </TbButton>
           <TbButton
-            title="Loop browsing"
+            title={t('toolbar.loopBrowsing')}
             onClick={toggleLoop}
             active={loopEnabled}
             disabled={!hasImages}
@@ -174,26 +180,26 @@ export function Toolbar(): React.JSX.Element {
 
       <Divider />
 
-      <TbButton title="Zoom Out (−)" onClick={zoomOut} disabled={!hasImages}>
+      <TbButton title={t('toolbar.zoomOut')} onClick={zoomOut} disabled={!hasImages}>
         <ZoomOut />
       </TbButton>
       <button
         type="button"
-        title="Fit / Original (Space)"
+        title={t('toolbar.fitOriginal')}
         onClick={toggleFit}
         disabled={!hasImages}
         className="min-w-[54px] rounded-lg px-1 py-1 text-center font-mono text-xs text-[rgba(235,235,245,0.85)] tabular-nums hover:bg-white/[0.08] disabled:opacity-30"
       >
-        {hasImages ? (fit ? 'Fit' : `${zoom}%`) : '—'}
+        {hasImages ? (fit ? t('toolbar.fit') : `${zoom}%`) : '—'}
       </button>
-      <TbButton title="Zoom In (+)" onClick={zoomIn} disabled={!hasImages}>
+      <TbButton title={t('toolbar.zoomIn')} onClick={zoomIn} disabled={!hasImages}>
         <ZoomIn />
       </TbButton>
-      <TbButton title="Rotate (R)" onClick={rotateCW} disabled={!hasImages}>
+      <TbButton title={t('toolbar.rotate')} onClick={rotateCW} disabled={!hasImages}>
         <RotateIcon />
       </TbButton>
       <TbButton
-        title="Reset orientation"
+        title={t('toolbar.resetOrientation')}
         onClick={resetRotation}
         disabled={!hasImages || rotation === 0}
       >
@@ -202,7 +208,7 @@ export function Toolbar(): React.JSX.Element {
 
       <div className="ml-auto flex items-center gap-2">
         <select
-          title="Sort order"
+          title={t('toolbar.sortOrder')}
           value={sortMode}
           onChange={(e) => setSortMode(e.target.value as SortMode)}
           disabled={!hasImages}
@@ -210,12 +216,19 @@ export function Toolbar(): React.JSX.Element {
         >
           {SORT_MODES.map((m) => (
             <option key={m} value={m}>
-              {SORT_MODE_LABELS[m]}
+              {t(SORT_LABEL_KEYS[m])}
             </option>
           ))}
         </select>
-        <TbButton title="Fullscreen (F11)" onClick={toggleFullscreen} disabled={!hasImages}>
+        <TbButton title={t('toolbar.fullscreen')} onClick={toggleFullscreen} disabled={!hasImages}>
           <FullscreenIcon size={17} />
+        </TbButton>
+        <TbButton
+          title={activeView === 'settings' ? t('toolbar.backToViewer') : t('toolbar.settings')}
+          onClick={activeView === 'settings' ? showViewer : showSettings}
+          active={activeView === 'settings'}
+        >
+          <SettingsIcon size={17} />
         </TbButton>
       </div>
     </div>

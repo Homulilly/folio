@@ -1,7 +1,10 @@
 import type { MultiViewLayout, MultiViewMode, SortMode } from '@folio/shared-types'
 
+export type AppLanguage = 'zh-CN' | 'en'
+
 /** User settings persisted to settings.json (PRD §10.1). */
 export interface AppSettings {
+  language: AppLanguage
   defaultOpenDirectory: string
   defaultSaveDirectory: string
   sortMode: SortMode
@@ -20,6 +23,7 @@ export interface AppSettings {
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
+  language: 'en',
   defaultOpenDirectory: '',
   defaultSaveDirectory: '',
   sortMode: 'name_asc',

@@ -51,6 +51,7 @@
 > - **前后预加载**：M1 直接用 `gv-img://` 由 Chromium 解码;显式预加载与 <100ms 命中目标随 M7 预览/缓存策略一起做。
 > - **格式覆盖**：JPEG/PNG/WebP/GIF/BMP/AVIF/SVG/ICO 由 Chromium 原生解码;HEIC/HEIF/TIFF/JXL 显示占位提示，待 M6/M7 接入 sharp 预览。
 > - **图片尺寸**：队列元数据 `width/height` 仍为 pending，状态栏尺寸取自 `<img>` 实际解码值;扫描期读取尺寸留给 M3 元信息。
+> - **设置/i18n 临时方案**：当前已提前加入设置页与轻量 i18n，语言选择(`zh-CN`/`en`)暂由 renderer `localStorage`(`folio.settings.language`)持久化；M7 正式 settings.json 落地时需迁移到 `packages/config` 的 `AppSettings.language`，并保留一次性读取旧 key 的兼容迁移。
 
 ---
 
@@ -146,6 +147,9 @@
 - [ ] 大图策略：50MP+ 优先屏幕/格子预览，仅 100% 时加载原图，限制同时保留原图数
 - [ ] 多图模式内存优化收尾 + 长时浏览内存稳定性测试
 - [ ] 设置页（PRD §10.1 settings.json）+ 快捷键配置
+  - [ ] 将当前 renderer `localStorage` 语言设置迁移到主进程 `settings.json`（字段：`AppSettings.language`），启动时若发现旧 key `folio.settings.language` 则写入 settings 后清理/忽略旧值
+  - [ ] 为 settings 增加类型化 IPC（读取/更新/重置），renderer 不再直接承担正式持久化；设置页仅调用 settings store/API
+  - [ ] 迁移后确保 i18n 初始化顺序稳定：先读 settings，再渲染 UI；读取失败时回退系统语言，不阻塞看图
 - [ ] electron-builder 打包 Windows / macOS / Linux（原生模块 ABI + macOS 公证）
 - [ ] 崩溃日志
 

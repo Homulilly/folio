@@ -4,6 +4,7 @@ import { ContextMenu } from './components/ContextMenu'
 import { EmptyState } from './components/EmptyState'
 import { MultiView } from './components/MultiView'
 import { QueueRail } from './components/QueueRail'
+import { SettingsPage } from './components/SettingsPage'
 import { StatusBar } from './components/StatusBar'
 import { TitleBar } from './components/TitleBar'
 import { Toast } from './components/Toast'
@@ -23,6 +24,7 @@ export function App(): React.JSX.Element {
   const currentId = useQueueStore((s) => s.items[s.currentIndex]?.id)
   const mode = useMultiViewStore((s) => s.mode)
   const expanded = useMultiViewStore((s) => s.expanded)
+  const activeView = useUiStore((s) => s.activeView)
   const queueCollapsed = useUiStore((s) => s.queueCollapsed)
   const resetViewer = useViewerStore((s) => s.reset)
 
@@ -51,7 +53,9 @@ export function App(): React.JSX.Element {
       <TitleBar />
       <Toolbar />
       <div className="flex min-h-0 min-w-0 flex-1">
-        {hasImages ? (
+        {activeView === 'settings' ? (
+          <SettingsPage />
+        ) : hasImages ? (
           <>
             {!queueCollapsed && <QueueRail />}
             <ContextMenu>{single ? <Canvas /> : <MultiView />}</ContextMenu>

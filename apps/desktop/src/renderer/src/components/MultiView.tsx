@@ -1,6 +1,7 @@
 import { groupSlots, groupStartForIndex } from '@folio/core'
 import type { ImageQueueItem, MultiViewLayout } from '@folio/shared-types'
 import { useRef, useState } from 'react'
+import { useT } from '../i18n'
 import { canRenderNatively, formatBytes, formatLabel, imageUrl } from '../lib/format'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
@@ -53,6 +54,7 @@ function Slot({
   /** Double-click: focus this slot and blow it up to the single view (same as Enter). */
   onExpand: () => void
 }): React.JSX.Element {
+  const t = useT()
   // Slot is remounted (keyed by image id) whenever its image changes, so load state
   // starts fresh and the offscreen <img> unmounts to release its decoded bitmap.
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading')
@@ -60,7 +62,7 @@ function Slot({
   if (!item) {
     return (
       <div className="flex h-full w-full items-center justify-center rounded-lg border border-dashed border-white/[0.08] text-[12px] text-[rgba(235,235,245,0.3)]">
-        No more images
+        {t('multi.noMoreImages')}
       </div>
     )
   }
@@ -82,10 +84,12 @@ function Slot({
     >
       {!renderable ? (
         <div className="px-4 text-center text-[12px] text-[rgba(235,235,245,0.55)]">
-          {formatLabel(item)} preview not available yet
+          {t('multi.previewUnavailable', { format: formatLabel(item) })}
         </div>
       ) : status === 'error' ? (
-        <div className="px-4 text-center text-[12px] text-[#FF453A]">Failed to decode</div>
+        <div className="px-4 text-center text-[12px] text-[#FF453A]">
+          {t('multi.failedToDecode')}
+        </div>
       ) : (
         <>
           {status === 'loading' && (
