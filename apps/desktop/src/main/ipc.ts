@@ -1,6 +1,13 @@
 import { SUPPORTED_EXTENSIONS } from '@folio/image-processing'
-import { IpcChannel, type ScanResult, type SystemInfo, type TrashResult } from '@folio/shared-types'
+import {
+  type ExifMetadata,
+  IpcChannel,
+  type ScanResult,
+  type SystemInfo,
+  type TrashResult,
+} from '@folio/shared-types'
 import { app, type BrowserWindow, clipboard, dialog, ipcMain, nativeImage, shell } from 'electron'
+import { readMetadata } from './services/exiftool'
 import {
   addRecentFolder,
   clearRecentFolders,
@@ -82,6 +89,16 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     if (image.isEmpty()) return false
     clipboard.writeImage(image)
     return true
+  })
+
+  // --- metadata (Exif) ---
+  ipcMain.handle(
+    IpcChannel.metadataRead,
+    (_e, filePath: string): Promise<ExifMetadata | null> => readMetadata(filePath),
+  )
+
+  ipcMain.handle(IpcChannel.clipboardWriteText, (_e, text: string): void => {
+    clipboard.writeText(text)
   })
 
   // --- recent folders ---

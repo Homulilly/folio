@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Canvas } from './components/Canvas'
 import { ContextMenu } from './components/ContextMenu'
 import { EmptyState } from './components/EmptyState'
+import { ExifDrawer } from './components/ExifDrawer'
 import { MultiView } from './components/MultiView'
 import { QueueRail } from './components/QueueRail'
 import { SettingsPage } from './components/SettingsPage'
@@ -12,6 +13,7 @@ import { Toolbar } from './components/Toolbar'
 import { TrashConfirmDialog } from './components/TrashConfirmDialog'
 import { useShortcuts } from './hooks/useShortcuts'
 import { openPaths } from './lib/actions'
+import { useExifStore } from './stores/exifStore'
 import { useMultiViewStore } from './stores/multiViewStore'
 import { useQueueStore } from './stores/queueStore'
 import { useUiStore } from './stores/uiStore'
@@ -26,6 +28,7 @@ export function App(): React.JSX.Element {
   const expanded = useMultiViewStore((s) => s.expanded)
   const activeView = useUiStore((s) => s.activeView)
   const queueCollapsed = useUiStore((s) => s.queueCollapsed)
+  const exifOpen = useExifStore((s) => s.open)
   const resetViewer = useViewerStore((s) => s.reset)
 
   // Single image: reset zoom/fit/rotation on each image. In the grid we keep zoom across
@@ -59,6 +62,7 @@ export function App(): React.JSX.Element {
           <>
             {!queueCollapsed && <QueueRail />}
             <ContextMenu>{single ? <Canvas /> : <MultiView />}</ContextMenu>
+            {exifOpen && <ExifDrawer />}
           </>
         ) : (
           <EmptyState />

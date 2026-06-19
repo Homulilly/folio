@@ -2,6 +2,7 @@ import { SORT_MODES } from '@folio/core'
 import type { MultiViewMode, SortMode } from '@folio/shared-types'
 import { type I18nKey, SORT_LABEL_KEYS, useT } from '../i18n'
 import { openFile, openFolder, toggleFullscreen } from '../lib/actions'
+import { useExifStore } from '../stores/exifStore'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
 import { useUiStore } from '../stores/uiStore'
@@ -12,6 +13,7 @@ import {
   FolderIcon,
   FullscreenIcon,
   ImageIcon,
+  InfoIcon,
   LayoutDual,
   LayoutQuad,
   LayoutSingle,
@@ -89,6 +91,8 @@ export function Toolbar(): React.JSX.Element {
 
   const queueCollapsed = useUiStore((s) => s.queueCollapsed)
   const activeView = useUiStore((s) => s.activeView)
+  const exifOpen = useExifStore((s) => s.open)
+  const toggleExif = useExifStore((s) => s.toggle)
   const showViewer = useUiStore((s) => s.showViewer)
   const showSettings = useUiStore((s) => s.showSettings)
   const toggleQueue = useUiStore((s) => s.toggleQueue)
@@ -204,6 +208,17 @@ export function Toolbar(): React.JSX.Element {
         disabled={!hasImages || rotation === 0}
       >
         <RotateResetIcon />
+      </TbButton>
+
+      <Divider />
+
+      <TbButton
+        title={t('toolbar.exifInfo')}
+        onClick={toggleExif}
+        active={exifOpen}
+        disabled={!hasImages}
+      >
+        <InfoIcon size={17} />
       </TbButton>
 
       <div className="ml-auto flex items-center gap-2">

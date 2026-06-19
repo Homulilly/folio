@@ -112,6 +112,17 @@ export const InfoIcon = (p: IconProps) =>
     p,
   )
 
+export const CloseIcon = (p: IconProps) => svg(<path d="M18 6 6 18M6 6l12 12" />, p)
+
+export const SearchIcon = (p: IconProps) =>
+  svg(
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m21 21-4.3-4.3" />
+    </>,
+    p,
+  )
+
 export const TrashIcon = (p: IconProps) =>
   svg(
     <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />,

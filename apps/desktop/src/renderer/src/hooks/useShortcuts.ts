@@ -1,6 +1,7 @@
 import type { MultiViewMode } from '@folio/shared-types'
 import { useEffect } from 'react'
 import { copyImageCurrent, copyPathCurrent, toggleFullscreen, trashCurrent } from '../lib/actions'
+import { useExifStore } from '../stores/exifStore'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
 import { useUiStore } from '../stores/uiStore'
@@ -110,10 +111,18 @@ export function useShortcuts(): void {
             mv.expand()
           }
           break
+        case 'i':
+        case 'I':
+          e.preventDefault()
+          useExifStore.getState().toggle()
+          break
         case 'Escape':
           if (mv.expanded) {
             e.preventDefault()
             mv.collapse()
+          } else if (useExifStore.getState().open) {
+            e.preventDefault()
+            useExifStore.getState().close()
           }
           break
         case '+':

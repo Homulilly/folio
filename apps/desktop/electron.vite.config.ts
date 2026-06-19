@@ -8,10 +8,12 @@ export default defineConfig({
     // electron is a devDependency, so externalizeDepsPlugin (which externalizes
     // `dependencies`) skips it. Externalize it explicitly so the runtime built-in is
     // used instead of bundling the npm launcher stub (which tries to download a binary).
-    plugins: [externalizeDepsPlugin()],
+    // exiftool-vendored must also stay external: it locates its vendored ExifTool binary
+    // relative to its own module path at runtime, which breaks if its source is inlined.
+    plugins: [externalizeDepsPlugin({ include: ['exiftool-vendored'] })],
     build: {
       rollupOptions: {
-        external: ['electron'],
+        external: ['electron', 'exiftool-vendored'],
         input: { index: resolve(__dirname, 'src/main/index.ts') },
       },
     },

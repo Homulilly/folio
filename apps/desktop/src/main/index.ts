@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { app, BrowserWindow, shell } from 'electron'
 import { registerIpcHandlers } from './ipc'
 import { handleImageProtocol, registerImageProtocolSchemes } from './protocol'
+import { endExifTool } from './services/exiftool'
 
 app.setName('Folio')
 
@@ -58,4 +59,9 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+// Tear down the persistent ExifTool child process so it doesn't outlive the app.
+app.on('will-quit', () => {
+  void endExifTool()
 })

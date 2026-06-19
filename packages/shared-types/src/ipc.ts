@@ -2,6 +2,7 @@
 // Namespaces follow PRD §9.2: image.* / file.* / recent.* / win.* (+ system.*).
 
 import type { ImageQueueItem } from './domain'
+import type { ExifMetadata } from './metadata'
 
 /** Custom privileged protocol used to stream images to the renderer (never base64 over IPC). */
 export const GV_IMG_SCHEME = 'gv-img'
@@ -49,6 +50,14 @@ export interface FolioApi {
     /** Copy the decoded image to the clipboard. Returns false if the format can't be decoded natively. */
     copyImage: (filePath: string) => Promise<boolean>
   }
+  metadata: {
+    /** Read full grouped Exif/XMP/IPTC/… metadata. Resolves null when the read fails. */
+    read: (filePath: string) => Promise<ExifMetadata | null>
+  }
+  clipboard: {
+    /** Write arbitrary text to the system clipboard (copy an Exif field or the full JSON). */
+    writeText: (text: string) => Promise<void>
+  }
   recent: {
     list: () => Promise<string[]>
     remove: (directory: string) => Promise<void>
@@ -71,6 +80,8 @@ export const IpcChannel = {
   fileShowInFolder: 'file:showInFolder',
   fileCopyPath: 'file:copyPath',
   fileCopyImage: 'file:copyImage',
+  metadataRead: 'metadata:read',
+  clipboardWriteText: 'clipboard:writeText',
   recentList: 'recent:list',
   recentRemove: 'recent:remove',
   recentClear: 'recent:clear',

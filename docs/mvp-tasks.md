@@ -82,15 +82,22 @@
 
 ## M3 — Exif 查看系统（PRD §6.4）
 
-- [ ] 接入 exiftool-vendored（持久进程），`metadata.read(filePath)`
-- [ ] Exif 读取任务进调度器（异步队列，失败不影响浏览）
-- [ ] Exif 面板（Radix 右侧抽屉）：摘要 / 分组 / 原始 三视图
-- [ ] 搜索：按字段名/值、按分组筛选
-- [ ] 复制单字段 / 复制全部为 JSON
-- [ ] 多图模式：面板默认显示焦点图片元信息（联动 focusedSlot）
-- [ ] SQLite 缓存 Exif 摘要
+- [x] 接入 exiftool-vendored（持久进程），`metadata.read(filePath)`
+- [x] Exif 读取任务进调度器（异步队列，失败不影响浏览）— 复用 exiftool-vendored 内置进程池/队列;完整 Task Scheduler 集成随 M4
+- [x] Exif 面板（右侧抽屉）：摘要 / 分组 / 原始 三视图（React+Tailwind 重写,未引入 Radix）
+- [x] 搜索：按字段名/值、按分组筛选（输入分组名展开整组）
+- [x] 复制单字段 / 复制全部为 JSON
+- [x] 多图模式：面板默认显示焦点图片元信息（订阅 `queueStore.currentIndex` 即焦点图，单/多图通用）
+- [ ] 🔴 SQLite 缓存 Exif 摘要 → **顺延 M7**（M3 用主进程内存缓存,path+mtime 失效）
 
-**验收**（PRD §17.3）：完整元信息可看可搜；Exif 读取失败不致浏览失败；多图下显示焦点图信息。
+**验收**（PRD §17.3）：✅ typecheck/test(39)/lint/build 全绿,`pnpm dev` 启动无错;exiftool 真实读取（family-0 `-G0` 分组键）经核心纯函数转换可看可搜;读取失败返回 null、不致浏览失败;多图下面板跟随焦点图。
+> M3 范围说明 / 顺延项：
+> - **分层**：纯逻辑（`buildExifGroups`/`summarizeExif`/`filterExifGroups`/`exifToJsonString`）在 `packages/core`（含 Vitest）;主进程 `services/exiftool.ts` 仅薄封装 exiftool-vendored 的 `readRaw(file, {readArgs:['-G0']})`,值预先字符串化后下发,渲染进程不碰原始 tag 联合类型。
+> - **IPC**：新增 `metadata:read` 通道与一个通用 `clipboard:writeText`(复制字段/JSON);契约仍单一来源于 `packages/shared-types`。
+> - **缓存**：主进程内存 LRU(按 path+mtime 失效)代替 SQLite;持久化 Exif 摘要随缩略图/预览/hash 统一入库放 **M7**。
+> - **调度器**：M3 仅靠 exiftool-vendored 内置批处理队列满足「异步队列 + 失败不影响浏览」;状态机/优先级/取消的完整 Task Scheduler 是 **M4** 范围。
+> - **面板**：按现有组件风格用 React + Tailwind 重写(队列栏同款),暂不引入 Radix;待 M4 擦除确认弹窗等真正需要无障碍弹层时再评估。
+> - **打包坑**：`electron-vite` 必须把 `exiftool-vendored` 显式 `external`(否则其源码被 inline,导致 vendored 二进制按模块路径定位失效);生产环境二进制还需 electron-builder `asarUnpack`,留 **M7**。
 
 ---
 

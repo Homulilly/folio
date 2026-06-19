@@ -22,6 +22,12 @@ const api: Bridge = {
     copyPath: (filePath) => ipcRenderer.invoke(IpcChannel.fileCopyPath, filePath),
     copyImage: (filePath) => ipcRenderer.invoke(IpcChannel.fileCopyImage, filePath),
   },
+  metadata: {
+    read: (filePath) => ipcRenderer.invoke(IpcChannel.metadataRead, filePath),
+  },
+  clipboard: {
+    writeText: (text) => ipcRenderer.invoke(IpcChannel.clipboardWriteText, text),
+  },
   recent: {
     list: () => ipcRenderer.invoke(IpcChannel.recentList),
     remove: (directory) => ipcRenderer.invoke(IpcChannel.recentRemove, directory),

@@ -1,5 +1,5 @@
 import type { ImageQueueItem, ScanResult } from '@folio/shared-types'
-import { tNow } from '../i18n'
+import { type I18nKey, tNow } from '../i18n'
 import { useQueueStore } from '../stores/queueStore'
 import { useToastStore } from '../stores/toastStore'
 import { useTrashConfirmStore } from '../stores/trashConfirmStore'
@@ -80,4 +80,11 @@ export async function revealCurrent(): Promise<void> {
 
 export async function toggleFullscreen(): Promise<void> {
   await window.gv.win.toggleFullscreen()
+}
+
+/** Copy arbitrary text (an Exif field, or the full metadata JSON) to the clipboard. */
+export async function copyText(text: string, toastKey: I18nKey = 'toast.copied'): Promise<void> {
+  if (!text) return
+  await window.gv.clipboard.writeText(text)
+  toast().show(tNow(toastKey), 'success')
 }
