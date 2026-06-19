@@ -16,7 +16,7 @@ function createWindow(): void {
     backgroundColor: '#1C1C1E',
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
-      preload: fileURLToPath(new URL('../preload/index.js', import.meta.url)),
+      preload: fileURLToPath(new URL('../preload/index.cjs', import.meta.url)),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: true,
