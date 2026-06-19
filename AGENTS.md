@@ -58,17 +58,23 @@ galleryviewer/
 └── docs/                  # prd.md, mvp-tasks.md
 ```
 
-## 常用命令(M0 脚手架完成后可用)
+## 常用命令
 
 ```bash
 pnpm install        # 安装依赖
 pnpm dev            # 启动 Electron(三进程 HMR)
+pnpm typecheck      # 全包类型检查
 pnpm test           # Vitest 单测(主要覆盖 packages/core)
 pnpm lint           # Biome 检查
 pnpm format         # Biome 格式化
-pnpm build          # electron-builder 打包
+pnpm build          # electron-vite 构建(打包用 electron-builder,M7)
 ```
-> 这些脚本在 M0 建立 `package.json` 后生效;在此之前不要假设它们存在。
+
+> **原生构建脚本审批(pnpm 11)**:Electron 的 postinstall 会下载运行时二进制,esbuild 也需构建。两者已在 `pnpm-workspace.yaml` 的 `allowBuilds` 中批准。若 fresh install 后 `pnpm dev` 报 `Error: Electron uninstall`(二进制未下载),执行:
+> ```bash
+> node node_modules/.pnpm/electron@*/node_modules/electron/install.js
+> ```
+> 后续新增有 build script 的依赖(如 sharp / better-sqlite3),需在 `allowBuilds` 中加一行并重装。
 
 ## 代码约定
 
