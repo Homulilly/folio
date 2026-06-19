@@ -7,6 +7,7 @@ import {
 import type { MultiViewLayout, MultiViewMode } from '@folio/shared-types'
 import { create } from 'zustand'
 import { useQueueStore } from './queueStore'
+import { useViewerStore } from './viewerStore'
 
 const MODE_CYCLE: readonly MultiViewMode[] = ['single', 'dual', 'triple', 'quad']
 
@@ -132,6 +133,14 @@ export const useMultiViewStore = create<MultiViewStore>((set, get) => ({
 
   toggleSync: () => set((s) => ({ syncZoom: !s.syncZoom })),
   toggleLoop: () => set((s) => ({ loopEnabled: !s.loopEnabled })),
-  expand: () => set((s) => (s.mode === 'single' ? s : { expanded: true })),
-  collapse: () => set({ expanded: false }),
+  // Switching between the grid and the focused single view always starts at the fit scale.
+  expand: () => {
+    if (get().mode === 'single') return
+    useViewerStore.getState().fitWindow()
+    set({ expanded: true })
+  },
+  collapse: () => {
+    useViewerStore.getState().fitWindow()
+    set({ expanded: false })
+  },
 }))
