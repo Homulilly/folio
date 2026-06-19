@@ -1,23 +1,27 @@
 # Folio
 
-Folio 是一款跨平台桌面看图应用，基于 Electron、React、TypeScript 和 pnpm workspace 构建。
+Folio 是一款专为「快速浏览成套相册」打造的跨平台桌面看图应用。项目采用 Electron + React + TypeScript 技术栈构建，由 Vibe Coding 驱动。
 
 MVP 需求和架构说明见：
 
 - `docs/prd.md`
 - `docs/mvp-tasks.md`
 
+已实现功能见：  
+
+[features.md](docs/features.md)
+
 ## 开发
 
 安装依赖：
 
-```powershell
+```bash
 pnpm install --frozen-lockfile
 ```
 
 启动桌面应用：
 
-```powershell
+```bash
 pnpm dev
 ```
 
@@ -57,8 +61,6 @@ allowBuilds:
   esbuild: true
 ```
 
-如果手动安装脚本出现 `TypeError: fetch failed` 等网络错误，检查网络或代理配置后重新运行同一条命令。
-
 ## 常用命令
 
 ```powershell
@@ -69,3 +71,7 @@ pnpm test
 pnpm lint
 pnpm format
 ```
+
+## License
+
+本项目采用 GPL-3.0 许可证开放源代码。了解更多内容，请查看 [LICENSE 文件](LICENSE.txt)。
