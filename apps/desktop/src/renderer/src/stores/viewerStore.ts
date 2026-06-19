@@ -2,7 +2,10 @@ import { create } from 'zustand'
 
 const ZOOM_MIN = 10
 const ZOOM_MAX = 800
-const ZOOM_STEP = 25
+// Button/keyboard zoom steps geometrically so the perceived increment is constant at any
+// magnification (matching the wheel's multiplicative zoom), instead of a fixed +/-% that
+// feels huge when small and negligible when large.
+const ZOOM_STEP_FACTOR = 1.25
 
 interface ViewerState {
   /** When true, the image is scaled to fit the canvas; otherwise `zoom` (%) of natural size. */
@@ -65,8 +68,9 @@ export const useViewerStore = create<ViewerState>((set) => ({
   toggleFit: () => set((s) => ({ fit: !s.fit, zoom: 100 })),
   fitWindow: () => set({ fit: true, zoom: 100 }),
   originalSize: () => set({ fit: false, zoom: 100 }),
-  zoomIn: () => set((s) => ({ fit: false, zoom: clampZoom(currentPercent(s) + ZOOM_STEP) })),
-  zoomOut: () => set((s) => ({ fit: false, zoom: clampZoom(currentPercent(s) - ZOOM_STEP) })),
+  zoomIn: () => set((s) => ({ fit: false, zoom: clampZoom(currentPercent(s) * ZOOM_STEP_FACTOR) })),
+  zoomOut: () =>
+    set((s) => ({ fit: false, zoom: clampZoom(currentPercent(s) / ZOOM_STEP_FACTOR) })),
   zoomByFactor: (factor) =>
     set((s) => ({
       fit: false,
