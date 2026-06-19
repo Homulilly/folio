@@ -27,6 +27,7 @@ export function Canvas(): React.JSX.Element {
   const [failed, setFailed] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
+  const zoomRaf = useRef<number | null>(null)
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: setFailed is stable; reset on image change
   useEffect(() => {
@@ -43,7 +44,29 @@ export function Canvas(): React.JSX.Element {
     const onWheel = (e: WheelEvent): void => {
       e.preventDefault()
       const unit = e.deltaMode === 1 ? 16 : 1 // normalise line-mode deltas to pixels
+      const img = el.querySelector<HTMLImageElement>('img')
+      const before = img?.getBoundingClientRect()
+      const pointer = { x: e.clientX, y: e.clientY }
+      const anchor =
+        before && before.width > 0 && before.height > 0
+          ? {
+              x: Math.max(0, Math.min(1, (pointer.x - before.left) / before.width)),
+              y: Math.max(0, Math.min(1, (pointer.y - before.top) / before.height)),
+            }
+          : null
+
       useViewerStore.getState().zoomBy(-e.deltaY * unit * 0.25)
+
+      if (!anchor) return
+      if (zoomRaf.current) cancelAnimationFrame(zoomRaf.current)
+      zoomRaf.current = requestAnimationFrame(() => {
+        const afterImg = el.querySelector<HTMLImageElement>('img')
+        if (!afterImg) return
+        const after = afterImg.getBoundingClientRect()
+        el.scrollLeft += after.left + after.width * anchor.x - pointer.x
+        el.scrollTop += after.top + after.height * anchor.y - pointer.y
+        zoomRaf.current = null
+      })
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     const ro = new ResizeObserver(() => {
@@ -52,6 +75,7 @@ export function Canvas(): React.JSX.Element {
     ro.observe(el)
     return () => {
       el.removeEventListener('wheel', onWheel)
+      if (zoomRaf.current) cancelAnimationFrame(zoomRaf.current)
       ro.disconnect()
     }
   }, [])
