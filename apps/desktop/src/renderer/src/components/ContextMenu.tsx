@@ -7,10 +7,17 @@ interface MenuPos {
   y: number
 }
 
+function revealLabelKey(): I18nKey {
+  const platform = navigator.platform.toLowerCase()
+  if (platform.includes('mac')) return 'context.revealInFinder'
+  if (platform.includes('win')) return 'context.revealInExplorer'
+  return 'context.revealInFolder'
+}
+
 const items: { labelKey: I18nKey; run: () => void; danger?: boolean }[] = [
   { labelKey: 'context.copyImage', run: () => void copyImageCurrent() },
   { labelKey: 'context.copyPath', run: () => void copyPathCurrent() },
-  { labelKey: 'context.revealInFolder', run: () => void revealCurrent() },
+  { labelKey: revealLabelKey(), run: () => void revealCurrent() },
   { labelKey: 'context.moveToTrash', run: () => void trashCurrent(), danger: true },
 ]
 

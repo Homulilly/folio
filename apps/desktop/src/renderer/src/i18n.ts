@@ -76,7 +76,9 @@ const en = {
 
   'context.copyImage': 'Copy Image',
   'context.copyPath': 'Copy Path',
-  'context.revealInFolder': 'Reveal in Finder',
+  'context.revealInFinder': 'Reveal in Finder',
+  'context.revealInExplorer': 'Show in File Explorer',
+  'context.revealInFolder': 'Show in folder',
   'context.moveToTrash': 'Move to Trash',
 
   'trash.title': 'Move image to Trash?',
@@ -173,7 +175,9 @@ const zhCN: Record<keyof typeof en, string> = {
 
   'context.copyImage': '复制图片',
   'context.copyPath': '复制路径',
-  'context.revealInFolder': '在访达中显示',
+  'context.revealInFinder': '在访达中显示',
+  'context.revealInExplorer': '在资源管理器中显示',
+  'context.revealInFolder': '在文件夹中显示',
   'context.moveToTrash': '移到废纸篓',
 
   'trash.title': '将图片移到废纸篓？',
