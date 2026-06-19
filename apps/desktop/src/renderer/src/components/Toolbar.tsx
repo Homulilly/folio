@@ -3,6 +3,7 @@ import type { MultiViewMode, SortMode } from '@folio/shared-types'
 import { openFile, openFolder, toggleFullscreen } from '../lib/actions'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
+import { useUiStore } from '../stores/uiStore'
 import { useViewerStore } from '../stores/viewerStore'
 import {
   ChevronLeft,
@@ -19,6 +20,7 @@ import {
   RotateIcon,
   RotateResetIcon,
   ShuffleIcon,
+  SidebarIcon,
   SyncIcon,
   ZoomIn,
   ZoomOut,
@@ -82,6 +84,9 @@ export function Toolbar(): React.JSX.Element {
   const nextGroup = useMultiViewStore((s) => s.nextGroup)
   const prevGroup = useMultiViewStore((s) => s.prevGroup)
 
+  const queueCollapsed = useUiStore((s) => s.queueCollapsed)
+  const toggleQueue = useUiStore((s) => s.toggleQueue)
+
   const fit = useViewerStore((s) => s.fit)
   const zoom = useViewerStore((s) => s.zoom)
   const zoomIn = useViewerStore((s) => s.zoomIn)
@@ -96,6 +101,16 @@ export function Toolbar(): React.JSX.Element {
 
   return (
     <div className="flex h-12 flex-none items-center gap-1.5 border-b border-white/[0.06] bg-[#1C1C1E] px-3 [-webkit-app-region:no-drag]">
+      <TbButton
+        title={queueCollapsed ? 'Show sidebar' : 'Hide sidebar'}
+        onClick={toggleQueue}
+        active={!queueCollapsed}
+      >
+        <SidebarIcon />
+      </TbButton>
+
+      <Divider />
+
       <TbButton title="Open Folder (⌘⇧O)" onClick={openFolder}>
         <FolderIcon />
       </TbButton>

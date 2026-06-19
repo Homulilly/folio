@@ -120,6 +120,17 @@ export const CopyIcon = (p: IconProps) =>
 export const ShuffleIcon = (p: IconProps) =>
   svg(<path d="M16 3h5v5M4 20 21 3M21 16v5h-5M15 15l6 6M4 4l5 5" />, p)
 
+// Toggle the left side rail (panel with a left column).
+export const SidebarIcon = (p: IconProps) =>
+  svg(
+    <>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M9 4v16" />
+    </>,
+    p,
+    1.6,
+  )
+
 // --- multi-view layout glyphs (outlined panes) ---
 export const LayoutSingle = (p: IconProps) =>
   svg(<rect x="4" y="5" width="16" height="14" rx="1.6" />, p, 1.6)

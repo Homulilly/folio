@@ -12,6 +12,7 @@ import { useShortcuts } from './hooks/useShortcuts'
 import { openPaths } from './lib/actions'
 import { useMultiViewStore } from './stores/multiViewStore'
 import { useQueueStore } from './stores/queueStore'
+import { useUiStore } from './stores/uiStore'
 import { useViewerStore } from './stores/viewerStore'
 
 export function App(): React.JSX.Element {
@@ -21,6 +22,7 @@ export function App(): React.JSX.Element {
   const currentId = useQueueStore((s) => s.items[s.currentIndex]?.id)
   const mode = useMultiViewStore((s) => s.mode)
   const expanded = useMultiViewStore((s) => s.expanded)
+  const queueCollapsed = useUiStore((s) => s.queueCollapsed)
   const resetViewer = useViewerStore((s) => s.reset)
 
   // Single image: reset zoom/fit/rotation on each image. In the grid we keep zoom across
@@ -50,7 +52,7 @@ export function App(): React.JSX.Element {
       <div className="flex min-h-0 min-w-0 flex-1">
         {hasImages ? (
           <>
-            <QueueRail />
+            {!queueCollapsed && <QueueRail />}
             <ContextMenu>{single ? <Canvas /> : <MultiView />}</ContextMenu>
           </>
         ) : (
