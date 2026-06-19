@@ -68,6 +68,8 @@ export const useMultiViewStore = create<MultiViewStore>((set, get) => ({
   setMode: (mode) => {
     // Realign so the previously focused image lands in slot 0 of its new group.
     queue().select(groupStartForIndex(queue().currentIndex, mode))
+    // Different layouts size cells differently, so start fresh at the fit scale.
+    useViewerStore.getState().fitWindow()
     set({ mode, layout: DEFAULT_LAYOUT[mode], expanded: false })
   },
 
