@@ -1,8 +1,8 @@
 /// <reference types="vite/client" />
-import type { GalleryViewerApi } from '@galleryviewer/shared-types'
+import type { Bridge } from '../../preload/index'
 
 declare global {
   interface Window {
-    gv: GalleryViewerApi
+    gv: Bridge
   }
 }

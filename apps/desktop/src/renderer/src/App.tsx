@@ -1,43 +1,55 @@
-import { nextGroupStart } from '@galleryviewer/core'
-import type { SystemInfo } from '@galleryviewer/shared-types'
-import { useEffect, useState } from 'react'
-import { useAppStore } from './stores/appStore'
+import { useEffect } from 'react'
+import { Canvas } from './components/Canvas'
+import { ContextMenu } from './components/ContextMenu'
+import { EmptyState } from './components/EmptyState'
+import { QueueRail } from './components/QueueRail'
+import { StatusBar } from './components/StatusBar'
+import { TitleBar } from './components/TitleBar'
+import { Toast } from './components/Toast'
+import { Toolbar } from './components/Toolbar'
+import { useShortcuts } from './hooks/useShortcuts'
+import { openPaths } from './lib/actions'
+import { useQueueStore } from './stores/queueStore'
+import { useViewerStore } from './stores/viewerStore'
 
 export function App(): React.JSX.Element {
-  const view = useAppStore((s) => s.view)
-  const [ping, setPing] = useState<string>('…')
-  const [info, setInfo] = useState<SystemInfo | null>(null)
+  useShortcuts()
 
+  const hasImages = useQueueStore((s) => s.items.length > 0)
+  const currentId = useQueueStore((s) => s.items[s.currentIndex]?.id)
+  const resetViewer = useViewerStore((s) => s.reset)
+
+  // Reset zoom/fit/rotation whenever the focused image changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset is stable; key off the image id
   useEffect(() => {
-    void window.gv.system.ping().then(setPing)
-    void window.gv.system.getInfo().then(setInfo)
-  }, [])
+    resetViewer()
+  }, [currentId])
 
-  // Touch a packages/core function so the workspace wiring is exercised end-to-end.
-  const demoNextGroup = nextGroupStart({ startIndex: 0, mode: 'quad', total: 1000 })
+  const onDrop = (e: React.DragEvent): void => {
+    e.preventDefault()
+    const paths = Array.from(e.dataTransfer.files).map((f) => window.gv.getPathForFile(f))
+    void openPaths(paths.filter(Boolean))
+  }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Draggable title bar region (window has a hidden native title bar on macOS).
-          Interactive controls placed here later must opt out with [-webkit-app-region:no-drag]. */}
-      <header className="flex h-[38px] flex-none items-center justify-center border-b border-white/[0.06] text-[13px] font-semibold text-[rgba(235,235,245,0.6)] [-webkit-app-region:drag]">
-        GalleryViewer
-      </header>
-
-      <main className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-        <div className="text-2xl font-semibold tracking-tight">M0 scaffold is alive 🎉</div>
-        <div className="font-mono text-sm text-[rgba(235,235,245,0.6)]">
-          <div>view store: {view}</div>
-          <div>IPC system.ping → {ping}</div>
-          <div>core.nextGroupStart(quad, 0) → {demoNextGroup}</div>
-          {info && (
-            <div className="mt-2 text-[rgba(235,235,245,0.45)]">
-              Electron {info.electronVersion} · Chrome {info.chromeVersion} · Node{' '}
-              {info.nodeVersion} · {info.platform}/{info.arch}
-            </div>
-          )}
-        </div>
-      </main>
+    // biome-ignore lint/a11y/noStaticElementInteractions: window-wide drag-and-drop drop zone
+    <div className="flex h-full flex-col" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
+      <TitleBar />
+      <Toolbar />
+      <div className="flex min-h-0 flex-1">
+        {hasImages ? (
+          <>
+            <QueueRail />
+            <ContextMenu>
+              <Canvas />
+            </ContextMenu>
+          </>
+        ) : (
+          <EmptyState />
+        )}
+      </div>
+      <StatusBar />
+      <Toast />
     </div>
   )
 }

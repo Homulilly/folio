@@ -7,5 +7,5 @@
     "jsx": "react-jsx",
     "types": []
   },
-  "include": ["src/renderer/src/**/*.ts", "src/renderer/src/**/*.tsx", "src/preload/index.d.ts"]
+  "include": ["src/renderer/src/**/*.ts", "src/renderer/src/**/*.tsx", "src/preload/**/*.ts"]
 }

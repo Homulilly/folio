@@ -29,6 +29,9 @@ importers:
       '@galleryviewer/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@galleryviewer/image-processing':
+        specifier: workspace:*
+        version: link:../../packages/image-processing
       '@galleryviewer/shared-types':
         specifier: workspace:*
         version: link:../../packages/shared-types

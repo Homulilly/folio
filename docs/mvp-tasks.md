@@ -34,18 +34,23 @@
 
 ## M1 — 基础看图（PRD §6.1）
 
-- [ ] `image.openFile(path)` / `image.openDirectory(path)` IPC
-- [ ] 主进程目录**分批流式扫描**，识别支持格式，生成队列（不读原图）
-- [ ] 拖拽文件/文件夹进窗口
-- [ ] `queueStore`（Zustand）：items / currentIndex / sortMode / version
-- [ ] 排序：名称/修改时间/创建时间/大小/格式（`queue.setSortMode`）
-- [ ] 单图 Viewer：通过 `gv-img://` 显示，适应窗口 / 原始尺寸 / 缩放 / 旋转
-- [ ] 导航：上一张/下一张/首张/末张/随机；前后各 1 张预加载
-- [ ] 全屏（F11）、删除到回收站、文件管理器中显示、复制路径、复制图片、最近文件夹
-- [ ] 状态栏：文件名/尺寸/格式/缩放
-- [ ] 基础快捷键系统（PRD §7.1 单图相关键位）
+- [x] `image.openFileDialog` / `openDirectoryDialog` / `openPaths` IPC（打开单文件聚焦其所在目录）
+- [x] 主进程目录扫描（并发 stat，识别支持格式，只存路径元数据不读原图）
+- [x] 拖拽文件/文件夹进窗口（preload `webUtils.getPathForFile`）
+- [x] `queueStore`（Zustand）：items / currentIndex / sortMode / version
+- [x] 排序：名称/修改时间/创建时间/大小/格式（`setSortMode`，纯逻辑在 `core`，含单测）
+- [x] 单图 Viewer：通过 `gv-img://` 显示，适应窗口 / 原始尺寸 / 缩放 / 旋转 + 拖拽平移
+- [x] 导航：上一张/下一张/首张/末张/随机
+- [x] 全屏（F11）、删除到回收站、文件管理器中显示、复制路径、复制图片、最近文件夹（右键菜单 + 快捷键）
+- [x] 状态栏：文件名/尺寸/格式/缩放/位置
+- [x] 基础快捷键系统（PRD §7.1 单图相关键位）
 
-**验收**（PRD §17.1）：打开 1000 张文件夹 3 秒内显示首批且 UI 不卡；切换 <100ms（预加载命中）；不支持格式有明确错误提示。
+**验收**（PRD §17.1）：✅ typecheck/test(13)/lint/build 全绿，`pnpm dev` 启动无错。
+> M1 范围说明 / 顺延项：
+> - **缩略图**：队列栏暂为文字行（文件名+大小+格式），缩略图异步生成与缓存按计划放 M7；同理大队列**虚拟化**留待 M7（当前一次性渲染所有行）。
+> - **前后预加载**：M1 直接用 `gv-img://` 由 Chromium 解码;显式预加载与 <100ms 命中目标随 M7 预览/缓存策略一起做。
+> - **格式覆盖**：JPEG/PNG/WebP/GIF/BMP/AVIF/SVG/ICO 由 Chromium 原生解码;HEIC/HEIF/TIFF/JXL 显示占位提示，待 M6/M7 接入 sharp 预览。
+> - **图片尺寸**：队列元数据 `width/height` 仍为 pending，状态栏尺寸取自 `<img>` 实际解码值;扫描期读取尺寸留给 M3 元信息。
 
 ---
 

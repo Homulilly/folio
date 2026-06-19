@@ -6,6 +6,8 @@ import { handleImageProtocol, registerImageProtocolSchemes } from './protocol'
 // Must run before app `ready`.
 registerImageProtocolSchemes()
 
+let mainWindow: BrowserWindow | null = null
+
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
@@ -23,7 +25,11 @@ function createWindow(): void {
     },
   })
 
+  mainWindow = win
   win.once('ready-to-show', () => win.show())
+  win.on('closed', () => {
+    if (mainWindow === win) mainWindow = null
+  })
 
   // Keep navigation inside the app; open external links in the OS browser.
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -40,7 +46,7 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
   handleImageProtocol()
-  registerIpcHandlers()
+  registerIpcHandlers(() => mainWindow)
   createWindow()
 
   app.on('activate', () => {
