@@ -24,6 +24,8 @@ export interface ScanResult {
   currentIndex: number
 }
 
+export type TrashResult = 'trashed' | 'failed'
+
 /**
  * The full surface exposed on `window.gv` by the preload bridge.
  * Async methods are backed by ipcRenderer.invoke. Renderer has zero direct fs access.
@@ -40,8 +42,8 @@ export interface FolioApi {
     openPaths: (paths: string[]) => Promise<ScanResult | null>
   }
   file: {
-    /** Move to the OS trash. Returns true on success. */
-    trash: (filePath: string) => Promise<boolean>
+    /** Move to the OS trash. User confirmation is handled by the renderer UI. */
+    trash: (filePath: string) => Promise<TrashResult>
     showInFolder: (filePath: string) => Promise<void>
     copyPath: (filePath: string) => Promise<void>
     /** Copy the decoded image to the clipboard. Returns false if the format can't be decoded natively. */

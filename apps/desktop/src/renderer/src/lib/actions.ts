@@ -1,6 +1,7 @@
-import type { ScanResult } from '@folio/shared-types'
+import type { ImageQueueItem, ScanResult } from '@folio/shared-types'
 import { useQueueStore } from '../stores/queueStore'
 import { useToastStore } from '../stores/toastStore'
+import { useTrashConfirmStore } from '../stores/trashConfirmStore'
 
 const queue = () => useQueueStore.getState()
 const toast = () => useToastStore.getState()
@@ -26,19 +27,26 @@ export async function openPaths(paths: string[]): Promise<void> {
   applyResult(await window.gv.image.openPaths(paths))
 }
 
-function currentPath(): string | undefined {
+function currentItem(): ImageQueueItem | undefined {
   const s = queue()
-  return s.items[s.currentIndex]?.filePath
+  return s.items[s.currentIndex]
+}
+
+function currentPath(): string | undefined {
+  return currentItem()?.filePath
 }
 
 export async function trashCurrent(): Promise<void> {
-  const path = currentPath()
-  if (!path) return
-  const ok = await window.gv.file.trash(path)
-  if (ok) {
-    queue().removeCurrent()
+  const item = currentItem()
+  if (!item) return
+  const confirmed = await useTrashConfirmStore.getState().confirmTrash(item.fileName)
+  if (!confirmed) return
+
+  const result = await window.gv.file.trash(item.filePath)
+  if (result === 'trashed') {
+    queue().removeItem(item.id)
     toast().show('Moved to Trash', 'success')
-  } else {
+  } else if (result === 'failed') {
     toast().show('Could not move to Trash', 'error')
   }
 }

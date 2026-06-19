@@ -8,6 +8,7 @@ import { StatusBar } from './components/StatusBar'
 import { TitleBar } from './components/TitleBar'
 import { Toast } from './components/Toast'
 import { Toolbar } from './components/Toolbar'
+import { TrashConfirmDialog } from './components/TrashConfirmDialog'
 import { useShortcuts } from './hooks/useShortcuts'
 import { openPaths } from './lib/actions'
 import { useMultiViewStore } from './stores/multiViewStore'
@@ -60,6 +61,7 @@ export function App(): React.JSX.Element {
         )}
       </div>
       <StatusBar />
+      <TrashConfirmDialog />
       <Toast />
     </div>
   )

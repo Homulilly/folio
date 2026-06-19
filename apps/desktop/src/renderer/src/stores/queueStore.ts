@@ -20,6 +20,7 @@ interface QueueState {
   random: () => void
   /** Remove the current item (e.g. after trashing) and keep the selection sensible. */
   removeCurrent: () => void
+  removeItem: (id: string) => void
 }
 
 /** Re-sort while keeping the same item focused by file path. */
@@ -73,6 +74,17 @@ export const useQueueStore = create<QueueState>((set) => ({
       if (s.items.length === 0) return {}
       const items = s.items.filter((_, i) => i !== s.currentIndex)
       const currentIndex = Math.max(0, Math.min(items.length - 1, s.currentIndex))
+      return { items, currentIndex, version: s.version + 1 }
+    }),
+
+  removeItem: (id) =>
+    set((s) => {
+      const removeIndex = s.items.findIndex((it) => it.id === id)
+      if (removeIndex < 0) return {}
+      const items = s.items.filter((it) => it.id !== id)
+      let currentIndex = s.currentIndex
+      if (removeIndex < currentIndex) currentIndex -= 1
+      else if (currentIndex >= items.length) currentIndex = Math.max(0, items.length - 1)
       return { items, currentIndex, version: s.version + 1 }
     }),
 }))

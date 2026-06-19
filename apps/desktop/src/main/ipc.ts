@@ -1,5 +1,5 @@
 import { SUPPORTED_EXTENSIONS } from '@folio/image-processing'
-import { IpcChannel, type ScanResult, type SystemInfo } from '@folio/shared-types'
+import { IpcChannel, type ScanResult, type SystemInfo, type TrashResult } from '@folio/shared-types'
 import { app, type BrowserWindow, clipboard, dialog, ipcMain, nativeImage, shell } from 'electron'
 import { addRecentFolder, clearRecentFolders, listRecentFolders } from './services/recent'
 import { buildScanResult } from './services/scan'
@@ -58,12 +58,12 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   )
 
   // --- file actions ---
-  ipcMain.handle(IpcChannel.fileTrash, async (_e, filePath: string): Promise<boolean> => {
+  ipcMain.handle(IpcChannel.fileTrash, async (_e, filePath: string): Promise<TrashResult> => {
     try {
       await shell.trashItem(filePath)
-      return true
+      return 'trashed'
     } catch {
-      return false
+      return 'failed'
     }
   })
   ipcMain.handle(IpcChannel.fileShowInFolder, (_e, filePath: string): void => {
