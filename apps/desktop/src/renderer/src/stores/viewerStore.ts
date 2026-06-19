@@ -39,7 +39,11 @@ const clampZoom = (z: number) => Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z))
 function fitPercent(s: ViewerState): number {
   const { naturalWidth: nw, naturalHeight: nh, viewportWidth: vw, viewportHeight: vh } = s
   if (!nw || !nh || !vw || !vh) return 100
-  return clampZoom(Math.round(Math.min(1, vw / nw, vh / nh) * 100))
+  // Rotation by 90/270 swaps which natural side bounds each viewport axis.
+  const rotated = s.rotation === 90 || s.rotation === 270
+  const boundW = rotated ? nh : nw
+  const boundH = rotated ? nw : nh
+  return clampZoom(Math.round(Math.min(1, vw / boundW, vh / boundH) * 100))
 }
 
 /** Current displayed percentage, whether in fit mode or explicit zoom. */

@@ -14,6 +14,9 @@ export function Canvas(): React.JSX.Element {
   const zoom = useViewerStore((s) => s.zoom)
   const rotation = useViewerStore((s) => s.rotation)
   const naturalWidth = useViewerStore((s) => s.naturalWidth)
+  const naturalHeight = useViewerStore((s) => s.naturalHeight)
+  const viewportWidth = useViewerStore((s) => s.viewportWidth)
+  const viewportHeight = useViewerStore((s) => s.viewportHeight)
   const setNatural = useViewerStore((s) => s.setNatural)
 
   const [failed, setFailed] = useState(false)
@@ -53,6 +56,29 @@ export function Canvas(): React.JSX.Element {
   const renderable = canRenderNatively(item)
   const transform = `rotate(${rotation}deg)`
   const canPan = !fit
+
+  // Resolve the displayed pixel size from natural + viewport so BOTH dimensions are
+  // honoured. Fit scales the image down to fit inside the viewport (never upscaling); zoom
+  // is an explicit percentage. Rotation by 90/270 swaps which natural side bounds each axis.
+  // Falls back to CSS object-contain until natural/viewport sizes are known.
+  const rotated = rotation === 90 || rotation === 270
+  const sizable = naturalWidth && naturalHeight && (!fit || (viewportWidth && viewportHeight))
+  let imgClassName = 'max-h-full max-w-full object-contain'
+  let imgStyle: React.CSSProperties = { transform }
+  if (naturalWidth && naturalHeight && sizable) {
+    const boundW = rotated ? naturalHeight : naturalWidth
+    const boundH = rotated ? naturalWidth : naturalHeight
+    const scale = fit
+      ? Math.min((viewportWidth as number) / boundW, (viewportHeight as number) / boundH, 1)
+      : zoom / 100
+    imgClassName = 'flex-none object-contain'
+    imgStyle = {
+      width: naturalWidth * scale,
+      height: naturalHeight * scale,
+      maxWidth: 'none',
+      transform,
+    }
+  }
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!canPan || !scrollRef.current) return
@@ -117,16 +143,8 @@ export function Canvas(): React.JSX.Element {
                 setNatural(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)
               }}
               onError={() => setFailed(true)}
-              className={fit ? 'max-h-full max-w-full object-contain' : 'flex-none object-contain'}
-              style={
-                fit
-                  ? { transform }
-                  : {
-                      width: naturalWidth ? `${(naturalWidth * zoom) / 100}px` : 'auto',
-                      maxWidth: 'none',
-                      transform,
-                    }
-              }
+              className={imgClassName}
+              style={imgStyle}
             />
           )}
         </div>
