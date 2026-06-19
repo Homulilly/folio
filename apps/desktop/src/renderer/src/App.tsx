@@ -40,10 +40,14 @@ export function App(): React.JSX.Element {
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: window-wide drag-and-drop drop zone
-    <div className="flex h-full flex-col" onDragOver={(e) => e.preventDefault()} onDrop={onDrop}>
+    <div
+      className="flex h-full flex-col overflow-hidden"
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={onDrop}
+    >
       <TitleBar />
       <Toolbar />
-      <div className="flex min-h-0 flex-1">
+      <div className="flex min-h-0 min-w-0 flex-1">
         {hasImages ? (
           <>
             <QueueRail />

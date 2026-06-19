@@ -73,54 +73,63 @@ export function Canvas(): React.JSX.Element {
   }
 
   return (
+    // Fixed positioning context: holds the background and the overlays so they never move
+    // with the (scrolling) image. overflow-hidden + min-w/h-0 keep a zoomed image from
+    // expanding the layout and scrolling the toolbar/queue rail.
     <div
-      ref={scrollRef}
-      className={`relative flex flex-1 items-center justify-center overflow-auto ${
-        canPan ? 'cursor-grab active:cursor-grabbing' : ''
-      }`}
+      className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
       style={{ background: 'radial-gradient(circle at 50% 38%, #131315 0%, #000 78%)' }}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={endDrag}
-      onPointerCancel={endDrag}
     >
-      {!renderable ? (
-        <div className="max-w-sm px-6 text-center">
-          <div className="text-base font-medium text-[rgba(235,235,245,0.85)]">
-            {formatLabel(item)} preview not available yet
-          </div>
-          <div className="mt-2 text-[13px] text-[rgba(235,235,245,0.45)]">
-            {item.fileName} — rendering for this format arrives with the sharp preview pipeline
-            (M6/M7).
-          </div>
+      <div
+        ref={scrollRef}
+        className={`absolute inset-0 overflow-auto ${canPan ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+      >
+        {/* At least viewport-sized so a small image stays centered; grows to a zoomed image so
+            it scrolls (and pans) on both axes from the top-left, not from a clipped centre. */}
+        <div className="flex min-h-full min-w-full items-center justify-center">
+          {!renderable ? (
+            <div className="max-w-sm px-6 text-center">
+              <div className="text-base font-medium text-[rgba(235,235,245,0.85)]">
+                {formatLabel(item)} preview not available yet
+              </div>
+              <div className="mt-2 text-[13px] text-[rgba(235,235,245,0.45)]">
+                {item.fileName} — rendering for this format arrives with the sharp preview pipeline
+                (M6/M7).
+              </div>
+            </div>
+          ) : failed ? (
+            <div className="px-6 text-center text-[13px] text-[#FF453A]">
+              Failed to decode {item.fileName}
+            </div>
+          ) : (
+            <img
+              key={item.id}
+              src={imageUrl('original', item.filePath)}
+              alt={item.fileName}
+              draggable={false}
+              onLoad={(e) => {
+                setFailed(false)
+                setNatural(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)
+              }}
+              onError={() => setFailed(true)}
+              className={fit ? 'max-h-full max-w-full object-contain' : 'flex-none object-contain'}
+              style={
+                fit
+                  ? { transform }
+                  : {
+                      width: naturalWidth ? `${(naturalWidth * zoom) / 100}px` : 'auto',
+                      maxWidth: 'none',
+                      transform,
+                    }
+              }
+            />
+          )}
         </div>
-      ) : failed ? (
-        <div className="px-6 text-center text-[13px] text-[#FF453A]">
-          Failed to decode {item.fileName}
-        </div>
-      ) : (
-        <img
-          key={item.id}
-          src={imageUrl('original', item.filePath)}
-          alt={item.fileName}
-          draggable={false}
-          onLoad={(e) => {
-            setFailed(false)
-            setNatural(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)
-          }}
-          onError={() => setFailed(true)}
-          className={fit ? 'max-h-full max-w-full object-contain' : 'flex-none object-contain'}
-          style={
-            fit
-              ? { transform }
-              : {
-                  width: naturalWidth ? `${(naturalWidth * zoom) / 100}px` : 'auto',
-                  maxWidth: 'none',
-                  transform,
-                }
-          }
-        />
-      )}
+      </div>
 
       <div className="pointer-events-none absolute bottom-2.5 left-2.5 rounded-lg border border-white/[0.08] bg-black/55 px-2.5 py-1 font-mono text-[11px] text-white/90 backdrop-blur">
         {item.fileName}
@@ -132,7 +141,6 @@ export function Canvas(): React.JSX.Element {
           type="button"
           title="Back to grid (Esc)"
           onClick={collapse}
-          onPointerDown={(e) => e.stopPropagation()}
           className="absolute bottom-2.5 right-2.5 flex h-9 w-9 items-center justify-center rounded-lg border border-white/[0.08] bg-black/45 text-white/70 backdrop-blur transition-colors hover:bg-black/70 hover:text-white"
         >
           <ShrinkIcon size={18} />

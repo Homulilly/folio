@@ -31,7 +31,7 @@ export function ContextMenu({ children }: { children: React.ReactNode }): React.
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: right-click surface for the canvas
     <div
-      className="flex min-h-0 flex-1"
+      className="flex min-h-0 min-w-0 flex-1"
       onContextMenu={(e) => {
         e.preventDefault()
         setPos({ x: e.clientX, y: e.clientY })
