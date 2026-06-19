@@ -2,6 +2,7 @@
 // Namespaces follow PRD §9.2: image.* / file.* / recent.* / win.* (+ system.*).
 
 import type { ImageQueueItem } from './domain'
+import type { EraseResult, EraseRule, EraseTarget } from './erase'
 import type { ExifMetadata } from './metadata'
 
 /** Custom privileged protocol used to stream images to the renderer (never base64 over IPC). */
@@ -49,10 +50,14 @@ export interface FolioApi {
     copyPath: (filePath: string) => Promise<void>
     /** Copy the decoded image to the clipboard. Returns false if the format can't be decoded natively. */
     copyImage: (filePath: string) => Promise<boolean>
+    /** A non-existing export path: `<dir>/<base><suffix><ext>`, incrementing on conflict. */
+    suggestExportPath: (filePath: string, suffix: string) => Promise<string>
   }
   metadata: {
     /** Read full grouped Exif/XMP/IPTC/… metadata. Resolves null when the read fails. */
     read: (filePath: string) => Promise<ExifMetadata | null>
+    /** Erase metadata per a rule, exporting a new file or modifying in place (PRD §6.5). */
+    erase: (filePath: string, rule: EraseRule, target: EraseTarget) => Promise<EraseResult>
   }
   clipboard: {
     /** Write arbitrary text to the system clipboard (copy an Exif field or the full JSON). */
@@ -80,7 +85,9 @@ export const IpcChannel = {
   fileShowInFolder: 'file:showInFolder',
   fileCopyPath: 'file:copyPath',
   fileCopyImage: 'file:copyImage',
+  fileSuggestExportPath: 'file:suggestExportPath',
   metadataRead: 'metadata:read',
+  metadataErase: 'metadata:erase',
   clipboardWriteText: 'clipboard:writeText',
   recentList: 'recent:list',
   recentRemove: 'recent:remove',

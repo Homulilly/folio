@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Canvas } from './components/Canvas'
 import { ContextMenu } from './components/ContextMenu'
 import { EmptyState } from './components/EmptyState'
+import { EraseDialog } from './components/EraseDialog'
 import { ExifDrawer } from './components/ExifDrawer'
 import { MultiView } from './components/MultiView'
 import { QueueRail } from './components/QueueRail'
@@ -70,6 +71,7 @@ export function App(): React.JSX.Element {
       </div>
       <StatusBar />
       <TrashConfirmDialog />
+      <EraseDialog />
       <Toast />
     </div>
   )

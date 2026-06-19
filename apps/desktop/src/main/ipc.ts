@@ -1,5 +1,8 @@
 import { SUPPORTED_EXTENSIONS } from '@folio/image-processing'
 import {
+  type EraseResult,
+  type EraseRule,
+  type EraseTarget,
   type ExifMetadata,
   IpcChannel,
   type ScanResult,
@@ -7,7 +10,8 @@ import {
   type TrashResult,
 } from '@folio/shared-types'
 import { app, type BrowserWindow, clipboard, dialog, ipcMain, nativeImage, shell } from 'electron'
-import { readMetadata } from './services/exiftool'
+import { eraseMetadata, readMetadata } from './services/exiftool'
+import { suggestExportPath } from './services/paths'
 import {
   addRecentFolder,
   clearRecentFolders,
@@ -90,11 +94,20 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     clipboard.writeImage(image)
     return true
   })
+  ipcMain.handle(
+    IpcChannel.fileSuggestExportPath,
+    (_e, filePath: string, suffix: string): Promise<string> => suggestExportPath(filePath, suffix),
+  )
 
   // --- metadata (Exif) ---
   ipcMain.handle(
     IpcChannel.metadataRead,
     (_e, filePath: string): Promise<ExifMetadata | null> => readMetadata(filePath),
+  )
+  ipcMain.handle(
+    IpcChannel.metadataErase,
+    (_e, filePath: string, rule: EraseRule, target: EraseTarget): Promise<EraseResult> =>
+      eraseMetadata(filePath, rule, target),
   )
 
   ipcMain.handle(IpcChannel.clipboardWriteText, (_e, text: string): void => {

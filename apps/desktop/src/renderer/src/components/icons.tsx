@@ -114,6 +114,17 @@ export const InfoIcon = (p: IconProps) =>
 
 export const CloseIcon = (p: IconProps) => svg(<path d="M18 6 6 18M6 6l12 12" />, p)
 
+export const CheckIcon = (p: IconProps) => svg(<path d="M20 6 9 17l-5-5" />, p, 2.4)
+
+export const ShieldIcon = (p: IconProps) =>
+  svg(
+    <>
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+      <path d="m9 12 2 2 4-4" />
+    </>,
+    p,
+  )
+
 export const SearchIcon = (p: IconProps) =>
   svg(
     <>

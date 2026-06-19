@@ -1,3 +1,4 @@
 export * from './domain'
+export * from './erase'
 export * from './ipc'
 export * from './metadata'

@@ -1,0 +1,167 @@
+import type { ErasePresetId, EraseRule, ExifGroup } from '@folio/shared-types'
+
+// Erasure rule model (PRD §6.5 / §11). Pure logic only — the main process turns these rules into
+// ExifTool arguments and performs the write. Tag entries are ExifTool tag names/patterns *without*
+// a leading `-` or trailing `=` (e.g. `GPS:all`, `*Serial*`, `DateTimeOriginal`).
+
+/**
+ * Privacy-sensitive tag groups (PRD §11.1/§11.2). Categories compose into presets and into the
+ * erase dialog's per-category checkboxes. Patterns use ExifTool syntax (`GPS:all`, `*Serial*`).
+ */
+export const ERASE_CATEGORIES = {
+  gps: ['GPS:all'],
+  device: ['Make', 'Model', '*SerialNumber*', '*Serial*', 'CameraID', 'InternalSerialNumber'],
+  datetime: ['DateTimeOriginal', 'CreateDate', 'ModifyDate', 'AllDates'],
+  software: ['Software', 'ProcessingSoftware', 'HostComputer', 'CreatorTool'],
+  thumbnail: ['ThumbnailImage', 'PreviewImage', 'JpgFromRaw', 'OtherImage'],
+  identity: ['OwnerName', 'Artist', 'Copyright', 'UserComment', 'Creator', 'Rights'],
+} as const
+
+export type EraseCategory = keyof typeof ERASE_CATEGORIES
+
+/** Tags every preset keeps — display-intrinsic and non-identifying (PRD §11.2 保留). */
+const KEEP_BASELINE = ['Orientation', 'ColorSpace', 'ICC_Profile', 'ImageWidth', 'ImageHeight']
+
+const uniq = (xs: string[]): string[] => [...new Set(xs)]
+
+/** Flatten a set of categories into a de-duplicated remove list. */
+export function tagsForCategories(categories: readonly EraseCategory[]): string[] {
+  return uniq(categories.flatMap((c) => [...ERASE_CATEGORIES[c]]))
+}
+
+/** Resolve a built-in preset to a concrete rule (`custom` resolves to an empty remove list). */
+export function presetRule(preset: ErasePresetId): EraseRule {
+  switch (preset) {
+    case 'privacy':
+      // Remove GPS, device, dates, software, thumbnails, identity — keep the rest.
+      return {
+        mode: 'remove_selected',
+        removeTags: tagsForCategories(['gps', 'device', 'datetime', 'software', 'thumbnail']),
+        keepTags: [],
+      }
+    case 'share':
+      // Keep only orientation + colour profile; strip everything else.
+      return { mode: 'remove_all_except_keep', removeTags: [], keepTags: [...KEEP_BASELINE] }
+    case 'full':
+      // Strip every removable tag.
+      return { mode: 'remove_all_except_keep', removeTags: [], keepTags: [] }
+    case 'copyright':
+      // Remove GPS + device, but keep copyright/author/ICC (so don't strip identity wholesale).
+      return {
+        mode: 'remove_selected',
+        removeTags: tagsForCategories(['gps', 'device']),
+        keepTags: ['Copyright', 'Artist', 'Creator', 'Rights', 'ICC_Profile'],
+      }
+    case 'custom':
+      return { mode: 'remove_selected', removeTags: [], keepTags: [] }
+  }
+}
+
+// Tag patterns become `-pattern=` args, passed to ExifTool as discrete array elements (never a
+// shell string), so they can't inject extra arguments. We still validate to reject obvious junk
+// and keep error messages clean. Valid: letters, digits, `_`, `:`, `*`.
+const TAG_PATTERN = /^[A-Za-z0-9_:*]+$/
+
+export function isValidTagPattern(tag: string): boolean {
+  return TAG_PATTERN.test(tag)
+}
+
+/** Split a rule's tags into valid/invalid; the caller refuses to run if anything is invalid. */
+export function validateRule(rule: EraseRule): { valid: boolean; invalid: string[] } {
+  const invalid = [...rule.removeTags, ...rule.keepTags].filter((t) => !isValidTagPattern(t))
+  return { valid: invalid.length === 0, invalid }
+}
+
+/**
+ * ExifTool write args for `remove_selected` mode: one `-<tag>=` per pattern. The caller decides
+ * whether to append `-overwrite_original` (export and no-backup in-place do; keep-backup doesn't).
+ * The `remove_all_except_keep` mode uses ExifTool's `deleteAllTags({ retain })` instead.
+ */
+export function buildRemoveArgs(rule: EraseRule): string[] {
+  if (rule.mode !== 'remove_selected') return []
+  return rule.removeTags.map((t) => `-${t}=`)
+}
+
+// ---- Erase preview (PRD §6.5 擦除前预览差异) ----
+
+/** Does an ExifTool pattern match a present field? Handles `Group:all`, `*wild*`, and exact. */
+export function matchesTagPattern(group: string, key: string, pattern: string): boolean {
+  const p = pattern.toLowerCase()
+  if (p.endsWith(':all')) return group.toLowerCase() === p.slice(0, -4)
+  if (p.includes('*')) {
+    const re = new RegExp(`^${p.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`)
+    return re.test(key.toLowerCase())
+  }
+  return key.toLowerCase() === p
+}
+
+export interface EraseField {
+  group: string
+  key: string
+}
+
+/** Classify currently-present fields into those a rule removes vs. keeps — for the diff preview. */
+export function partitionExifByRule(
+  groups: ExifGroup[],
+  rule: EraseRule,
+): { removed: EraseField[]; keptCount: number } {
+  const removed: EraseField[] = []
+  let keptCount = 0
+  const keepBaseline = KEEP_BASELINE.map((t) => t.toLowerCase())
+  for (const g of groups) {
+    for (const e of g.entries) {
+      let isRemoved: boolean
+      if (rule.mode === 'remove_selected') {
+        isRemoved = rule.removeTags.some((p) => matchesTagPattern(g.group, e.key, p))
+      } else {
+        const keep =
+          rule.keepTags.some((p) => matchesTagPattern(g.group, e.key, p)) ||
+          keepBaseline.includes(e.key.toLowerCase())
+        isRemoved = !keep
+      }
+      if (isRemoved) removed.push({ group: g.group, key: e.key })
+      else keptCount++
+    }
+  }
+  return { removed, keptCount }
+}
+
+// ---- Post-erase verification (PRD §6.5 擦除后验证字段已移除) ----
+
+/** Concrete (non-wildcard) tag names from a remove list — the ones we can verify by exact key. */
+function concreteTags(removeTags: string[]): string[] {
+  return removeTags.filter((t) => !t.includes('*') && !t.endsWith(':all'))
+}
+
+/** All field keys present in the metadata, lower-cased, for membership checks. */
+function presentKeys(groups: ExifGroup[]): Set<string> {
+  const keys = new Set<string>()
+  for (const g of groups) for (const e of g.entries) keys.add(e.key.toLowerCase())
+  return keys
+}
+
+/**
+ * Compare a rule's intended removals against re-read metadata. Returns which concrete tags are
+ * confirmed gone vs. still present. Wildcards/`:all` groups are best-effort (skipped here).
+ */
+export function verifyRemoval(
+  rule: EraseRule,
+  groupsAfter: ExifGroup[],
+): { verifiedRemoved: string[]; stillPresent: string[] } {
+  if (rule.mode !== 'remove_selected') {
+    // Keep-only mode: anything outside keepTags should be gone.
+    const keep = new Set(rule.keepTags.map((t) => t.toLowerCase()))
+    const stillPresent = [...presentKeys(groupsAfter)].filter(
+      (k) => !keep.has(k) && !KEEP_BASELINE.map((t) => t.toLowerCase()).includes(k),
+    )
+    return { verifiedRemoved: [], stillPresent }
+  }
+  const present = presentKeys(groupsAfter)
+  const verifiedRemoved: string[] = []
+  const stillPresent: string[] = []
+  for (const tag of concreteTags(rule.removeTags)) {
+    if (present.has(tag.toLowerCase())) stillPresent.push(tag)
+    else verifiedRemoved.push(tag)
+  }
+  return { verifiedRemoved, stillPresent }
+}

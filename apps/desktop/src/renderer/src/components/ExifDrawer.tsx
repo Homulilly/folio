@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '../i18n'
 import { copyText } from '../lib/actions'
 import { groupColor, SUMMARY_LABEL_KEYS, summaryValueColor } from '../lib/exif'
+import { useEraseStore } from '../stores/eraseStore'
 import { type ExifTab, useExifStore } from '../stores/exifStore'
 import { useQueueStore } from '../stores/queueStore'
-import { CloseIcon, CopyIcon, SearchIcon } from './icons'
+import { CloseIcon, CopyIcon, SearchIcon, ShieldIcon } from './icons'
 import { ScrollOverlay } from './ScrollOverlay'
 
 type LoadState =
@@ -24,6 +25,8 @@ export function ExifDrawer(): React.JSX.Element {
   const search = useExifStore((s) => s.search)
   const setSearch = useExifStore((s) => s.setSearch)
   const close = useExifStore((s) => s.close)
+  const refreshToken = useExifStore((s) => s.refreshToken)
+  const openErase = useEraseStore((s) => s.openFor)
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const [state, setState] = useState<LoadState>({ status: 'loading' })
@@ -48,7 +51,7 @@ export function ExifDrawer(): React.JSX.Element {
     return () => {
       cancelled = true
     }
-  }, [itemId])
+  }, [itemId, refreshToken])
 
   const groups = state.status === 'loaded' ? state.data.groups : []
   const filtered = useMemo(() => filterExifGroups(groups, search), [groups, search])
@@ -147,17 +150,29 @@ export function ExifDrawer(): React.JSX.Element {
         <ScrollOverlay scrollRef={scrollRef} />
       </div>
 
-      {/* Footer: copy everything */}
-      {state.status === 'loaded' && groups.length > 0 && (
-        <div className="flex-none border-t border-white/[0.06] p-3">
+      {/* Footer: erase (privacy) + copy everything */}
+      {item && (
+        <div className="flex flex-none flex-col gap-2 border-t border-white/[0.06] p-3">
           <button
             type="button"
-            onClick={() => copyText(exifToJsonString(state.data), 'toast.metadataCopied')}
+            onClick={() => openErase(item.filePath, item.fileName)}
             className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#2C2C2E] py-2.5 text-[13px] text-white transition-colors hover:bg-white/[0.12]"
           >
-            <CopyIcon size={15} />
-            {t('exif.copyAll')}
+            <span className="text-[#FF9F0A]">
+              <ShieldIcon size={15} />
+            </span>
+            {t('exif.erase')}
           </button>
+          {state.status === 'loaded' && groups.length > 0 && (
+            <button
+              type="button"
+              onClick={() => copyText(exifToJsonString(state.data), 'toast.metadataCopied')}
+              className="flex w-full items-center justify-center gap-2 rounded-lg py-2 text-[12px] text-[rgba(235,235,245,0.6)] transition-colors hover:bg-white/[0.06] hover:text-white"
+            >
+              <CopyIcon size={14} />
+              {t('exif.copyAll')}
+            </button>
+          )}
         </div>
       )}
     </div>
