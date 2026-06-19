@@ -18,7 +18,9 @@ export function App(): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex h-[38px] flex-none items-center justify-center border-b border-white/[0.06] text-[13px] font-semibold text-[rgba(235,235,245,0.6)]">
+      {/* Draggable title bar region (window has a hidden native title bar on macOS).
+          Interactive controls placed here later must opt out with [-webkit-app-region:no-drag]. */}
+      <header className="flex h-[38px] flex-none items-center justify-center border-b border-white/[0.06] text-[13px] font-semibold text-[rgba(235,235,245,0.6)] [-webkit-app-region:drag]">
         GalleryViewer
       </header>
 
