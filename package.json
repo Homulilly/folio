@@ -1,0 +1,24 @@
+{
+  "name": "galleryviewer",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @galleryviewer/desktop dev",
+    "build": "pnpm --filter @galleryviewer/desktop build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check .",
+    "format": "biome format --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.0",
+    "@types/node": "^25.9.3",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  }
+}

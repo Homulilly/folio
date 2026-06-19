@@ -1,0 +1,10 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Dependencies whose install/postinstall build scripts are allowed to run.
+allowBuilds:
+  electron: true
+  esbuild: true
+  # Windows-installer tooling; not needed for macOS/Linux dev or packaging.
+  electron-winstaller: false

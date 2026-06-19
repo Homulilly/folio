@@ -1,0 +1,29 @@
+// Image processing layer. sharp-backed decode/thumbnail/preview/convert lands here in M1+.
+// M0: only pure, dependency-free format helpers used by the directory scanner.
+
+/** Extensions the viewer will enqueue when scanning a folder (PRD §6.3 base + modern). */
+export const SUPPORTED_EXTENSIONS: ReadonlySet<string> = new Set([
+  'jpg',
+  'jpeg',
+  'png',
+  'webp',
+  'gif',
+  'bmp',
+  'tiff',
+  'tif',
+  'avif',
+  'heic',
+  'heif',
+  'jxl',
+])
+
+/** Lower-cased extension without the dot, or '' when there is none. */
+export function extOf(fileName: string): string {
+  const dot = fileName.lastIndexOf('.')
+  if (dot < 0 || dot === fileName.length - 1) return ''
+  return fileName.slice(dot + 1).toLowerCase()
+}
+
+export function isSupportedImage(fileName: string): boolean {
+  return SUPPORTED_EXTENSIONS.has(extOf(fileName))
+}

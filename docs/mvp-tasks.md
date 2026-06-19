@@ -12,16 +12,19 @@
 
 ## M0 — 项目脚手架与基础设施
 
-- [ ] 初始化 pnpm workspace（`pnpm-workspace.yaml` + 根 `package.json`）
-- [ ] 用 electron-vite 创建 `apps/desktop`，跑通空窗口（main/preload/renderer 三进程 HMR）
-- [ ] 安全基线：`contextIsolation` / 关 `nodeIntegration` / 开 `sandbox`
-- [ ] 建 `packages/shared-types`，落地 PRD 核心类型（`ImageQueueItem`/`QueueState`/`SortMode`/`MultiViewState`/`ViewerState`/`Task`）
-- [ ] 建 `packages/core`、`packages/image-processing`、`packages/config` 空包 + tsconfig 引用
-- [ ] 配置 Biome（lint+format）、Vitest、TypeScript 项目引用
-- [ ] 类型化 IPC 框架：preload contextBridge + main invoke 路由 + 共享契约类型
-- [ ] 注册自定义协议 `gv-img://` 骨架（先直接返回原文件流）
+- [x] 初始化 pnpm workspace（`pnpm-workspace.yaml` + 根 `package.json`）
+- [x] 用 electron-vite 创建 `apps/desktop`，跑通空窗口（main/preload/renderer 三进程 HMR）
+- [x] 安全基线：`contextIsolation` / 关 `nodeIntegration` / 开 `sandbox`
+- [x] 建 `packages/shared-types`，落地 PRD 核心类型（`ImageQueueItem`/`QueueState`/`SortMode`/`MultiViewState`/`ViewerState`/`Task`）
+- [x] 建 `packages/core`、`packages/image-processing`、`packages/config` 包 + tsconfig（core 已含首个单测，image-processing 含格式判定，config 含 settings 默认值）
+- [x] 配置 Biome（lint+format）、Vitest、TypeScript
+- [x] 类型化 IPC 框架：preload contextBridge + main invoke 路由 + 共享契约类型（`system` 命名空间）
+- [x] 注册自定义协议 `gv-img://` 骨架（先直接返回原文件流）
 
-**验收**：`pnpm dev` 启动空窗口，渲染进程能调用一个 demo IPC 并拿到主进程返回。
+**验收**：✅ `pnpm typecheck` / `pnpm test`(8 passed) / `pnpm build` / `pnpm lint` 全绿。`pnpm dev` 启动空窗口需在有 GUI 的环境由你本地确认（见下方说明）。
+
+> 实际栈版本:Electron 42 · electron-vite 5 · Vite 8 · React 19 · Tailwind 4 · TypeScript 6 · Biome 2.5 · Vitest 4 · Node 25 / pnpm 11。
+> M0 调整记录:pnpm 11 用 `pnpm-workspace.yaml` 的 `allowBuilds` 审批原生构建脚本;tsconfig 采用 bundler 解析、不依赖 project-reference 输出。
 
 ---
 
