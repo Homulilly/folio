@@ -3,13 +3,18 @@ import { canRenderNatively, formatLabel, imageUrl } from '../lib/format'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
 import { useViewerStore } from '../stores/viewerStore'
-import { ShrinkIcon } from './icons'
+import { ChevronLeft, ChevronRight, ShrinkIcon } from './icons'
 import { ScrollOverlay } from './ScrollOverlay'
 
 export function Canvas(): React.JSX.Element {
   const item = useQueueStore((s) => s.items[s.currentIndex])
+  const currentIndex = useQueueStore((s) => s.currentIndex)
+  const total = useQueueStore((s) => s.items.length)
   const expanded = useMultiViewStore((s) => s.expanded)
   const collapse = useMultiViewStore((s) => s.collapse)
+  const loopEnabled = useMultiViewStore((s) => s.loopEnabled)
+  const prevGroup = useMultiViewStore((s) => s.prevGroup)
+  const nextGroup = useMultiViewStore((s) => s.nextGroup)
   const fit = useViewerStore((s) => s.fit)
   const zoom = useViewerStore((s) => s.zoom)
   const rotation = useViewerStore((s) => s.rotation)
@@ -56,6 +61,9 @@ export function Canvas(): React.JSX.Element {
   const renderable = canRenderNatively(item)
   const transform = `rotate(${rotation}deg)`
   const canPan = !fit
+  // Hover-reveal nav arrows; hidden at the ends unless looping.
+  const showPrev = loopEnabled || currentIndex > 0
+  const showNext = loopEnabled || currentIndex < total - 1
 
   // Resolve the displayed pixel size from natural + viewport so BOTH dimensions are
   // honoured. Fit scales the image down to fit inside the viewport (never upscaling); zoom
@@ -151,6 +159,32 @@ export function Canvas(): React.JSX.Element {
       </div>
 
       <ScrollOverlay scrollRef={scrollRef} />
+
+      {/* Edge strips that reveal their arrow only when the pointer is near that edge. */}
+      {showPrev && (
+        <button
+          type="button"
+          title="Previous (←)"
+          onClick={prevGroup}
+          className="group/nav absolute inset-y-0 left-0 flex w-16 items-center justify-start pl-3 opacity-0 transition-opacity hover:opacity-100"
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white/85 backdrop-blur transition-colors group-hover/nav:bg-black/65 group-hover/nav:text-white">
+            <ChevronLeft size={22} />
+          </span>
+        </button>
+      )}
+      {showNext && (
+        <button
+          type="button"
+          title="Next (→)"
+          onClick={nextGroup}
+          className="group/nav absolute inset-y-0 right-0 flex w-16 items-center justify-end pr-3 opacity-0 transition-opacity hover:opacity-100"
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white/85 backdrop-blur transition-colors group-hover/nav:bg-black/65 group-hover/nav:text-white">
+            <ChevronRight size={22} />
+          </span>
+        </button>
+      )}
 
       <div className="pointer-events-none absolute bottom-2.5 left-2.5 rounded-lg border border-white/[0.08] bg-black/55 px-2.5 py-1 font-mono text-[11px] text-white/90 backdrop-blur">
         {item.fileName}
