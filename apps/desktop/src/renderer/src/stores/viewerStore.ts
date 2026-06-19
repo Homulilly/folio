@@ -19,6 +19,8 @@ interface ViewerState {
   originalSize: () => void
   zoomIn: () => void
   zoomOut: () => void
+  /** Adjust zoom by a raw percentage delta (mouse wheel); leaves fit mode. */
+  zoomBy: (deltaPercent: number) => void
   rotateCW: () => void
 }
 
@@ -38,5 +40,10 @@ export const useViewerStore = create<ViewerState>((set) => ({
   originalSize: () => set({ fit: false, zoom: 100 }),
   zoomIn: () => set((s) => ({ fit: false, zoom: clampZoom((s.fit ? 100 : s.zoom) + ZOOM_STEP) })),
   zoomOut: () => set((s) => ({ fit: false, zoom: clampZoom((s.fit ? 100 : s.zoom) - ZOOM_STEP) })),
+  zoomBy: (deltaPercent) =>
+    set((s) => ({
+      fit: false,
+      zoom: clampZoom(Math.round((s.fit ? 100 : s.zoom) + deltaPercent)),
+    })),
   rotateCW: () => set((s) => ({ rotation: ((s.rotation + 90) % 360) as 0 | 90 | 180 | 270 })),
 }))

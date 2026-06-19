@@ -19,9 +19,25 @@ export function Canvas(): React.JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: setFailed is stable; reset on image change
   useEffect(() => {
     setFailed(false)
   }, [item?.id])
+
+  // Mouse wheel zooms the image. A native, non-passive listener is required because React's
+  // onWheel is passive, so preventDefault() there can't stop the canvas from scrolling. Canvas
+  // only mounts when an image exists, so the container is stable — attach once.
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent): void => {
+      e.preventDefault()
+      const unit = e.deltaMode === 1 ? 16 : 1 // normalise line-mode deltas to pixels
+      useViewerStore.getState().zoomBy(-e.deltaY * unit * 0.25)
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   if (!item) return <div className="flex-1" />
 
