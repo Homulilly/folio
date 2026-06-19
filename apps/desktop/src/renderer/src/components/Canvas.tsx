@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useT } from '../i18n'
 import { canRenderNatively, formatLabel, imageUrl } from '../lib/format'
 import { useMultiViewStore } from '../stores/multiViewStore'
@@ -7,11 +7,30 @@ import { useViewerStore } from '../stores/viewerStore'
 import { ChevronLeft, ChevronRight, ShrinkIcon } from './icons'
 import { ScrollOverlay } from './ScrollOverlay'
 
+const WHEEL_LINE_DELTA_PX = 16
+const WHEEL_PAGE_DELTA_PX = 120
+const WHEEL_ZOOM_SENSITIVITY = 0.002
+const WHEEL_ZOOM_ANIMATION_MS = 70
+const BUTTON_ZOOM_ANIMATION_MS = 140
+const WHEEL_ANCHOR_TTL_MS = 240
+const ZOOM_EPSILON = 0.0005
+
+interface ZoomAnchor {
+  x: number
+  y: number
+  pointerX: number
+  pointerY: number
+}
+
+const easeOutCubic = (t: number): number => 1 - (1 - t) ** 3
+
 export function Canvas(): React.JSX.Element {
   const t = useT()
   const item = useQueueStore((s) => s.items[s.currentIndex])
   const currentIndex = useQueueStore((s) => s.currentIndex)
   const total = useQueueStore((s) => s.items.length)
+  const itemId = item?.id ?? null
+  const hasItem = itemId !== null
   const expanded = useMultiViewStore((s) => s.expanded)
   const collapse = useMultiViewStore((s) => s.collapse)
   const loopEnabled = useMultiViewStore((s) => s.loopEnabled)
@@ -30,22 +49,31 @@ export function Canvas(): React.JSX.Element {
   const scrollRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
   const zoomRaf = useRef<number | null>(null)
+  const zoomAnimationRaf = useRef<number | null>(null)
+  const wheelDelta = useRef(0)
+  const activeZoomAnchor = useRef<ZoomAnchor | null>(null)
+  const clearZoomAnchorTimer = useRef<number | null>(null)
+  const lastWheelZoomAt = useRef(0)
+  const scaleReady = useRef(false)
+  const displayScaleRef = useRef(1)
+  const [displayScale, setDisplayScale] = useState(1)
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: setFailed is stable; reset on image change
   useEffect(() => {
     setFailed(false)
-  }, [item?.id])
+  }, [itemId])
 
   // Mouse wheel zooms the image. A native, non-passive listener is required because React's
   // onWheel is passive, so preventDefault() there can't stop the canvas from scrolling. Canvas
-  // only mounts when an image exists, so the container is stable — attach once. The same effect
   // tracks the viewport size so the store can resume zoom from the actual fit scale.
   useEffect(() => {
+    if (!hasItem) return
     const el = scrollRef.current
     if (!el) return
     const onWheel = (e: WheelEvent): void => {
       e.preventDefault()
-      const unit = e.deltaMode === 1 ? 16 : 1 // normalise line-mode deltas to pixels
+      const unit =
+        e.deltaMode === 1 ? WHEEL_LINE_DELTA_PX : e.deltaMode === 2 ? WHEEL_PAGE_DELTA_PX : 1
       const img = el.querySelector<HTMLImageElement>('img')
       const before = img?.getBoundingClientRect()
       const pointer = { x: e.clientX, y: e.clientY }
@@ -57,17 +85,29 @@ export function Canvas(): React.JSX.Element {
             }
           : null
 
-      useViewerStore.getState().zoomBy(-e.deltaY * unit * 0.25)
+      wheelDelta.current += e.deltaY * unit
+      activeZoomAnchor.current = anchor
+        ? {
+            ...anchor,
+            pointerX: pointer.x,
+            pointerY: pointer.y,
+          }
+        : null
+      if (clearZoomAnchorTimer.current) window.clearTimeout(clearZoomAnchorTimer.current)
+      clearZoomAnchorTimer.current = window.setTimeout(() => {
+        activeZoomAnchor.current = null
+        clearZoomAnchorTimer.current = null
+      }, WHEEL_ANCHOR_TTL_MS)
 
-      if (!anchor) return
-      if (zoomRaf.current) cancelAnimationFrame(zoomRaf.current)
+      if (zoomRaf.current) return
       zoomRaf.current = requestAnimationFrame(() => {
-        const afterImg = el.querySelector<HTMLImageElement>('img')
-        if (!afterImg) return
-        const after = afterImg.getBoundingClientRect()
-        el.scrollLeft += after.left + after.width * anchor.x - pointer.x
-        el.scrollTop += after.top + after.height * anchor.y - pointer.y
+        const pendingDelta = wheelDelta.current
+        wheelDelta.current = 0
         zoomRaf.current = null
+
+        if (pendingDelta === 0) return
+        lastWheelZoomAt.current = performance.now()
+        useViewerStore.getState().zoomByFactor(Math.exp(-pendingDelta * WHEEL_ZOOM_SENSITIVITY))
       })
     }
     el.addEventListener('wheel', onWheel, { passive: false })
@@ -78,13 +118,13 @@ export function Canvas(): React.JSX.Element {
     return () => {
       el.removeEventListener('wheel', onWheel)
       if (zoomRaf.current) cancelAnimationFrame(zoomRaf.current)
+      if (zoomAnimationRaf.current) cancelAnimationFrame(zoomAnimationRaf.current)
+      if (clearZoomAnchorTimer.current) window.clearTimeout(clearZoomAnchorTimer.current)
       ro.disconnect()
     }
-  }, [])
+  }, [hasItem])
 
-  if (!item) return <div className="flex-1" />
-
-  const renderable = canRenderNatively(item)
+  const renderable = item ? canRenderNatively(item) : false
   const transform = `rotate(${rotation}deg)`
   const canPan = !fit
   // Hover-reveal nav arrows; hidden at the ends unless looping.
@@ -97,20 +137,99 @@ export function Canvas(): React.JSX.Element {
   // Falls back to CSS object-contain until natural/viewport sizes are known.
   const rotated = rotation === 90 || rotation === 270
   const sizable = naturalWidth && naturalHeight && (!fit || (viewportWidth && viewportHeight))
-  let imgClassName = 'max-h-full max-w-full object-contain'
-  let imgStyle: React.CSSProperties = { transform }
+  let targetScale: number | null = null
   if (naturalWidth && naturalHeight && sizable) {
     const boundW = rotated ? naturalHeight : naturalWidth
     const boundH = rotated ? naturalWidth : naturalHeight
-    const scale = fit
+    targetScale = fit
       ? Math.min((viewportWidth as number) / boundW, (viewportHeight as number) / boundH, 1)
       : zoom / 100
+  }
+
+  useEffect(() => {
+    if (!itemId) return
+    scaleReady.current = false
+    displayScaleRef.current = 1
+    setDisplayScale(1)
+  }, [itemId])
+
+  useEffect(() => {
+    if (targetScale === null) return
+
+    if (!scaleReady.current) {
+      scaleReady.current = true
+      displayScaleRef.current = targetScale
+      setDisplayScale(targetScale)
+      return
+    }
+
+    if (zoomAnimationRaf.current) cancelAnimationFrame(zoomAnimationRaf.current)
+
+    const from = displayScaleRef.current
+    const to = targetScale
+    if (Math.abs(from - to) < ZOOM_EPSILON) {
+      displayScaleRef.current = to
+      setDisplayScale(to)
+      return
+    }
+
+    const start = performance.now()
+    const duration =
+      start - lastWheelZoomAt.current < WHEEL_ANCHOR_TTL_MS
+        ? WHEEL_ZOOM_ANIMATION_MS
+        : BUTTON_ZOOM_ANIMATION_MS
+
+    const animate = (now: number): void => {
+      const progress = Math.min(1, (now - start) / duration)
+      const next = from + (to - from) * easeOutCubic(progress)
+      displayScaleRef.current = next
+      setDisplayScale(next)
+
+      if (progress < 1) {
+        zoomAnimationRaf.current = requestAnimationFrame(animate)
+        return
+      }
+
+      displayScaleRef.current = to
+      setDisplayScale(to)
+      zoomAnimationRaf.current = null
+    }
+
+    zoomAnimationRaf.current = requestAnimationFrame(animate)
+
+    return () => {
+      if (zoomAnimationRaf.current) {
+        cancelAnimationFrame(zoomAnimationRaf.current)
+        zoomAnimationRaf.current = null
+      }
+    }
+  }, [targetScale])
+
+  useLayoutEffect(() => {
+    if (displayScale <= 0) return
+    const anchor = activeZoomAnchor.current
+    const el = scrollRef.current
+    if (!anchor || !el) return
+
+    const img = el.querySelector<HTMLImageElement>('img')
+    if (!img) return
+
+    const after = img.getBoundingClientRect()
+    el.scrollLeft += after.left + after.width * anchor.x - anchor.pointerX
+    el.scrollTop += after.top + after.height * anchor.y - anchor.pointerY
+  }, [displayScale])
+
+  let imgClassName = 'max-h-full max-w-full object-contain'
+  let imgStyle: React.CSSProperties = { transform }
+  if (naturalWidth && naturalHeight && targetScale !== null) {
+    const scale = scaleReady.current ? displayScale : targetScale
     imgClassName = 'flex-none object-contain'
     imgStyle = {
       width: naturalWidth * scale,
       height: naturalHeight * scale,
       maxWidth: 'none',
       transform,
+      willChange: 'width, height, transform',
     }
   }
 
@@ -132,6 +251,8 @@ export function Canvas(): React.JSX.Element {
   const endDrag = () => {
     drag.current = null
   }
+
+  if (!item) return <div className="flex-1" />
 
   return (
     // Fixed positioning context: holds the background and the overlays so they never move

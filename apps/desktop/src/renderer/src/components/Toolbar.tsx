@@ -190,7 +190,7 @@ export function Toolbar(): React.JSX.Element {
         disabled={!hasImages}
         className="min-w-[54px] rounded-lg px-1 py-1 text-center font-mono text-xs text-[rgba(235,235,245,0.85)] tabular-nums hover:bg-white/[0.08] disabled:opacity-30"
       >
-        {hasImages ? (fit ? t('toolbar.fit') : `${zoom}%`) : '—'}
+        {hasImages ? (fit ? t('toolbar.fit') : `${Math.round(zoom)}%`) : '—'}
       </button>
       <TbButton title={t('toolbar.zoomIn')} onClick={zoomIn} disabled={!hasImages}>
         <ZoomIn />

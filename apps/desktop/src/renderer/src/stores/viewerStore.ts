@@ -23,8 +23,8 @@ interface ViewerState {
   originalSize: () => void
   zoomIn: () => void
   zoomOut: () => void
-  /** Adjust zoom by a raw percentage delta (mouse wheel); leaves fit mode. */
-  zoomBy: (deltaPercent: number) => void
+  /** Multiply current zoom by a scale factor (mouse wheel / pinch style); leaves fit mode. */
+  zoomByFactor: (factor: number) => void
   rotateCW: () => void
   resetRotation: () => void
 }
@@ -44,7 +44,7 @@ function fitPercent(s: ViewerState): number {
   const rotated = s.rotation === 90 || s.rotation === 270
   const boundW = rotated ? nh : nw
   const boundH = rotated ? nw : nh
-  return clampZoom(Math.round(Math.min(1, vw / boundW, vh / boundH) * 100))
+  return clampZoom(Math.min(1, vw / boundW, vh / boundH) * 100)
 }
 
 /** Current displayed percentage, whether in fit mode or explicit zoom. */
@@ -67,8 +67,11 @@ export const useViewerStore = create<ViewerState>((set) => ({
   originalSize: () => set({ fit: false, zoom: 100 }),
   zoomIn: () => set((s) => ({ fit: false, zoom: clampZoom(currentPercent(s) + ZOOM_STEP) })),
   zoomOut: () => set((s) => ({ fit: false, zoom: clampZoom(currentPercent(s) - ZOOM_STEP) })),
-  zoomBy: (deltaPercent) =>
-    set((s) => ({ fit: false, zoom: clampZoom(Math.round(currentPercent(s) + deltaPercent)) })),
+  zoomByFactor: (factor) =>
+    set((s) => ({
+      fit: false,
+      zoom: clampZoom(currentPercent(s) * (Number.isFinite(factor) ? factor : 1)),
+    })),
   rotateCW: () => set((s) => ({ rotation: ((s.rotation + 90) % 360) as 0 | 90 | 180 | 270 })),
   resetRotation: () => set({ rotation: 0 }),
 }))

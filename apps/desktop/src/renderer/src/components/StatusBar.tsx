@@ -46,7 +46,7 @@ export function StatusBar(): React.JSX.Element {
             {mode !== 'single' && syncZoom && (
               <span className="text-[#0A84FF]">{t('status.sync')}</span>
             )}
-            <span>{fit ? t('status.fit') : `${zoom}%`}</span>
+            <span>{fit ? t('status.fit') : `${Math.round(zoom)}%`}</span>
             <span className="text-[rgba(235,235,245,0.75)]">{range}</span>
           </div>
         </>
