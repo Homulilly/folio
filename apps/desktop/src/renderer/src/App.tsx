@@ -1,4 +1,6 @@
 import { useEffect } from 'react'
+import { AutoModePrompt } from './components/AutoModePrompt'
+import { AutoModeStrip } from './components/AutoModeStrip'
 import { BatchTasksPage } from './components/BatchTasksPage'
 import { Canvas } from './components/Canvas'
 import { ContextMenu } from './components/ContextMenu'
@@ -13,6 +15,7 @@ import { TitleBar } from './components/TitleBar'
 import { Toast } from './components/Toast'
 import { Toolbar } from './components/Toolbar'
 import { TrashConfirmDialog } from './components/TrashConfirmDialog'
+import { useAutoErase } from './hooks/useAutoErase'
 import { useShortcuts } from './hooks/useShortcuts'
 import { openPaths } from './lib/actions'
 import { useExifStore } from './stores/exifStore'
@@ -24,6 +27,7 @@ import { useViewerStore } from './stores/viewerStore'
 
 export function App(): React.JSX.Element {
   useShortcuts()
+  useAutoErase()
 
   const hasImages = useQueueStore((s) => s.items.length > 0)
   const currentId = useQueueStore((s) => s.items[s.currentIndex]?.id)
@@ -65,6 +69,7 @@ export function App(): React.JSX.Element {
     >
       <TitleBar />
       <Toolbar />
+      <AutoModeStrip />
       <div className="flex min-h-0 min-w-0 flex-1">
         {activeView === 'settings' ? (
           <SettingsPage />
@@ -83,6 +88,7 @@ export function App(): React.JSX.Element {
       <StatusBar />
       <TrashConfirmDialog />
       <EraseDialog />
+      <AutoModePrompt />
       <Toast />
     </div>
   )

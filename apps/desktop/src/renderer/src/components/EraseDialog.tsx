@@ -10,6 +10,7 @@ import {
 import type { ErasePresetId, EraseRule, EraseTarget, ExifGroup } from '@folio/shared-types'
 import { useEffect, useMemo, useState } from 'react'
 import { tNow, useT } from '../i18n'
+import { dirOf, useAutoModeStore } from '../stores/autoModeStore'
 import { ERASE_CATEGORY_LIST, type EraseScope, useEraseStore } from '../stores/eraseStore'
 import { useExifStore } from '../stores/exifStore'
 import { useMultiViewStore } from '../stores/multiViewStore'
@@ -137,6 +138,14 @@ export function EraseDialog(): React.JSX.Element | null {
       }
       if (!exportNew) useExifStore.getState().refresh() // re-read the drawer for in-place edits
       close()
+      // Offer auto-mode for the rest of this folder (PRD §6.6) — first single erase per dir.
+      useAutoModeStore.getState().offerAfterErase({
+        filePath,
+        fileName: fileName ?? filePath,
+        directory: dirOf(filePath),
+        rule,
+        presetId: preset,
+      })
     } else if (res.status === 'skipped') {
       toast(tNow('toast.eraseNothing'), 'error')
     } else {

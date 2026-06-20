@@ -103,7 +103,7 @@
 
 ## M4 — Exif 擦除 + 自动模式 + 任务系统（PRD §6.5 / §6.6）
 
-> 拆分为四个阶段推进：**A 擦除基础 + B 擦除弹窗 + C 任务调度器 + 批处理页已落地**;**D 自动模式**待做。
+> 四个阶段全部落地：**A 擦除基础 + B 擦除弹窗 + C 任务调度器/批处理页 + D 自动模式**;持久化相关项(自动规则永久 scope、Exif 摘要缓存)统一顺延 M7。
 
 ### 已完成（Phase A — 擦除基础）
 
@@ -130,18 +130,21 @@
 - [x] 当前文件夹 / 当前组批量擦除接入调度器（擦除弹窗新增「应用范围」段:当前图片 / 当前组 / 文件夹;组、夹走 `task:startEraseBatch` 并跳转批处理页）
 - [x] 多图：默认只操作焦点图（已是默认）;批量就地覆盖须二次确认（按钮二次点击 arm）+ 日志（PRD §13.10）
 
-### 待做（Phase D — 自动模式，PRD §6.6）
+### 已完成（Phase D — 自动模式，PRD §6.6）
 
-- [ ] 自动模式：首张擦除后弹出「应用到其他图片?」选项（仅当前 / 当前文件夹 / 同目录自动 / 存为默认规则）
-- [ ] `ExifAutoRule` 结构 + scope（session_directory / directory / directory_recursive / global）+ applyOn + 持久化（`packages/config`）
-- [ ] 防误操作：明确状态提示 + 当前目录启用标识 + 执行前确认 + 一键关闭
+- [x] 自动模式：首张擦除后弹出「应用到其他图片?」（`AutoModePrompt`）：仅当前 / 当前文件夹全部（走批处理）/ 本文件夹本会话自动应用
+- [x] `ExifAutoRule` 结构（`shared-types`,记录完整目标形态）+ 会话级 `session_directory` 落地（`autoModeStore`,内存态）
+- [x] 自动应用：开启后在该目录内导航到未处理图片时**自动导出去元信息副本**（`useAutoErase`,始终 export-new、永不动原图,故浏览触发安全）
+- [x] 防误操作：顶部琥珀色状态条（`AutoModeStrip`,显示规则 + 目录）+ 一键关闭；首张提示每目录只弹一次
+- [~] 持久化 scope（directory / directory_recursive / global）+「存为默认规则」+ applyOn 多模式 → **顺延 M7**（依赖 settings.json,与语言设置一并迁移）
 
-**验收**（PRD §17.3）：能擦 GPS/指定字段并验证移除（✅ A）；默认不覆盖原图（✅ A/B）；自动模式可应用同目录、可关闭（待 D）；批量有确认+日志（✅ C）。
+**验收**（PRD §17.3）：能擦 GPS/指定字段并验证移除（✅ A）；默认不覆盖原图（✅ A/B）；自动模式可应用同目录、可关闭（✅ D）；批量有确认+日志（✅ C）。
 > M4 范围说明：
 > - **分层**：擦除规则/预设/校验/差异/验证 + 任务状态机纯逻辑全在 `packages/core`（`erase.ts` + `task.ts`,共 37 单测）;主进程 `services/exiftool.ts` 的 `eraseMetadata` 负责单文件 fs 编排（copyFile→strip→verify）,`services/taskScheduler.ts` 负责批处理执行与生命周期。
 > - **exiftool 写入**：`remove_selected` 走 `write(file,{},{writeArgs:['-tag=',…]})`;`remove_all_except_keep` 走 `deleteAllTags(file,{retain})`。导出/无备份就地追加 `-overwrite_original`,保留备份则不加（exiftool 自动留 `_original`）。写入参数已 headless 验证（GPS/设备剥离、Orientation 保留、原图不变）。
 > - **任务推送**：批处理进度走新的 main→renderer 推送通道 `task:update`（每次 mutation 推全量任务快照）,preload 经 `task.onUpdate(cb)` 订阅;其余仍是 invoke 请求/响应。批处理串行执行（exiftool 写入不可中断,暂停/取消在文件之间检查）。
-> - **持久化 Exif 摘要缓存**仍随 **M7**;自动规则持久化（Phase D）落 `packages/config` 的 settings。任务历史目前仅在主进程内存（重启即清,持久化任务日志非 MVP 必需）。
+> - **自动模式（Phase D）几乎全在渲染进程**：`autoModeStore`(会话态) + `useAutoErase`(导航触发) + `AutoModePrompt`/`AutoModeStrip`,复用既有 `metadata.erase`/`file.suggestExportPath`/`task.startEraseBatch`,无新增 IPC。安全取舍:自动应用**一律 export-new**,浏览触发不破坏原图。
+> - **持久化相关全部顺延 M7**：Exif 摘要缓存、自动规则永久 scope（directory/global）+「存为默认规则」、任务历史(目前仅主进程内存,重启即清)——均待 settings.json / SQLite 基建。
 
 ---
 

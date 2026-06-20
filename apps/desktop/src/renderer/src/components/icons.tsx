@@ -232,3 +232,5 @@ export const DownloadIcon = (p: IconProps) =>
 
 export const TasksIcon = (p: IconProps) =>
   svg(<path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01" />, p)
+
+export const ZapIcon = (p: IconProps) => svg(<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" />, p)

@@ -45,6 +45,28 @@ export interface BatchEraseRequest {
   label?: string
 }
 
+/**
+ * Auto-mode rule (PRD §6.6). The MVP wires only the `session_directory` scope (in-memory, cleared
+ * on restart) with implicit export-new application; the persistent scopes
+ * (`directory` / `directory_recursive` / `global`) and `applyOn` modes land with `settings.json` in
+ * M7. This type documents the full target shape so the session store stays forward-compatible.
+ */
+export type ExifAutoScope = 'session_directory' | 'directory' | 'directory_recursive' | 'global'
+
+export interface ExifAutoRule {
+  id: string
+  name: string
+  enabled: boolean
+  scope: ExifAutoScope
+  directory?: string
+  mode: EraseMode
+  removeTags: string[]
+  keepTags?: string[]
+  applyOn: 'manual_confirm' | 'on_save' | 'on_export' | 'on_open'
+  createdAt: number
+  updatedAt: number
+}
+
 export type EraseStatus = 'success' | 'failed' | 'skipped'
 
 /** Outcome of erasing one file. */
