@@ -214,7 +214,7 @@
 - [~] 图片预加载策略调优(**M1/M2 顺延**):单图前后已做(`Canvas` 保留 ≤2 个 `new Image()` warm Chromium 内存缓存,翻页秒开,内存有界);各多图模式「下一组」预加载待做
 - [ ] 多图预览加载策略:只加载当前组原图 + 下一组**轻量预览**;50MP+ 优先格子尺寸预览(**M2 🔴 顺延**;grid 按尺寸择 preview 需先回填 `width/height`,见 group A 顺延的尺寸读取)
 - [ ] 多图预览任务接入调度器:优先级 + 翻组时取消过期任务(**M2 顺延**)
-- [ ] 大图策略:50MP+ fit 时显示 preview、仅 ≥100% 加载原图(需改单图缩放管线,风险较高,单列)
+- [x] 大图策略完成:源尺寸 > preview 分辨率(2048px)时,fit/低缩放显示缓存 `preview`,屏上宽度超过 preview 分辨率才换原图。Canvas 经新 `image.dimensions` IPC(sharp metadata 读头、含 EXIF 方向、不全解码)拿 **真实尺寸** 喂 `setNatural`,故显示 preview 时 fit/缩放%/状态栏尺寸仍正确;小图与 svg/ico(或尺寸未知)仍用原图。`services/imageInfo.ts` 探测+缓存,spike 验证
 - [ ] 多图模式内存优化收尾 + 长时浏览内存稳定性测试(1000 张连切不涨内存)
 
 ### D. 持久化设置（settings.json + `packages/config`,PRD §10.1）
