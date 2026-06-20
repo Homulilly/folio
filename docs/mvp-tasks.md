@@ -214,7 +214,7 @@
 - [~] 图片预加载策略调优(**M1/M2 顺延**):单图前后已做(`Canvas` 保留 ≤2 个 `new Image()` warm Chromium 内存缓存,翻页秒开,内存有界);各多图模式「下一组」预加载待做
 - [ ] 多图预览加载策略:只加载当前组原图 + 下一组**轻量预览**;50MP+ 优先格子尺寸预览(**M2 🔴 顺延**;grid 按尺寸择 preview 需先回填 `width/height`,见 group A 顺延的尺寸读取)
 - [ ] 多图预览任务接入调度器:优先级 + 翻组时取消过期任务(**M2 顺延**)
-- [~] 大图策略:**单图视图按用户偏好一律载入原图**(全质量,不做 preview 替换);仅浏览器无法解码的格式(HEIC/TIFF…)回退 sharp `preview`,并经 `image.dimensions` IPC(sharp metadata 读头、含 EXIF 方向、不全解码,`services/imageInfo.ts` 缓存)拿 **真实尺寸** 喂 `setNatural`(状态栏尺寸正确)。**大图 preview 替换(fit 显示 preview、缩放才取原图)保留给多图网格**(内存敏感处),尚未接入
+- [x] 大图策略:**单图视图按用户偏好一律载入原图**(全质量,不做 preview 替换);仅浏览器无法解码的格式(HEIC/TIFF…)回退 sharp `preview`,经 `image.dimensions` IPC(sharp metadata 读头、含 EXIF 方向、不全解码,`services/imageInfo.ts` 缓存)拿真实尺寸喂 `setNatural`(状态栏尺寸正确)。**多图网格**:每格探测尺寸,**大图栅格(>2048px)用 preview** 限制同组并发解码内存,小图栅格 / svg/ico 用原图,非可解码格式用 preview;展开(Enter)进单图仍显示原图
 - [ ] 多图模式内存优化收尾 + 长时浏览内存稳定性测试(1000 张连切不涨内存)
 
 ### D. 持久化设置（settings.json + `packages/config`,PRD §10.1）
