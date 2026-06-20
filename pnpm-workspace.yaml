@@ -6,5 +6,6 @@ packages:
 allowBuilds:
   electron: true
   esbuild: true
+  sharp: true
   # Windows-installer tooling; not needed for macOS/Linux dev or packaging.
   electron-winstaller: false
