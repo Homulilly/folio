@@ -70,7 +70,12 @@ function Slot({
 
   const renderable = canRenderNatively(item)
   const scaled = active && !fit
-  const ring = focused ? 'ring-2 ring-[#0A84FF]' : 'ring-1 ring-white/[0.06]'
+  // Focused cell: a soft accent glow on the cell (outside the box, never covered) + a neutral
+  // hairline. The accent ring itself is an overlay painted ABOVE the image (see below) so a
+  // full-bleed photo can't hide it. Both states inset so focus changes never shift the cell box.
+  const ring = focused
+    ? 'ring-1 ring-inset ring-white/[0.06] shadow-[0_0_16px_-3px_rgba(10,132,255,0.5)]'
+    : 'ring-1 ring-inset ring-white/[0.06]'
   const transform =
     `${rotation ? `rotate(${rotation}deg)` : ''} ${scaled ? `scale(${zoom / 100})` : ''}`.trim() ||
     undefined
@@ -80,7 +85,7 @@ function Slot({
       type="button"
       onClick={onFocus}
       onDoubleClick={onExpand}
-      className={`group relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-black ${ring}`}
+      className={`group relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-black transition-shadow duration-150 ${ring}`}
       style={{ background: 'radial-gradient(circle at 50% 38%, #131315 0%, #000 80%)' }}
     >
       {!renderable ? (
@@ -118,6 +123,11 @@ function Slot({
             style={{ opacity: status === 'loaded' ? 1 : 0, transform }}
           />
         </>
+      )}
+
+      {/* Focus accent ring — layered above the image so a full-bleed photo can't cover it. */}
+      {focused && (
+        <span className="pointer-events-none absolute inset-0 rounded-lg ring-[1.5px] ring-inset ring-[#0A84FF]/90" />
       )}
 
       <span className="pointer-events-none absolute left-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-md bg-black/55 font-mono text-[10px] text-white/80 backdrop-blur">
