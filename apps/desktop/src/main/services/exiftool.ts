@@ -8,12 +8,13 @@ import type {
   ExifMetadata,
 } from '@folio/shared-types'
 import { exiftool } from 'exiftool-vendored'
+import { dropExif, getExif, putExif } from './metaCache'
 
 // exiftool-vendored manages a persistent ExifTool child-process pool and queues reads itself,
 // so this service is just a thin wrapper: read with family-0 grouping (`-G0`), normalise via the
-// pure core helpers, and memoise per file. The persistent SQLite summary cache (PRD §10.2) is
-// deferred to M7 alongside the rest of the cache infra — here we keep a bounded in-memory cache,
-// invalidated when the file's mtime changes.
+// pure core helpers, and memoise per file. Two cache layers: a bounded in-memory L1 (hot, this
+// session) over a persistent SQLite L2 (metaCache, PRD §10.2) so a session-cold read of an
+// already-seen image skips re-shelling ExifTool. Both invalidate on the file's mtime.
 
 interface CacheEntry {
   mtimeMs: number
@@ -49,16 +50,29 @@ export async function readMetadata(filePath: string): Promise<ExifMetadata | nul
     return cached.data
   }
 
+  // L2: persistent SQLite summary cache (survives restarts), invalidated on mtime change.
+  const persisted = getExif(filePath, mtimeMs)
+  if (persisted) {
+    remember(filePath, mtimeMs, persisted)
+    return persisted
+  }
+
   try {
     const data: ExifMetadata = { filePath, groups: await readGroups(filePath) }
-    cache.set(filePath, { mtimeMs, data })
-    if (cache.size > CACHE_LIMIT) {
-      const oldest = cache.keys().next().value
-      if (oldest !== undefined) cache.delete(oldest)
-    }
+    remember(filePath, mtimeMs, data)
+    putExif(filePath, mtimeMs, data)
     return data
   } catch {
     return null
+  }
+}
+
+/** Store in the bounded in-memory L1 cache, evicting the oldest entry past the limit. */
+function remember(filePath: string, mtimeMs: number, data: ExifMetadata): void {
+  cache.set(filePath, { mtimeMs, data })
+  if (cache.size > CACHE_LIMIT) {
+    const oldest = cache.keys().next().value
+    if (oldest !== undefined) cache.delete(oldest)
   }
 }
 
@@ -112,6 +126,7 @@ export async function eraseMetadata(
     }
 
     cache.delete(output)
+    dropExif(output)
     const { verifiedRemoved, stillPresent } = verifyRemoval(rule, await readGroups(output))
     return { filePath, status: 'success', outputPath: output, verifiedRemoved, stillPresent }
   } catch (e) {
