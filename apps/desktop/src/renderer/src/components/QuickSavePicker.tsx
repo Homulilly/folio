@@ -57,10 +57,15 @@ export function QuickSavePicker(): React.JSX.Element | null {
           e.stopPropagation()
           close()
           break
+        default:
+          // Swallow every other key too, so the viewer's nav shortcuts (←/→, A/D, Space, …)
+          // don't switch the image underneath while the picker is open. No preventDefault, so OS
+          // menu accelerators still work.
+          e.stopPropagation()
       }
     }
     // Capture phase: stopPropagation here prevents the bubble-phase global shortcut handler
-    // (also on window) from acting on the same key — arrows stay confined to the picker.
+    // (also on window) from acting on the same key — navigation stays confined to the picker.
     window.addEventListener('keydown', onKey, { capture: true })
     return () => window.removeEventListener('keydown', onKey, { capture: true })
   }, [open, close, dirs, index])
