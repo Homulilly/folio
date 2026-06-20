@@ -276,16 +276,15 @@ export const SaveIcon = (p: IconProps) =>
     1.7,
   )
 
-// Source tile → target tile with an arrow between — format conversion (one file becomes another).
+// Tray on the left with an arrow sending outward — format conversion.
 export const ConvertIcon = (p: IconProps) =>
   svg(
     <>
-      <rect x="2.5" y="5" width="8" height="14" rx="1.6" />
-      <rect x="13.5" y="5" width="8" height="14" rx="1.6" />
-      <path d="M10.8 12h2.4m-1.1-1.4 1.4 1.4-1.4 1.4" />
+      <path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" />
+      <path d="M8 12h11m-3.5-3.5 3.5 3.5-3.5 3.5" />
     </>,
     p,
-    1.6,
+    1.7,
   )
 
 // Arrow into a tray — quick save (one-click send to the remembered folder).
