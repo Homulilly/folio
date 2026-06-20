@@ -1,8 +1,8 @@
 import { groupSlots, groupStartForIndex } from '@folio/core'
 import type { FileProbe, ImageQueueItem, MultiViewLayout } from '@folio/shared-types'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useT } from '../i18n'
-import { canRenderNatively, displaySrc, formatBytes, formatLabel } from '../lib/format'
+import { canRenderNatively, formatBytes, formatLabel, imageUrl } from '../lib/format'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
 import { useViewerStore } from '../stores/viewerStore'
@@ -59,6 +59,35 @@ function Slot({
   // starts fresh and the offscreen <img> unmounts to release its decoded bitmap.
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading')
   const [reason, setReason] = useState<FileProbe | null>(null)
+  // Which variant this cell loads. Large rasters (and non-decodable formats) use the cheaper sharp
+  // preview, so a group of big images doesn't decode several full-res originals at once; small
+  // rasters and svg/ico use the original. null = still measuring (a quick dimensions probe).
+  const [variant, setVariant] = useState<'original' | 'preview' | null>(null)
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-measure when the slot's image changes
+  useEffect(() => {
+    if (!item) return
+    if (!canRenderNatively(item)) {
+      setVariant('preview') // HEIC/TIFF/… can't decode the original in an <img>
+      return
+    }
+    let cancelled = false
+    setVariant(null)
+    window.gv.image
+      .dimensions(item.filePath)
+      .then((d) => {
+        if (cancelled) return
+        // Only swap a true raster to preview; svg/ico (no sniffed format) stay on the original.
+        const large = d != null && (d.width > 2048 || d.height > 2048) && item.format != null
+        setVariant(large ? 'preview' : 'original')
+      })
+      .catch(() => {
+        if (!cancelled) setVariant('original')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [item?.filePath])
 
   if (!item) {
     return (
@@ -107,25 +136,28 @@ function Slot({
         )
       ) : (
         <>
-          {status === 'loading' && (
+          {(status === 'loading' || variant === null) && (
             <div className="absolute inset-0 flex items-center justify-center">
               <Spinner />
             </div>
           )}
-          {/* Renderable → original; otherwise the sharp-generated preview so HEIC/TIFF/etc. show. */}
-          <img
-            key={item.id}
-            src={displaySrc(item)}
-            alt={item.fileName}
-            draggable={false}
-            onLoad={() => setStatus('loaded')}
-            onError={() => {
-              setStatus('error')
-              void window.gv.file.probe(item.filePath).then(setReason)
-            }}
-            className="max-h-full max-w-full object-contain transition-opacity"
-            style={{ opacity: status === 'loaded' ? 1 : 0, transform }}
-          />
+          {/* Big rasters load the sharp preview (bounds grid memory); small rasters & non-decodable
+              formats resolve in the effect above. Waits for the variant decision before loading. */}
+          {variant !== null && (
+            <img
+              key={item.id}
+              src={imageUrl(variant, item.filePath)}
+              alt={item.fileName}
+              draggable={false}
+              onLoad={() => setStatus('loaded')}
+              onError={() => {
+                setStatus('error')
+                void window.gv.file.probe(item.filePath).then(setReason)
+              }}
+              className="max-h-full max-w-full object-contain transition-opacity"
+              style={{ opacity: status === 'loaded' ? 1 : 0, transform }}
+            />
+          )}
         </>
       )}
 
@@ -147,8 +179,9 @@ function Slot({
   )
 }
 
-/** The multi-image grid. Renders only the current group's originals — offscreen images
- *  unmount, so the browser releases their decoded bitmaps and memory stays flat. */
+/** The multi-image grid. Renders only the current group's cells (big rasters via the lightweight
+ *  preview); offscreen groups unmount, so the browser releases their decoded bitmaps and memory
+ *  stays flat. */
 export function MultiView(): React.JSX.Element {
   const items = useQueueStore((s) => s.items)
   const currentIndex = useQueueStore((s) => s.currentIndex)
