@@ -194,21 +194,19 @@
 
 > 当前所有缓存都是**主进程内存**态,重启即清;M7 落地 `better-sqlite3`(主进程)+ 磁盘缓存目录,把这些入库。
 
-- [ ] 接入 `better-sqlite3`(主进程),作为缩略图/预览/Exif 摘要/哈希的统一元数据缓存层
-- [ ] 缩略图缓存:Worker 异步生成,key=`hash(path+size+mtime)`,目录 `.cache/thumbnails`
-- [ ] 预览图缓存:key 含目标尺寸+色彩模式,目录 `.cache/previews`,mtime 变化失效
+- [x] 接入 `better-sqlite3`(主进程,WAL),作为缩略图/预览(后续 Exif/哈希)的统一元数据缓存层(`services/db.ts`;非 N-API,`postinstall` 走 `electron-rebuild` 对齐 Electron ABI,见 spike)
+- [x] 缩略图缓存:sharp 生成 webp,key=`sha1(variant+spec+mtime+size+path)`,文件落 `userData/cache/thumb`,SQLite 索引(`services/thumbnail.ts` + `image-processing/variant.ts`,纯 key 逻辑含单测)
+- [x] 预览图缓存:同上,2048px webp,落 `userData/cache/preview`;mtime/size 变化即换 key 失效
 - [ ] Exif 摘要缓存入库(**M3 顺延**;现为主进程内存 LRU,path+mtime 失效)
 - [ ] 哈希(MD5/SHA1)缓存入库(**M5 顺延**;现为 `services/hash.ts` 内存有界缓存)
-- [ ] 缓存大小上限管理(settings:thumbnail/previewCacheSizeMB)+ 淘汰策略
+- [x] 缓存大小上限管理 + 淘汰策略:per-variant 字节预算(512MB/1GB,**暂硬编码**)超额按 `accessed_ms` LRU 淘汰,每 128 次写入批量触发(settings 化的预算待 Phase D)
 
-### B. 缩略图 / 预览管线（sharp Worker Threads 离线化）
+### B. 缩略图 / 预览管线（sharp 主进程异步;Worker 离线化按需）
 
-> 把所有耗时图像/哈希操作从主进程主线程移到 Worker(PRD 架构铁律 §4 Task Scheduler)。
-
-- [ ] `gv-img://` 的 `thumb` / `preview` variant 接 sharp(**现返回 501**,见 `protocol.ts`)
-- [ ] 队列栏显示缩略图(**M1 顺延**;现为文字行:文件名+大小+格式)
-- [ ] 大队列**虚拟化**渲染(**M1 顺延**;现一次性渲染所有行)
-- [ ] hash / 缩略图 / 预览 / Exif 读取统一离线化到 Worker Threads(**M5/M6 顺延**;sharp async 现直接跑主进程)
+- [x] `gv-img://` 的 `thumb` / `preview` variant 接 sharp(原返回 501;`protocol.ts` 流式回传缓存文件,生成失败回 415)
+- [x] 队列栏显示缩略图(**M1 顺延**;`QueueRail` 改 lazy `<img src=gv-img://thumb>`,`loading="lazy"` 仅请求可视行,解码失败回退格式徽章)
+- [ ] 大队列**虚拟化**渲染(**M1 顺延**;现一次性渲染所有行 + `loading="lazy"` 缓解,大目录仍待虚拟化)
+- [ ] hash / 缩略图 / 预览 / Exif 读取统一离线化到 Worker Threads(**M5/M6 顺延**;sharp async 已自带 libvips 线程池、主进程不阻塞,同 M6 取舍——仅在 profiling 显示主线程争用时再上 Worker)
 
 ### C. 性能与内存（PRD §14）
 
