@@ -3,6 +3,7 @@ import { IpcChannel } from '@folio/shared-types'
 import { app, BrowserWindow, shell } from 'electron'
 import { registerIpcHandlers } from './ipc'
 import { handleImageProtocol, registerImageProtocolSchemes } from './protocol'
+import { closeDb } from './services/db'
 import { endExifTool } from './services/exiftool'
 
 app.setName('Folio')
@@ -67,7 +68,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
 })
 
-// Tear down the persistent ExifTool child process so it doesn't outlive the app.
+// Tear down the persistent ExifTool child process and checkpoint/close the cache DB on quit.
 app.on('will-quit', () => {
   void endExifTool()
+  closeDb()
 })

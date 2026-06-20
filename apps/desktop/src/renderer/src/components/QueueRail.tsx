@@ -1,9 +1,9 @@
 import { groupStartForIndex, SORT_MODES, viewCountForMode } from '@folio/core'
-import type { DirEntry } from '@folio/shared-types'
+import type { DirEntry, ImageQueueItem } from '@folio/shared-types'
 import { useEffect, useRef, useState } from 'react'
 import { SORT_LABEL_KEYS, useT } from '../i18n'
 import { loadFolder, refreshQueue } from '../lib/actions'
-import { formatBytes, formatLabel } from '../lib/format'
+import { formatBytes, formatLabel, imageUrl } from '../lib/format'
 import { useFolderStore } from '../stores/folderStore'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
@@ -199,6 +199,33 @@ function FolderBrowser(): React.JSX.Element {
   )
 }
 
+/** Row thumbnail: lazily loads the cached gv-img://thumb variant, falling back to a format badge
+ * (covers formats sharp can't decode, e.g. JXL, and any generation failure). `loading="lazy"` means
+ * only on-screen rows trigger generation, so opening a huge folder doesn't request every thumb. */
+function Thumb({ item }: { item: ImageQueueItem }): React.JSX.Element {
+  const [failed, setFailed] = useState(false)
+  const badge = 'flex h-9 w-9 flex-none items-center justify-center rounded-md bg-white/[0.06]'
+  if (failed) {
+    return (
+      <span className={`${badge} font-mono text-[9px] font-bold text-[rgba(235,235,245,0.6)]`}>
+        {formatLabel(item).toUpperCase().slice(0, 4)}
+      </span>
+    )
+  }
+  return (
+    <span className={`${badge} overflow-hidden`}>
+      <img
+        src={imageUrl('thumb', item.filePath)}
+        alt=""
+        loading="lazy"
+        draggable={false}
+        className="h-full w-full object-cover"
+        onError={() => setFailed(true)}
+      />
+    </span>
+  )
+}
+
 export function QueueRail(): React.JSX.Element {
   const t = useT()
   const items = useQueueStore((s) => s.items)
@@ -269,9 +296,7 @@ export function QueueRail(): React.JSX.Element {
                         : 'hover:bg-white/[0.04]'
                   }`}
                 >
-                  <span className="flex h-9 w-9 flex-none items-center justify-center rounded-md bg-white/[0.06] font-mono text-[9px] font-bold text-[rgba(235,235,245,0.6)]">
-                    {formatLabel(it).toUpperCase().slice(0, 4)}
-                  </span>
+                  <Thumb item={it} />
                   <span className="flex min-w-0 flex-1 flex-col gap-0.5">
                     <span
                       className={`truncate text-[13px] ${selected ? 'text-white' : 'text-[rgba(235,235,245,0.85)]'}`}

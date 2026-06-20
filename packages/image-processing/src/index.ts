@@ -2,6 +2,7 @@
 // M0: only pure, dependency-free format helpers used by the directory scanner.
 
 export * from './format'
+export * from './variant'
 
 /** Extensions the viewer will enqueue when scanning a folder (PRD §6.3 base + modern). */
 export const SUPPORTED_EXTENSIONS: ReadonlySet<string> = new Set([

@@ -13,5 +13,8 @@
   },
   "dependencies": {
     "@folio/shared-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3"
   }
 }
