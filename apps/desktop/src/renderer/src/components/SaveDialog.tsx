@@ -129,8 +129,10 @@ export function SaveDialog(): React.JSX.Element | null {
   }
 
   const onSave = async (): Promise<void> => {
-    if (!canSave) return
+    if (!canSave || !targetDir) return
     const toast = useToastStore.getState().show
+    // Remember these settings as the session quick-save rule (T / quick button).
+    useSaveStore.getState().setQuickRule({ targetDir, naming, conflict })
     setRunning(true)
     try {
       if (isBatch) {

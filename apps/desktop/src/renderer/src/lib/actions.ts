@@ -134,6 +134,37 @@ export function openRenameDialog(): void {
   useRenameStore.getState().openDialog()
 }
 
+const baseNameOf = (p: string): string => p.replaceAll('\\', '/').split('/').pop() ?? p
+
+/**
+ * One-click "quick save" of the focused image (T / quick button). The first time, there is no
+ * remembered rule yet, so it opens the dialog to establish one; afterwards it saves directly with
+ * the session quick-save rule (PRD §6.7). The right-click menu always opens the full dialog.
+ */
+export async function quickSaveCurrent(): Promise<void> {
+  const item = currentItem()
+  if (!item) return
+  const save = useSaveStore.getState()
+  const rule = save.quickRule
+  if (!rule) {
+    save.openDialog() // first use this session — ask, and the dialog records the rule on save
+    return
+  }
+  const [res] = await window.gv.file.saveToTarget({
+    files: [{ filePath: item.filePath, index: queue().currentIndex + 1 }],
+    targetDir: rule.targetDir,
+    naming: rule.naming,
+    conflict: rule.conflict,
+  })
+  if (!res || res.status === 'failed') {
+    toast().show(tNow('toast.saveFailed', { error: res?.error ?? '' }), 'error')
+  } else if (res.status === 'skipped') {
+    toast().show(tNow('toast.saveSkipped'), 'error')
+  } else {
+    toast().show(tNow('toast.quickSaved', { name: baseNameOf(res.outputPath ?? '') }), 'success')
+  }
+}
+
 /** Copy arbitrary text (an Exif field, or the full metadata JSON) to the clipboard. */
 export async function copyText(text: string, toastKey: I18nKey = 'toast.copied'): Promise<void> {
   if (!text) return

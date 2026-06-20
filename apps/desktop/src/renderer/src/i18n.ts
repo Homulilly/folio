@@ -235,6 +235,8 @@ const en = {
   'settings.language.en': 'English',
 
   'toolbar.saveTo': 'Save to folder…',
+  'toolbar.quickSaveTo': 'Quick save → {dir} (T)',
+  'toolbar.quickSaveSetup': 'Quick save — set a folder first (T)',
   'toolbar.rename': 'Batch rename…',
   'context.saveTo': 'Save to folder…',
   'context.rename': 'Batch rename…',
@@ -270,6 +272,7 @@ const en = {
   'save.confirmBatch': 'Save {count}',
 
   'toast.saved': 'Saved {name}',
+  'toast.quickSaved': 'Quick-saved {name}',
   'toast.saveSkipped': 'Skipped — file already exists',
   'toast.saveFailed': 'Save failed: {error}',
   'toast.saveBatchStarted': 'Saving {count} files…',
@@ -542,6 +545,8 @@ const zhCN: Record<keyof typeof en, string> = {
   'settings.language.en': '英文',
 
   'toolbar.saveTo': '保存到文件夹…',
+  'toolbar.quickSaveTo': '快速保存 → {dir} (T)',
+  'toolbar.quickSaveSetup': '快速保存——请先设置文件夹 (T)',
   'toolbar.rename': '批量重命名…',
   'context.saveTo': '保存到文件夹…',
   'context.rename': '批量重命名…',
@@ -577,6 +582,7 @@ const zhCN: Record<keyof typeof en, string> = {
   'save.confirmBatch': '保存 {count} 个',
 
   'toast.saved': '已保存 {name}',
+  'toast.quickSaved': '已快速保存 {name}',
   'toast.saveSkipped': '已跳过——目标文件已存在',
   'toast.saveFailed': '保存失败：{error}',
   'toast.saveBatchStarted': '正在保存 {count} 个文件…',

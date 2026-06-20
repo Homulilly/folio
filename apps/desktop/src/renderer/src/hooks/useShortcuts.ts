@@ -4,6 +4,7 @@ import {
   advance,
   copyImageCurrent,
   copyPathCurrent,
+  quickSaveCurrent,
   toggleFullscreen,
   trashCurrent,
 } from '../lib/actions'
@@ -164,6 +165,12 @@ export function useShortcuts(): void {
         case 'R':
           e.preventDefault()
           queue.random()
+          break
+        case 't':
+        case 'T':
+          // Quick save (transfer) the focused image to the remembered folder; first use asks.
+          e.preventDefault()
+          void quickSaveCurrent()
           break
         case 'F11':
           e.preventDefault()

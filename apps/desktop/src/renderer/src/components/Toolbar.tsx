@@ -5,11 +5,13 @@ import {
   openFolder,
   openRenameDialog,
   openSaveDialog,
+  quickSaveCurrent,
   toggleFullscreen,
 } from '../lib/actions'
 import { useExifStore } from '../stores/exifStore'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
+import { useSaveStore } from '../stores/saveStore'
 import { useTaskStore } from '../stores/taskStore'
 import { useUiStore } from '../stores/uiStore'
 import { useViewerStore } from '../stores/viewerStore'
@@ -26,6 +28,7 @@ import {
   LayoutSwap,
   LayoutTriple,
   LoopIcon,
+  QuickSaveIcon,
   RenameIcon,
   RotateIcon,
   RotateResetIcon,
@@ -71,6 +74,10 @@ function TbButton({
 
 const Divider = () => <div className="mx-1 h-[22px] w-px bg-white/[0.08]" />
 
+/** Last path segment, for the quick-save tooltip (e.g. ".../Exports" → "Exports"). */
+const folderName = (p: string): string =>
+  p.replaceAll('\\', '/').replace(/\/+$/, '').split('/').pop() ?? p
+
 const MODE_BUTTONS: { mode: MultiViewMode; titleKey: I18nKey; Icon: typeof LayoutSingle }[] = [
   { mode: 'single', titleKey: 'toolbar.mode.single', Icon: LayoutSingle },
   { mode: 'dual', titleKey: 'toolbar.mode.dual', Icon: LayoutDual },
@@ -96,6 +103,7 @@ export function Toolbar(): React.JSX.Element {
   const nextGroup = useMultiViewStore((s) => s.nextGroup)
   const prevGroup = useMultiViewStore((s) => s.prevGroup)
 
+  const quickRule = useSaveStore((s) => s.quickRule)
   const queueCollapsed = useUiStore((s) => s.queueCollapsed)
   const activeView = useUiStore((s) => s.activeView)
   const exifOpen = useExifStore((s) => s.open)
@@ -140,6 +148,17 @@ export function Toolbar(): React.JSX.Element {
       </TbButton>
       <TbButton title={t('toolbar.saveTo')} onClick={openSaveDialog} disabled={!hasImages}>
         <SaveIcon size={17} />
+      </TbButton>
+      <TbButton
+        title={
+          quickRule
+            ? t('toolbar.quickSaveTo', { dir: folderName(quickRule.targetDir) })
+            : t('toolbar.quickSaveSetup')
+        }
+        onClick={() => void quickSaveCurrent()}
+        disabled={!hasImages}
+      >
+        <QuickSaveIcon size={17} />
       </TbButton>
       <TbButton title={t('toolbar.rename')} onClick={openRenameDialog} disabled={!hasImages}>
         <RenameIcon size={17} />

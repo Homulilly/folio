@@ -276,6 +276,17 @@ export const SaveIcon = (p: IconProps) =>
     1.7,
   )
 
+// Arrow into a tray — quick save (one-click send to the remembered folder).
+export const QuickSaveIcon = (p: IconProps) =>
+  svg(
+    <>
+      <path d="M12 3v9m0 0 3.5-3.5M12 12 8.5 8.5" />
+      <path d="M4 14v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+    </>,
+    p,
+    1.7,
+  )
+
 // Pencil over a baseline — batch rename.
 export const RenameIcon = (p: IconProps) =>
   svg(

@@ -10,6 +10,17 @@ export type SaveNamingChoice = 'keep' | 'md5' | 'sha1' | 'sequence' | 'template'
 /** The template the `sequence` choice uses. */
 export const SEQUENCE_TEMPLATE = '{nr:001}.{ext}'
 
+/**
+ * The remembered "quick save" rule (PRD §6.7). Captured from the dialog on the first successful save
+ * this session; the T shortcut / quick button then one-click saves the focused image with it.
+ * In-memory only for now — persisting to settings.json is deferred to M7.
+ */
+export interface QuickSaveRule {
+  targetDir: string
+  naming: NamingOptions
+  conflict: ConflictPolicy
+}
+
 interface SaveDialogState {
   open: boolean
   scope: SaveScope
@@ -18,6 +29,8 @@ interface SaveDialogState {
   /** Custom template (edited when choice is `template`). */
   template: string
   conflict: ConflictPolicy
+  /** Session quick-save rule; null until the first save establishes it. */
+  quickRule: QuickSaveRule | null
   openDialog: () => void
   close: () => void
   setScope: (scope: SaveScope) => void
@@ -25,6 +38,7 @@ interface SaveDialogState {
   setChoice: (choice: SaveNamingChoice) => void
   setTemplate: (template: string) => void
   setConflict: (conflict: ConflictPolicy) => void
+  setQuickRule: (rule: QuickSaveRule) => void
 }
 
 export const useSaveStore = create<SaveDialogState>((set) => ({
@@ -34,6 +48,7 @@ export const useSaveStore = create<SaveDialogState>((set) => ({
   choice: 'keep',
   template: '{name}_{nr:001}.{ext}',
   conflict: 'number',
+  quickRule: null,
   openDialog: () => set({ open: true, scope: 'image' }),
   close: () => set({ open: false }),
   setScope: (scope) => set({ scope }),
@@ -41,6 +56,7 @@ export const useSaveStore = create<SaveDialogState>((set) => ({
   setChoice: (choice) => set({ choice }),
   setTemplate: (template) => set({ template }),
   setConflict: (conflict) => set({ conflict }),
+  setQuickRule: (quickRule) => set({ quickRule }),
 }))
 
 /** Resolve the UI naming choice into the IPC `NamingOptions`. */
