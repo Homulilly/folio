@@ -150,15 +150,19 @@
 
 ## M5 — 保存到目标 + 批量重命名（PRD §6.7 / §6.8）
 
-- [ ] hash Worker：MD5 / SHA1
-- [ ] `file.saveToTarget(options)`：保持原名/MD5/SHA1/自定义/序号
-- [ ] 命名模板引擎（`packages/core/naming`）：`{name}{ext}{md5}{sha1}{date}{time}{mtime}{width}{height}{index}{nr:001}`
-- [ ] 冲突处理：跳过/覆盖/追加序号/询问/MD5 比对
-- [ ] `file.batchRename(options)`：替换删除字符（含正则）/ 指定位置删除 / 按排序编号
-- [ ] 🔴 重命名安全：预览表格 + 重名检测 + 非法字符检测 + 循环冲突(A→B,B→A)避免 + dry-run + 日志
-- [ ] 多图：保存焦点图；保存当前组前显示任务预览
+- [x] hash：MD5 / SHA1（`services/hash.ts`,`node:crypto` 流式 + path+mtime 缓存;**Worker Threads 离线化顺延 M7**,与缩略图/预览缓存一并做）
+- [x] `file.saveToTarget(options)`：保持原名/MD5/SHA1/自定义模板/序号(序号即 `{nr:001}.{ext}` 模板)
+- [x] 命名模板引擎（`packages/core/naming.ts`,纯函数 + 单测）：`{name}{ext}{md5}{sha1}{date}{time}{mtime}{width}{height}{index}{nr:001}` + `sanitizeFilename`
+- [x] 冲突处理：跳过/覆盖/追加序号/MD5 比对(相同跳过,否则递增);**「弹窗询问」(交互式逐文件)顺延后续**——四种非交互策略已覆盖安全默认
+- [x] `file.batchRename(options)`：替换删除字符（含正则/大小写/仅文件名）/ 指定位置删除(前 N/后 N/区间/标记前后) / 按序号编号
+- [x] 🔴 重命名安全：预览表格 + 重名检测 + 非法字符检测 + 循环冲突(A→B,B→A)避免(执行期两阶段临时名 + 失败回滚) + dry-run(预览即 dry-run) + 日志(复制/导出);**撤销以重命名日志替代**(PRD §6.8「撤销，或生成日志」二选一)
+- [x] 多图：保存焦点图(scope=image,直接 IPC);保存当前组/文件夹走 `task.startSaveBatch` + 批处理页(任务预览/进度)
 
-**验收**（PRD §17.4）：MD5/SHA1/自定义命名；批量重命名有预览+冲突检测；失败不破坏原文件；多图当前组保存前有预览。
+**验收**（PRD §17.4）：✅ typecheck/test(111 core + 6 服务集成,已验证后移除)/lint/build 全绿；MD5/SHA1/自定义命名、批量重命名预览+冲突检测、失败不破坏原文件(save 只复制不动原图、rename 两阶段回滚)、多图当前组保存前有预览——均经临时集成测试覆盖(keep/md5/number/md5_compare + A↔B 交换 + 外部冲突回滚)。
+> M5 范围说明 / 顺延项：
+> - **分层**：命名模板(`naming.ts`)+ 重命名规划器(`rename.ts`,含 illegal/duplicate/collision 检测、A→B/B→A 环不视为冲突)纯逻辑在 `packages/core`(单测);`services/hash.ts`(流式哈希)、`services/save.ts`(复制+命名+冲突)、`services/rename.ts`(两阶段改名)做 fs 编排;`taskScheduler` 泛化为通用 `execute/spawn` Control,erase/save 共用一套生命周期。
+> - **save 安全**：一律 `copyFile` 复制,绝不移动/覆盖原图,且拒绝写到源文件自身。
+> - **顺延**：hash Worker Threads 离线化、冲突「弹窗询问」、撤销(以日志替代)→ 后续/M7。
 
 ---
 
