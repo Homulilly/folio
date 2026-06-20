@@ -40,6 +40,11 @@ const api: Bridge = {
   clipboard: {
     writeText: (text) => ipcRenderer.invoke(IpcChannel.clipboardWriteText, text),
   },
+  settings: {
+    get: () => ipcRenderer.invoke(IpcChannel.settingsGet),
+    update: (patch) => ipcRenderer.invoke(IpcChannel.settingsUpdate, patch),
+    reset: () => ipcRenderer.invoke(IpcChannel.settingsReset),
+  },
   recent: {
     list: () => ipcRenderer.invoke(IpcChannel.recentList),
     remove: (directory) => ipcRenderer.invoke(IpcChannel.recentRemove, directory),

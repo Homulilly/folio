@@ -3,12 +3,13 @@ import { join } from 'node:path'
 import { type CacheVariant, VARIANT_SPECS, variantCacheKey } from '@folio/image-processing'
 import sharp from 'sharp'
 import { cacheDir, getDb } from './db'
+import { getSettings } from './settings'
 
-// On-disk budget per variant before LRU eviction kicks in. Hardcoded for now; M7 Phase D wires these
-// to settings.json (thumbnail/previewCacheSizeMB).
-const CACHE_BUDGET_BYTES: Record<CacheVariant, number> = {
-  thumb: 512 * 1024 * 1024,
-  preview: 1024 * 1024 * 1024,
+/** On-disk budget per variant before LRU eviction kicks in, from settings.json (thumbnail/previewCacheSizeMB). */
+function cacheBudgetBytes(variant: CacheVariant): number {
+  const s = getSettings()
+  const mb = variant === 'thumb' ? s.thumbnailCacheSizeMB : s.previewCacheSizeMB
+  return mb * 1024 * 1024
 }
 
 // Generate-on-demand thumbnail/preview variants served over gv-img://, cached to disk and indexed
@@ -177,7 +178,7 @@ function schedulePrune(variant: CacheVariant): void {
 
 async function pruneVariant(variant: CacheVariant): Promise<void> {
   const db = ensureTable()
-  const budget = CACHE_BUDGET_BYTES[variant]
+  const budget = cacheBudgetBytes(variant)
   const total =
     (
       db.prepare('SELECT SUM(bytes) AS n FROM variants WHERE variant = ?').get(variant) as {

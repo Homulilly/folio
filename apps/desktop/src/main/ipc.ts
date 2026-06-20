@@ -2,6 +2,7 @@ import { constants, statSync } from 'node:fs'
 import { access, stat, writeFile } from 'node:fs/promises'
 import { SUPPORTED_EXTENSIONS } from '@folio/image-processing'
 import {
+  type AppSettings,
   type BatchEraseRequest,
   type ConvertRequest,
   type ConvertResult,
@@ -34,6 +35,7 @@ import {
 import { renameInDirectory } from './services/rename'
 import { nowStamp, saveFile } from './services/save'
 import { buildScanResult, listDirectory } from './services/scan'
+import { getSettings, resetSettings, updateSettings } from './services/settings'
 import { taskScheduler } from './services/taskScheduler'
 
 const IMAGE_EXTENSIONS = [...SUPPORTED_EXTENSIONS]
@@ -231,6 +233,14 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IpcChannel.clipboardWriteText, (_e, text: string): void => {
     clipboard.writeText(text)
   })
+
+  // --- settings (settings.json) ---
+  ipcMain.handle(IpcChannel.settingsGet, (): AppSettings => getSettings())
+  ipcMain.handle(
+    IpcChannel.settingsUpdate,
+    (_e, patch: Partial<AppSettings>): AppSettings => updateSettings(patch),
+  )
+  ipcMain.handle(IpcChannel.settingsReset, (): AppSettings => resetSettings())
 
   // --- recent folders ---
   ipcMain.handle(IpcChannel.recentList, (): Promise<string[]> => listRecentFolders())

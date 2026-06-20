@@ -1,0 +1,30 @@
+import type { MultiViewLayout, MultiViewMode, SortMode } from './domain'
+import type { QuickSaveRule } from './save'
+
+export type AppLanguage = 'zh-CN' | 'en'
+
+/**
+ * User settings persisted to settings.json (PRD §10.1). Lives here (not in @folio/config) because
+ * it is part of the IPC contract (settings.get/update/reset); @folio/config re-exports it and owns
+ * DEFAULT_SETTINGS.
+ */
+export interface AppSettings {
+  language: AppLanguage
+  defaultOpenDirectory: string
+  defaultSaveDirectory: string
+  sortMode: SortMode
+  defaultMultiViewMode: MultiViewMode
+  multiView: {
+    loopEnabled: boolean
+    syncZoom: boolean
+    tripleLayout: Extract<MultiViewLayout, 'triple_main_left' | 'triple_equal_columns'>
+    dualLayout: Extract<MultiViewLayout, 'dual_horizontal' | 'dual_vertical'>
+  }
+  /** Never overwrite the original when erasing/converting/saving (PRD §13). */
+  alwaysExportNewFile: boolean
+  confirmDeleteToTrash: boolean
+  thumbnailCacheSizeMB: number
+  previewCacheSizeMB: number
+  /** Remembered quick-save rule (PRD §6.7); null until the user first saves with one. */
+  quickSaveRule: QuickSaveRule | null
+}

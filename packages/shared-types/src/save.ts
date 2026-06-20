@@ -48,6 +48,17 @@ export interface SaveRequest {
   label?: string
 }
 
+/**
+ * A remembered "quick save" rule (PRD §6.7): the target folder + naming + conflict policy captured
+ * from the save dialog, so the T shortcut / quick button one-click saves the focused image. Persisted
+ * in settings.json (M7) so it survives restarts.
+ */
+export interface QuickSaveRule {
+  targetDir: string
+  naming: NamingOptions
+  conflict: ConflictPolicy
+}
+
 export type SaveStatus = 'success' | 'skipped' | 'failed'
 
 /** Outcome of saving one file. */

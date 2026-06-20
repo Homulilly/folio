@@ -8,6 +8,7 @@ import type { DirListing } from './fs'
 import type { ExifMetadata } from './metadata'
 import type { RenameExecRequest, RenameResult } from './rename'
 import type { SaveRequest, SaveResult } from './save'
+import type { AppSettings } from './settings'
 
 /** Custom privileged protocol used to stream images to the renderer (never base64 over IPC). */
 export const GV_IMG_SCHEME = 'gv-img'
@@ -91,6 +92,14 @@ export interface FolioApi {
     /** Write arbitrary text to the system clipboard (copy an Exif field or the full JSON). */
     writeText: (text: string) => Promise<void>
   }
+  settings: {
+    /** Read the full persisted settings (settings.json merged over defaults). */
+    get: () => Promise<AppSettings>
+    /** Merge a partial update into settings.json; returns the new full settings. */
+    update: (patch: Partial<AppSettings>) => Promise<AppSettings>
+    /** Reset all settings to defaults; returns them. */
+    reset: () => Promise<AppSettings>
+  }
   recent: {
     list: () => Promise<string[]>
     remove: (directory: string) => Promise<void>
@@ -148,6 +157,9 @@ export const IpcChannel = {
   metadataRead: 'metadata:read',
   metadataErase: 'metadata:erase',
   clipboardWriteText: 'clipboard:writeText',
+  settingsGet: 'settings:get',
+  settingsUpdate: 'settings:update',
+  settingsReset: 'settings:reset',
   recentList: 'recent:list',
   recentRemove: 'recent:remove',
   recentClear: 'recent:clear',

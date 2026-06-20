@@ -3,39 +3,25 @@ import { create } from 'zustand'
 
 export type { AppLanguage } from '@folio/config'
 
-const LANGUAGE_STORAGE_KEY = 'folio.settings.language'
-
-function isLanguage(value: string | null): value is AppLanguage {
-  return value === 'zh-CN' || value === 'en'
-}
-
 function systemLanguage(): AppLanguage {
   return navigator.language.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en'
 }
 
-function initialLanguage(): AppLanguage {
-  try {
-    const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY)
-    if (isLanguage(stored)) return stored
-  } catch {
-    /* localStorage can be unavailable in restricted browser contexts. */
-  }
-  return systemLanguage()
-}
-
 interface SettingsState {
   language: AppLanguage
+  /** Seed the language from persisted settings on boot (see main.tsx). */
+  hydrate: (language: AppLanguage) => void
   setLanguage: (language: AppLanguage) => void
 }
 
+// Persistence moved to settings.json (M7): the language is hydrated from main on boot (main.tsx)
+// and every change is written back via the settings IPC. Until hydration runs the store shows the
+// system language so the very first paint isn't wrong if hydration is slow.
 export const useSettingsStore = create<SettingsState>((set) => ({
-  language: initialLanguage(),
+  language: systemLanguage(),
+  hydrate: (language) => set({ language }),
   setLanguage: (language) => {
     set({ language })
-    try {
-      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
-    } catch {
-      /* Ignore persistence failures; the in-memory setting still applies. */
-    }
+    void window.gv.settings.update({ language })
   },
 }))
