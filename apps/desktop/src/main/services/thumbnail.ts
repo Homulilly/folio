@@ -1,8 +1,15 @@
-import { mkdir, stat } from 'node:fs/promises'
+import { mkdir, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { type CacheVariant, VARIANT_SPECS, variantCacheKey } from '@folio/image-processing'
 import sharp from 'sharp'
 import { cacheDir, getDb } from './db'
+
+// On-disk budget per variant before LRU eviction kicks in. Hardcoded for now; M7 Phase D wires these
+// to settings.json (thumbnail/previewCacheSizeMB).
+const CACHE_BUDGET_BYTES: Record<CacheVariant, number> = {
+  thumb: 512 * 1024 * 1024,
+  preview: 1024 * 1024 * 1024,
+}
 
 // Generate-on-demand thumbnail/preview variants served over gv-img://, cached to disk and indexed
 // in SQLite. sharp's async pipeline offloads decode/resize to libvips threads, so this stays off the
@@ -39,6 +46,7 @@ function ensureTable(): import('better-sqlite3').Database {
       created_ms   INTEGER NOT NULL,
       accessed_ms  INTEGER NOT NULL
     );
+    CREATE INDEX IF NOT EXISTS variants_lru ON variants (variant, accessed_ms);
   `)
   tableReady = true
   return db
@@ -144,11 +152,51 @@ async function produce(
       now,
       now,
     )
+    schedulePrune(variant)
     return { path: filePath, format: spec.format }
   } catch {
     // Undecodable format (e.g. JXL without libjxl) or a read error — let the caller fall back.
     return null
   } finally {
     release()
+  }
+}
+
+// Evict least-recently-used variant files once a variant's on-disk total exceeds its budget.
+// Throttled: a big folder open inserts hundreds of rows, so we prune in batches rather than after
+// every single insert (and never while we'd just evict thumbs the current view still needs).
+const insertsSincePrune: Record<CacheVariant, number> = { thumb: 0, preview: 0 }
+const PRUNE_EVERY = 128
+
+function schedulePrune(variant: CacheVariant): void {
+  insertsSincePrune[variant] += 1
+  if (insertsSincePrune[variant] < PRUNE_EVERY) return
+  insertsSincePrune[variant] = 0
+  void pruneVariant(variant)
+}
+
+async function pruneVariant(variant: CacheVariant): Promise<void> {
+  const db = ensureTable()
+  const budget = CACHE_BUDGET_BYTES[variant]
+  const total =
+    (
+      db.prepare('SELECT SUM(bytes) AS n FROM variants WHERE variant = ?').get(variant) as {
+        n: number | null
+      }
+    ).n ?? 0
+  if (total <= budget) return
+
+  // Drop oldest-accessed entries (delete file then row) until back under budget.
+  const dir = join(cacheDir(), variant)
+  const victims = db
+    .prepare('SELECT key, file, bytes FROM variants WHERE variant = ? ORDER BY accessed_ms ASC')
+    .all(variant) as Array<{ key: string; file: string; bytes: number }>
+  const del = db.prepare('DELETE FROM variants WHERE key = ?')
+  let freed = 0
+  for (const v of victims) {
+    if (total - freed <= budget) break
+    await rm(join(dir, v.file), { force: true })
+    del.run(v.key)
+    freed += v.bytes
   }
 }
