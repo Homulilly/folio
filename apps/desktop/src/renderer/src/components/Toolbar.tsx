@@ -4,7 +4,6 @@ import {
   openFile,
   openFolder,
   openRenameDialog,
-  openSaveDialog,
   quickSaveCurrent,
   toggleFullscreen,
 } from '../lib/actions'
@@ -32,7 +31,6 @@ import {
   RenameIcon,
   RotateIcon,
   RotateResetIcon,
-  SaveIcon,
   SettingsIcon,
   ShuffleIcon,
   SidebarIcon,
@@ -146,9 +144,8 @@ export function Toolbar(): React.JSX.Element {
       <TbButton title={t('toolbar.openFile')} onClick={openFile}>
         <ImageIcon />
       </TbButton>
-      <TbButton title={t('toolbar.saveTo')} onClick={openSaveDialog} disabled={!hasImages}>
-        <SaveIcon size={17} />
-      </TbButton>
+      {/* One quick-save button: uses the remembered rule (first use asks). The full dialog lives in
+          the right-click menu. */}
       <TbButton
         title={
           quickRule
