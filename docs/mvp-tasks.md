@@ -221,13 +221,14 @@
 
 > 落地 `settings.json` + 类型化 IPC 后,把现在散在 renderer/会话内存里的状态统一迁过去。
 
-- [ ] `settings.json` 落地 + 类型化 IPC(读取/更新/重置);renderer 不再直接承担正式持久化,设置页只调 settings store/API
-- [ ] 语言设置迁移:renderer `localStorage`(`folio.settings.language`)→ 主进程 `AppSettings.language`,启动时若见旧 key 则写入 settings 后清理/忽略(**M1 顺延**)
-- [ ] i18n 初始化顺序:先读 settings 再渲染 UI;读取失败回退系统语言,不阻塞看图
-- [ ] 自动擦除规则永久 scope(directory / directory_recursive / global)+「存为默认规则」+ applyOn 多模式(**M4 顺延**;现为 `autoModeStore` 会话内存)
-- [ ] 快速保存规则持久化(**M5 顺延**;现为 `saveStore.quickRule` 会话内存,程序重启即丢)
-- [ ] 任务历史持久化(**M4 顺延**;现为主进程内存,重启即清)
-- [ ] 设置页(PRD §10.1)+ 快捷键配置 UI
+- [x] `settings.json` 落地 + 类型化 IPC(`services/settings.ts`:sync 读写 + 合并默认 + 原子写;`settings.get/update/reset` 单一来源通道 + preload);**`AppSettings`/`AppLanguage`/`QuickSaveRule` 类型移入 shared-types**(IPC 契约一部分),`@folio/config` 改为 re-export + 持有 `DEFAULT_SETTINGS`
+- [x] 语言设置迁移(**M1 顺延**完成):启动时见旧 key `folio.settings.language` → 写入 settings 后删除;首启无文件时按 `app.getLocale()` 取系统语言
+- [x] i18n 初始化顺序:`main.tsx` 先 `await settings.get()` 再 render(无语言闪烁);读取失败回退系统语言、不阻塞看图
+- [x] 快速保存规则持久化(**M5 顺延**完成;`saveStore.setQuickRule` → `settings.update`,boot 时 hydrate)
+- [x] 缓存大小预算接 settings(`thumbnail/previewCacheSizeMB` 驱动 Phase A 的 LRU 预算,去掉硬编码)
+- [ ] 自动擦除规则永久 scope(directory / directory_recursive / global)+「存为默认规则」+ applyOn 多模式(**M4 顺延**;现为 `autoModeStore` 会话内存)——属功能项,backbone 已就绪,UI 待做
+- [ ] 任务历史持久化(**M4 顺延**;现为主进程内存,重启即清)——价值较低,可选
+- [ ] 设置页扩展 + 快捷键配置 UI(现仅语言段已走新 backbone;其余 `AppSettings` 字段 schema 齐备,待逐项接 UI)
 
 ### E. 打包与发布（PRD §18 / §19.5）
 
