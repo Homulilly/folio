@@ -150,9 +150,11 @@ export function Toolbar(): React.JSX.Element {
           the right-click menu. */}
       <TbButton
         title={
-          quickRule
-            ? t('toolbar.quickSaveTo', { dir: folderName(quickRule.targetDir) })
-            : t('toolbar.quickSaveSetup')
+          !quickRule || quickRule.targetDirs.length === 0
+            ? t('toolbar.quickSaveSetup')
+            : quickRule.targetDirs.length === 1
+              ? t('toolbar.quickSaveTo', { dir: folderName(quickRule.targetDirs[0] as string) })
+              : t('toolbar.quickSaveMulti', { count: quickRule.targetDirs.length })
         }
         onClick={() => void quickSaveCurrent()}
         disabled={!hasImages}

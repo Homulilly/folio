@@ -153,13 +153,27 @@ export async function quickSaveCurrent(): Promise<void> {
   if (!item) return
   const save = useSaveStore.getState()
   const rule = save.quickRule
-  if (!rule) {
-    save.openDialog() // first use this session — ask, and the dialog records the rule on save
+  // No rule / no target yet → open the dialog to set one up (it records the rule on first save).
+  if (!rule || rule.targetDirs.length === 0) {
+    save.openDialog()
     return
   }
+  // One target → send directly; several → let the user pick which folder.
+  if (rule.targetDirs.length === 1) {
+    await quickSaveTo(rule.targetDirs[0] as string)
+    return
+  }
+  save.openQuickPicker()
+}
+
+/** Quick-save the focused image into a specific remembered target folder, using the rule's naming. */
+export async function quickSaveTo(targetDir: string): Promise<void> {
+  const item = currentItem()
+  const rule = useSaveStore.getState().quickRule
+  if (!item || !rule) return
   const [res] = await window.gv.file.saveToTarget({
     files: [{ filePath: item.filePath, index: queue().currentIndex + 1 }],
-    targetDir: rule.targetDir,
+    targetDir,
     naming: rule.naming,
     conflict: rule.conflict,
   })

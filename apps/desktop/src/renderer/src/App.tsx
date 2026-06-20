@@ -12,6 +12,7 @@ import { FolderPrompt } from './components/FolderPrompt'
 import { ImmersiveChrome } from './components/ImmersiveChrome'
 import { MultiView } from './components/MultiView'
 import { QueueRail } from './components/QueueRail'
+import { QuickSavePicker } from './components/QuickSavePicker'
 import { RenameDialog } from './components/RenameDialog'
 import { SaveDialog } from './components/SaveDialog'
 import { SettingsPage } from './components/SettingsPage'
@@ -110,6 +111,7 @@ export function App(): React.JSX.Element {
       <SaveDialog />
       <RenameDialog />
       <ConvertDialog />
+      <QuickSavePicker />
       <AutoModePrompt />
       <FolderPrompt />
       <Toast />

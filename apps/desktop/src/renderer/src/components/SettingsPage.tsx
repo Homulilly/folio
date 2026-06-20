@@ -1,10 +1,17 @@
+import type { ConflictPolicy } from '@folio/shared-types'
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../i18n'
 import { useMultiViewStore } from '../stores/multiViewStore'
+import {
+  choiceFromNaming,
+  namingFromChoice,
+  type SaveNamingChoice,
+  useSaveStore,
+} from '../stores/saveStore'
 import type { AppLanguage } from '../stores/settingsStore'
 import { useSettingsStore } from '../stores/settingsStore'
 import { useUiStore } from '../stores/uiStore'
-import { ChevronDown, SettingsIcon } from './icons'
+import { ChevronDown, CloseIcon, FolderIcon, SettingsIcon } from './icons'
 
 const LANGUAGES: readonly AppLanguage[] = ['zh-CN', 'en']
 const LANGUAGE_NAMES: Record<AppLanguage, string> = {
@@ -105,6 +112,141 @@ function CacheSizeRow({
         <span className="text-[12px] text-[rgba(235,235,245,0.5)]">MB</span>
       </div>
     </div>
+  )
+}
+
+/** A label + native dropdown row, styled for the dark settings page. */
+function SelectRow<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: T
+  options: ReadonlyArray<{ value: T; label: string }>
+  onChange: (v: T) => void
+}): React.JSX.Element {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <div className="text-[13px] text-[rgba(235,235,245,0.86)]">{label}</div>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as T)}
+        className="flex-none rounded-lg bg-[#1C1C1E] px-3 py-1.5 text-[13px] text-white outline-none ring-1 ring-white/[0.08] focus:ring-[#0A84FF]/50"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value} className="bg-[#1C1C1E]">
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  )
+}
+
+const NAMING_CHOICES: readonly SaveNamingChoice[] = ['keep', 'md5', 'sha1', 'sequence', 'template']
+const CONFLICT_CHOICES: readonly ConflictPolicy[] = ['number', 'skip', 'overwrite', 'md5_compare']
+const folderName = (p: string): string =>
+  p.replaceAll('\\', '/').replace(/\/+$/, '').split('/').pop() ?? p
+
+/** Quick-save settings: default naming + conflict policy and the list of target folders. */
+function QuickSaveSettings(): React.JSX.Element {
+  const t = useT()
+  const rule = useSaveStore((s) => s.quickRule)
+  const setQuickNaming = useSaveStore((s) => s.setQuickNaming)
+  const setQuickConflict = useSaveStore((s) => s.setQuickConflict)
+  const addQuickTarget = useSaveStore((s) => s.addQuickTarget)
+  const removeQuickTarget = useSaveStore((s) => s.removeQuickTarget)
+
+  const naming = rule?.naming ?? { kind: 'keep' as const }
+  const conflict = rule?.conflict ?? 'number'
+  const targets = rule?.targetDirs ?? []
+  const { choice, template } = choiceFromNaming(naming)
+  const [tpl, setTpl] = useState(template)
+  useEffect(() => setTpl(template), [template])
+
+  const onChoice = (c: SaveNamingChoice): void =>
+    setQuickNaming(namingFromChoice(c, tpl || '{name}_{nr:001}.{ext}'))
+  const commitTpl = (): void => {
+    if (tpl.trim()) setQuickNaming({ kind: 'template', template: tpl })
+  }
+  const addFolder = async (): Promise<void> => {
+    const dir = await window.gv.file.chooseDirectory()
+    if (dir) addQuickTarget(dir)
+  }
+
+  return (
+    <Section title={t('settings.quickSaveSection')} help={t('settings.quickSaveHelp')}>
+      <SelectRow
+        label={t('settings.quickNamingLabel')}
+        value={choice}
+        options={NAMING_CHOICES.map((c) => ({ value: c, label: t(`save.naming.${c}`) }))}
+        onChange={onChoice}
+      />
+      {choice === 'template' && (
+        <input
+          value={tpl}
+          onChange={(e) => setTpl(e.target.value)}
+          onBlur={commitTpl}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          placeholder={t('settings.quickTemplatePlaceholder')}
+          className="w-full rounded-lg bg-[#1C1C1E] px-3 py-1.5 font-mono text-[12px] text-white outline-none ring-1 ring-white/[0.08] focus:ring-[#0A84FF]/50 placeholder:font-sans placeholder:text-[rgba(235,235,245,0.3)]"
+        />
+      )}
+      <SelectRow
+        label={t('settings.quickConflictLabel')}
+        value={conflict}
+        options={CONFLICT_CHOICES.map((c) => ({ value: c, label: t(`save.conflict.${c}`) }))}
+        onChange={setQuickConflict}
+      />
+
+      <div className="flex flex-col gap-2">
+        <div className="text-[13px] text-[rgba(235,235,245,0.86)]">
+          {t('settings.quickTargetsLabel')}
+        </div>
+        {targets.length === 0 ? (
+          <p className="text-[12px] leading-5 text-[rgba(235,235,245,0.42)]">
+            {t('settings.quickNoTargets')}
+          </p>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            {targets.map((dir) => (
+              <div
+                key={dir}
+                className="flex items-center gap-2.5 rounded-lg bg-white/[0.04] px-3 py-2"
+              >
+                <FolderIcon size={15} className="flex-none text-[rgba(235,235,245,0.5)]" />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] text-[rgba(235,235,245,0.86)]">
+                    {folderName(dir)}
+                  </span>
+                  <span className="block truncate font-mono text-[11px] text-[rgba(235,235,245,0.4)]">
+                    {dir}
+                  </span>
+                </span>
+                <button
+                  type="button"
+                  title={t('settings.quickRemoveTarget')}
+                  aria-label={t('settings.quickRemoveTarget')}
+                  onClick={() => removeQuickTarget(dir)}
+                  className="flex h-6 w-6 flex-none items-center justify-center rounded-md text-[rgba(235,235,245,0.5)] transition-colors hover:bg-white/[0.08] hover:text-[#FF453A]"
+                >
+                  <CloseIcon size={14} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => void addFolder()}
+          className="w-fit rounded-lg bg-white/[0.06] px-3 py-1.5 text-[12px] font-medium text-[rgba(235,235,245,0.86)] transition-colors hover:bg-white/[0.1]"
+        >
+          {t('settings.quickAddFolder')}
+        </button>
+      </div>
+    </Section>
   )
 }
 
@@ -267,6 +409,8 @@ export function SettingsPage(): React.JSX.Element {
               onCommit={(mb) => setCacheSizeMB('preview', mb)}
             />
           </Section>
+
+          <QuickSaveSettings />
         </div>
       </div>
     </div>

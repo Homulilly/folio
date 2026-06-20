@@ -1,3 +1,4 @@
+import type { QuickSaveRule } from '@folio/shared-types'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
@@ -12,6 +13,18 @@ const LEGACY_LANGUAGE_KEY = 'folio.settings.language'
 
 function isLanguage(value: string | null): value is AppLanguage {
   return value === 'zh-CN' || value === 'en'
+}
+
+/** Migrate the pre-multi-target quick-save shape ({ targetDir }) to { targetDirs: [...] }. */
+function normalizeQuickRule(rule: QuickSaveRule | null): QuickSaveRule | null {
+  if (!rule) return null
+  const legacy = rule as QuickSaveRule & { targetDir?: string }
+  if (Array.isArray(legacy.targetDirs)) return rule
+  return {
+    targetDirs: legacy.targetDir ? [legacy.targetDir] : [],
+    naming: rule.naming,
+    conflict: rule.conflict,
+  }
 }
 
 /**
@@ -37,7 +50,7 @@ async function hydrateFromSettings(): Promise<void> {
     }
 
     useSettingsStore.getState().hydrate({ ...settings, language })
-    useSaveStore.getState().hydrateQuickRule(settings.quickSaveRule)
+    useSaveStore.getState().hydrateQuickRule(normalizeQuickRule(settings.quickSaveRule))
     useQueueStore.getState().hydrateSortMode(settings.sortMode)
     useEraseStore.getState().hydrateDefault(settings.defaultErase)
     useMultiViewStore.getState().hydrate({
