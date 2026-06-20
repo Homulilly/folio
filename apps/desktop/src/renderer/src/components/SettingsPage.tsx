@@ -46,7 +46,7 @@ function SwitchRow({
   onToggle: () => void
 }): React.JSX.Element {
   return (
-    <div className="flex max-w-md items-center justify-between gap-4">
+    <div className="flex items-center justify-between gap-4">
       <div className="min-w-0">
         <div className="text-[13px] text-[rgba(235,235,245,0.86)]">{label}</div>
         <div className="mt-0.5 text-[12px] leading-5 text-[rgba(235,235,245,0.42)]">{help}</div>
@@ -89,7 +89,7 @@ function CacheSizeRow({
     else setText(String(mb))
   }
   return (
-    <div className="flex max-w-md items-center justify-between gap-4">
+    <div className="flex items-center justify-between gap-4">
       <div className="text-[13px] text-[rgba(235,235,245,0.86)]">{label}</div>
       <div className="flex flex-none items-center gap-2">
         <input
