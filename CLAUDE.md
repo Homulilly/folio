@@ -36,7 +36,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 渲染进程可见的 API 形状是 `FolioApi` 接口;preload 把它(加一个 DOM-local 的 `getPathForFile`)合成 `Bridge` 类型,经 `contextBridge.exposeInMainWorld('gv', …)` 暴露为 `window.gv`。
 - `env.d.ts` 直接 `import type { Bridge } from '../../preload'` 来声明 `Window.gv`——**类型从 preload 反向引用,新增 API 改一处即可全链路生效**:在 `IpcChannel` 加通道 → `FolioApi` 加方法 → main 注册 handler → preload 转发。
 - 主进程 handler 全部在 `registerIpcHandlers(getWindow)` 内注册;窗口相关操作通过传入的 `getWindow()` 拿当前窗口,别持有全局 window 引用。
-- **绝大多数通道是 invoke(请求/响应)**;唯一的 main→renderer **推送**是 `task:update`(批处理进度)——preload 暴露成 `task.onUpdate(cb)`(返回退订函数),scheduler 每次 mutation 推全量任务快照。要再加推送通道照此模式(`ipcRenderer.on` + 退订),别用 invoke 轮询。
+- **绝大多数通道是 invoke(请求/响应)**;main→renderer **推送**目前有两个:`task:update`(批处理进度,scheduler 每次 mutation 推全量任务快照,preload 暴露成 `task.onUpdate(cb)`)与 `win:fullscreenChanged`(进出全屏,preload 暴露成 `win.onFullscreenChanged(cb)`,驱动沉浸式全屏布局)。两者都走 `ipcRenderer.on` + 返回退订函数的模式。要再加推送通道照此模式,别用 invoke 轮询。
 
 ### 图片加载走 `gv-img://`,不走 IPC
 - URL 形状:`gv-img://<variant>/<absolute-path>`,**variant 是 host**(`original` | `thumb` | `preview`)。当前仅 `original` 实现(流式 `createReadStream`),`thumb`/`preview` 返回 501,待 M7 接 sharp。
@@ -49,6 +49,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **扩展名只用于「枚举/筛选」,真实格式靠 magic bytes**:目录枚举用 `isSupportedImage`/`extOf`(`@folio/image-processing` 的 `SUPPORTED_EXTENSIONS` 是唯一来源)挑出候选;每个入队图片再经 `services/format.ts` 的 `detectFileFormat` 只读文件头(`MAGIC_BYTES_LENGTH` 字节)嗅探真实格式,写入 `ImageQueueItem.format`。纯检测逻辑 `detectImageFormat`/`mimeTypeForFormat` 在 `@folio/image-processing`(纯函数 + 单测),fs 读取留在主进程 service。
 - 渲染进程的 `lib/format.ts`(`canRenderNatively`/`formatLabel`)**优先用 `item.format`,无则回退 `ext`**;`gv-img://` 协议也用 `detectFileFormat` 设置正确的 `Content-Type`。扩展名说谎的图片(如 `.png` 实为 JPEG)因此能正确判定与显示。
 - 队列 / viewer 状态在 `renderer/src/stores`(`queueStore` / `viewerStore` / `toastStore`),纯排序/分组逻辑在 `packages/core`(`sortItems`、`nextGroupStart` 等,带 Vitest)。`queueStore.version` 每次 mutation 自增,供后续 worker 丢弃过期结果(PRD §9.3)。
+- **文件夹导航(刷新 / 浏览 / 载入下一夹)全部复用既有扫描入口,只新增一个 IPC**:`file:listDirectory(dir)` → `services/scan.ts` 的 `listDirectory`,返回 `DirListing`(子目录列表 + parent + 每个子目录的 `imageCount`/`subdirCount`)。**这里的计数是「只看扩展名」的廉价 readdir(`countChildren`),刻意不嗅探 magic bytes**——给浏览面板做提示/挑「下一个有图的同级夹」足够,别为它加重检测。刷新与载入文件夹都直接调 `image.openPaths([dir])`(无新通道)。
+- 渲染端 `folderStore` 持有浏览态(`browsePath`/`listing`),**与已载入队列解耦**:打开浏览面板默认定位到当前文件夹的 parent(故同级夹直接可见);`offerNextFolder` 在末图按「下一张」时算出下一个含图同级夹并弹 `FolderPrompt`。刷新走 `lib/actions.ts` 的 `refreshQueue` → `queueStore.loadResult(result, { keepFocus: true })`(按 filePath 保持停留在当前图);`advance()` 统一「下一张/到尾则提示下一夹」,接在 `→`/`D` 上。`fs.ts`(`DirEntry`/`DirListing`)是这套类型的单一来源。
 
 ### Exif 查看 / 擦除 / 任务系统(M3–M4,核心是「纯逻辑在 core,fs/exiftool 编排在 main」)
 - **读取(M3)**:`services/exiftool.ts` 薄封装 exiftool-vendored 的 `readRaw(file,{readArgs:['-G0']})`(family-0 分组),值预先字符串化;纯转换(`buildExifGroups`/`summarizeExif`/`filterExifGroups`/`exifToJsonString`)在 `packages/core/exif.ts`。主进程内存 LRU(path+mtime 失效)代替 SQLite,后者顺延 M7。
