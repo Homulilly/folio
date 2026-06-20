@@ -71,9 +71,6 @@ export function Canvas(): React.JSX.Element {
 
   const [failed, setFailed] = useState(false)
   const [failReason, setFailReason] = useState<FileProbe | null>(null)
-  // True source dimensions (from main's sharp metadata). Drives the scale math AND the
-  // preview-vs-original decision for large images. Null until fetched / when unavailable.
-  const [srcDims, setSrcDims] = useState<{ width: number; height: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
   const zoomRaf = useRef<number | null>(null)
@@ -94,17 +91,15 @@ export function Canvas(): React.JSX.Element {
     setFailReason(null)
   }, [itemId])
 
-  // Fetch the true source dimensions (cheap header read in main). Seeds the viewer's natural size so
-  // fit / zoom % / status-bar dimensions are correct even when we display the downscaled preview.
+  // Non-decodable formats display the downscaled preview, whose <img> size isn't the real size —
+  // fetch the true source dimensions (cheap header read in main) so fit / zoom % / status-bar
+  // dimensions stay correct. Decodable formats load the original, which reports true dims via onLoad.
   // biome-ignore lint/correctness/useExhaustiveDependencies: setNatural is stable; refetch on image change
   useEffect(() => {
-    if (!item) return
+    if (!item || canRenderNatively(item)) return
     let cancelled = false
-    setSrcDims(null)
     void window.gv.image.dimensions(item.filePath).then((d) => {
-      if (cancelled || !d) return
-      setSrcDims(d)
-      setNatural(d.width, d.height)
+      if (!cancelled && d) setNatural(d.width, d.height)
     })
     return () => {
       cancelled = true
@@ -228,19 +223,10 @@ export function Canvas(): React.JSX.Element {
       : zoom / 100
   }
 
-  // Large-image strategy (M7): a source bigger than the preview's resolution is shown via the
-  // cheap downscaled `preview` while it fits within that resolution on screen; the full original is
-  // only loaded once zoomed in past the preview (where it would otherwise look soft). Small images
-  // and svg/ico (or before dimensions are known) just use the original.
-  const PREVIEW_PX = 2048 // keep in sync with @folio/image-processing VARIANT_SPECS.preview.size
-  const largeRaster =
-    renderable && srcDims != null && (srcDims.width > PREVIEW_PX || srcDims.height > PREVIEW_PX)
-  const displayedW = srcDims ? (rotated ? srcDims.height : srcDims.width) * (targetScale ?? 0) : 0
-  const variant: 'original' | 'preview' = !renderable
-    ? 'preview'
-    : largeRaster && displayedW <= PREVIEW_PX
-      ? 'preview'
-      : 'original'
+  // Single view always loads the full original for decodable formats (full quality, no
+  // preview-substitution); only formats the browser can't decode (HEIC/TIFF/…) fall back to the
+  // sharp-generated preview. The large-image preview optimisation is reserved for multi-view.
+  const variant: 'original' | 'preview' = renderable ? 'original' : 'preview'
 
   useEffect(() => {
     if (!itemId) return
