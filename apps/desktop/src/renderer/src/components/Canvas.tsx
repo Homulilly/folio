@@ -1,7 +1,7 @@
 import type { FileProbe } from '@folio/shared-types'
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../i18n'
-import { canRenderNatively, displaySrc, formatLabel } from '../lib/format'
+import { canRenderNatively, displaySrc, formatLabel, imageUrl } from '../lib/format'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
 import { useViewerStore } from '../stores/viewerStore'
@@ -71,6 +71,9 @@ export function Canvas(): React.JSX.Element {
 
   const [failed, setFailed] = useState(false)
   const [failReason, setFailReason] = useState<FileProbe | null>(null)
+  // True source dimensions (from main's sharp metadata). Drives the scale math AND the
+  // preview-vs-original decision for large images. Null until fetched / when unavailable.
+  const [srcDims, setSrcDims] = useState<{ width: number; height: number } | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
   const zoomRaf = useRef<number | null>(null)
@@ -89,6 +92,23 @@ export function Canvas(): React.JSX.Element {
   useEffect(() => {
     setFailed(false)
     setFailReason(null)
+  }, [itemId])
+
+  // Fetch the true source dimensions (cheap header read in main). Seeds the viewer's natural size so
+  // fit / zoom % / status-bar dimensions are correct even when we display the downscaled preview.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: setNatural is stable; refetch on image change
+  useEffect(() => {
+    if (!item) return
+    let cancelled = false
+    setSrcDims(null)
+    void window.gv.image.dimensions(item.filePath).then((d) => {
+      if (cancelled || !d) return
+      setSrcDims(d)
+      setNatural(d.width, d.height)
+    })
+    return () => {
+      cancelled = true
+    }
   }, [itemId])
 
   // Warm the next/prev images so single-view navigation is instant: Chromium serves the live
@@ -207,6 +227,20 @@ export function Canvas(): React.JSX.Element {
       ? Math.min((viewportWidth as number) / boundW, (viewportHeight as number) / boundH, 1)
       : zoom / 100
   }
+
+  // Large-image strategy (M7): a source bigger than the preview's resolution is shown via the
+  // cheap downscaled `preview` while it fits within that resolution on screen; the full original is
+  // only loaded once zoomed in past the preview (where it would otherwise look soft). Small images
+  // and svg/ico (or before dimensions are known) just use the original.
+  const PREVIEW_PX = 2048 // keep in sync with @folio/image-processing VARIANT_SPECS.preview.size
+  const largeRaster =
+    renderable && srcDims != null && (srcDims.width > PREVIEW_PX || srcDims.height > PREVIEW_PX)
+  const displayedW = srcDims ? (rotated ? srcDims.height : srcDims.width) * (targetScale ?? 0) : 0
+  const variant: 'original' | 'preview' = !renderable
+    ? 'preview'
+    : largeRaster && displayedW <= PREVIEW_PX
+      ? 'preview'
+      : 'original'
 
   useEffect(() => {
     if (!itemId) return
@@ -381,16 +415,21 @@ export function Canvas(): React.JSX.Element {
               </div>
             )
           ) : (
-            // Renderable → original; otherwise the sharp-generated preview so HEIC/TIFF/etc. show.
+            // original / preview chosen by the large-image strategy above. Swapping the src
+            // (same key) reloads in place without losing zoom state.
             <img
               key={item.id}
-              src={displaySrc(item)}
+              src={imageUrl(variant, item.filePath)}
               alt={item.fileName}
               draggable={canDragOut}
               onDragStart={onImageDragStart}
               onLoad={(e) => {
                 setFailed(false)
-                setNatural(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)
+                // The preview is downscaled, so its <img> size isn't the true size — natural dims
+                // come from the dimensions IPC instead. Only trust the element for the original.
+                if (variant === 'original') {
+                  setNatural(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)
+                }
               }}
               onError={onImageError}
               className={imgClassName}

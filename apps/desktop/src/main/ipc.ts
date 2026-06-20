@@ -26,6 +26,7 @@ import {
 import { app, type BrowserWindow, clipboard, dialog, ipcMain, nativeImage, shell } from 'electron'
 import { convertFile } from './services/convert'
 import { eraseMetadata, readMetadata } from './services/exiftool'
+import { imageDimensions } from './services/imageInfo'
 import { suggestExportPath } from './services/paths'
 import {
   addRecentFolder,
@@ -118,6 +119,11 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     IpcChannel.imageOpenPaths,
     (_e, paths: string[]): Promise<ScanResult | null> =>
       buildScanResult(paths).then(rememberDirectory),
+  )
+  ipcMain.handle(
+    IpcChannel.imageDimensions,
+    (_e, filePath: string): Promise<{ width: number; height: number } | null> =>
+      imageDimensions(filePath),
   )
 
   // --- file actions ---

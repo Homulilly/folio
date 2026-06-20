@@ -15,6 +15,7 @@ const api: Bridge = {
     openFileDialog: () => ipcRenderer.invoke(IpcChannel.imageOpenFileDialog),
     openDirectoryDialog: () => ipcRenderer.invoke(IpcChannel.imageOpenDirectoryDialog),
     openPaths: (paths) => ipcRenderer.invoke(IpcChannel.imageOpenPaths, paths),
+    dimensions: (filePath) => ipcRenderer.invoke(IpcChannel.imageDimensions, filePath),
   },
   file: {
     trash: (filePath) => ipcRenderer.invoke(IpcChannel.fileTrash, filePath),

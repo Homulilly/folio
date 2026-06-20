@@ -53,6 +53,10 @@ export interface FolioApi {
     openDirectoryDialog: () => Promise<ScanResult | null>
     /** Build a queue from dropped/opened paths (files or directories). */
     openPaths: (paths: string[]) => Promise<ScanResult | null>
+    /** True pixel dimensions of a source image (sharp metadata — header read, no full decode);
+     * EXIF-orientation applied. Null on failure. Lets the viewer pick preview-vs-original for big
+     * images without decoding the original just to measure it. */
+    dimensions: (filePath: string) => Promise<{ width: number; height: number } | null>
   }
   file: {
     /** Move to the OS trash. User confirmation is handled by the renderer UI. */
@@ -141,6 +145,7 @@ export const IpcChannel = {
   imageOpenFileDialog: 'image:openFileDialog',
   imageOpenDirectoryDialog: 'image:openDirectoryDialog',
   imageOpenPaths: 'image:openPaths',
+  imageDimensions: 'image:dimensions',
   fileTrash: 'file:trash',
   fileShowInFolder: 'file:showInFolder',
   fileCopyPath: 'file:copyPath',
