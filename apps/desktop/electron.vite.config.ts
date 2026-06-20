@@ -8,13 +8,13 @@ export default defineConfig({
     // electron is a devDependency, so externalizeDepsPlugin (which externalizes
     // `dependencies`) skips it. Externalize it explicitly so the runtime built-in is
     // used instead of bundling the npm launcher stub (which tries to download a binary).
-    // exiftool-vendored and sharp must also stay external: each locates its native binary
-    // (vendored ExifTool / prebuilt libvips) relative to its own module path at runtime, which
-    // breaks if its source is inlined.
-    plugins: [externalizeDepsPlugin({ include: ['exiftool-vendored', 'sharp'] })],
+    // exiftool-vendored, sharp and better-sqlite3 must also stay external: each loads a native
+    // binary (vendored ExifTool / prebuilt libvips / the .node addon rebuilt against Electron's
+    // ABI) relative to its own module path at runtime, which breaks if its source is inlined.
+    plugins: [externalizeDepsPlugin({ include: ['exiftool-vendored', 'sharp', 'better-sqlite3'] })],
     build: {
       rollupOptions: {
-        external: ['electron', 'exiftool-vendored', 'sharp'],
+        external: ['electron', 'exiftool-vendored', 'sharp', 'better-sqlite3'],
         input: { index: resolve(__dirname, 'src/main/index.ts') },
       },
     },

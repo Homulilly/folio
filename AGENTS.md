@@ -130,6 +130,8 @@ pnpm build          # electron-vite 构建(打包用 electron-builder,M7)
 > ```
 > 后续新增有 build script 的依赖(如 sharp / better-sqlite3),需在 `allowBuilds` 中加一行并重装。
 
+> **原生模块 ABI(better-sqlite3,M7)**:`better-sqlite3` 不是 N-API(与 sharp 不同),`prebuild-install` 拉的是 **Node ABI** 二进制(如 ABI 141),Electron 42 需要 **ABI 146**,直接加载会报 `NODE_MODULE_VERSION` 不匹配。因此 `apps/desktop` 有 `postinstall: electron-rebuild -w better-sqlite3`,每次 `pnpm install` 后自动按 Electron ABI 重编译(M7 spike 已验证零失败,reinstall 后仍 OK)。手动强制重建用 `pnpm --filter @folio/desktop rebuild:native`。打包阶段(M7 Phase E)由 electron-builder 再做一次 rebuild + `asarUnpack`。
+
 ## 代码约定
 
 - TypeScript 全程;IPC 契约类型集中放 `packages/shared-types`,main/preload/renderer 共享同一份。

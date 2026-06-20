@@ -9,6 +9,8 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
+    "postinstall": "electron-rebuild -w better-sqlite3",
+    "rebuild:native": "electron-rebuild -f -w better-sqlite3",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
     "typecheck": "pnpm run typecheck:node && pnpm run typecheck:web"
@@ -18,6 +20,7 @@
     "@folio/core": "workspace:*",
     "@folio/image-processing": "workspace:*",
     "@folio/shared-types": "workspace:*",
+    "better-sqlite3": "^12.11.1",
     "exiftool-vendored": "^36.0.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
@@ -25,6 +28,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.4",
     "@tailwindcss/vite": "^4.3.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",

@@ -188,20 +188,70 @@
 
 ## M7 — 缓存、性能优化与发布（PRD §6 缓存 / §14 / §18）
 
-- [ ] 缩略图缓存：Worker 异步生成，key=`hash(path+size+mtime)`，目录 `.cache/thumbnails`
-- [ ] 预览图缓存：key 含目标尺寸+色彩模式，目录 `.cache/previews`，mtime 变化失效
-- [ ] 缓存大小上限管理（settings：thumbnail/previewCacheSizeMB）
-- [ ] 图片预加载策略调优（单图前后、各多图模式下一组）
-- [ ] 大图策略：50MP+ 优先屏幕/格子预览，仅 100% 时加载原图，限制同时保留原图数
-- [ ] 多图模式内存优化收尾 + 长时浏览内存稳定性测试
-- [ ] 设置页（PRD §10.1 settings.json）+ 快捷键配置
-  - [ ] 将当前 renderer `localStorage` 语言设置迁移到主进程 `settings.json`（字段：`AppSettings.language`），启动时若发现旧 key `folio.settings.language` 则写入 settings 后清理/忽略旧值
-  - [ ] 为 settings 增加类型化 IPC（读取/更新/重置），renderer 不再直接承担正式持久化；设置页仅调用 settings store/API
-  - [ ] 迁移后确保 i18n 初始化顺序稳定：先读 settings，再渲染 UI；读取失败时回退系统语言，不阻塞看图
-- [ ] electron-builder 打包 Windows / macOS / Linux（原生模块 ABI + macOS 公证）
+> **M7 是 MVP 收口里程碑**:把 M1–M6 一路顺延的「持久化 / 缓存 / 性能 / 打包」债务集中清掉。下面 A–E 五组任务即 M0–M6 各里程碑顺延项的汇总(每项标注来源里程碑);功能层面的增强项(交互式冲突、撤销、HEIC 输出、递归转换等)不属于 M7 核心,集中列在本节末的「MVP 后增强(非 M7)」。
+
+### A. 缓存基建（SQLite + 磁盘缓存,PRD §6 缓存）
+
+> 当前所有缓存都是**主进程内存**态,重启即清;M7 落地 `better-sqlite3`(主进程)+ 磁盘缓存目录,把这些入库。
+
+- [ ] 接入 `better-sqlite3`(主进程),作为缩略图/预览/Exif 摘要/哈希的统一元数据缓存层
+- [ ] 缩略图缓存:Worker 异步生成,key=`hash(path+size+mtime)`,目录 `.cache/thumbnails`
+- [ ] 预览图缓存:key 含目标尺寸+色彩模式,目录 `.cache/previews`,mtime 变化失效
+- [ ] Exif 摘要缓存入库(**M3 顺延**;现为主进程内存 LRU,path+mtime 失效)
+- [ ] 哈希(MD5/SHA1)缓存入库(**M5 顺延**;现为 `services/hash.ts` 内存有界缓存)
+- [ ] 缓存大小上限管理(settings:thumbnail/previewCacheSizeMB)+ 淘汰策略
+
+### B. 缩略图 / 预览管线（sharp Worker Threads 离线化）
+
+> 把所有耗时图像/哈希操作从主进程主线程移到 Worker(PRD 架构铁律 §4 Task Scheduler)。
+
+- [ ] `gv-img://` 的 `thumb` / `preview` variant 接 sharp(**现返回 501**,见 `protocol.ts`)
+- [ ] 队列栏显示缩略图(**M1 顺延**;现为文字行:文件名+大小+格式)
+- [ ] 大队列**虚拟化**渲染(**M1 顺延**;现一次性渲染所有行)
+- [ ] hash / 缩略图 / 预览 / Exif 读取统一离线化到 Worker Threads(**M5/M6 顺延**;sharp async 现直接跑主进程)
+
+### C. 性能与内存（PRD §14）
+
+- [ ] 图片预加载策略调优(单图前后、各多图模式下一组;**M1/M2 顺延**,目标 <100ms 命中)
+- [ ] 多图预览加载策略:只加载当前组原图 + 下一组**轻量预览**;50MP+ 优先格子尺寸预览(**M2 🔴 顺延**)
+- [ ] 多图预览任务接入调度器:优先级 + 翻组时取消过期任务(**M2 顺延**)
+- [ ] 大图策略:50MP+ 优先屏幕/格子预览,仅 100% 时加载原图,限制同时保留原图数
+- [ ] 多图模式内存优化收尾 + 长时浏览内存稳定性测试(1000 张连切不涨内存)
+
+### D. 持久化设置（settings.json + `packages/config`,PRD §10.1）
+
+> 落地 `settings.json` + 类型化 IPC 后,把现在散在 renderer/会话内存里的状态统一迁过去。
+
+- [ ] `settings.json` 落地 + 类型化 IPC(读取/更新/重置);renderer 不再直接承担正式持久化,设置页只调 settings store/API
+- [ ] 语言设置迁移:renderer `localStorage`(`folio.settings.language`)→ 主进程 `AppSettings.language`,启动时若见旧 key 则写入 settings 后清理/忽略(**M1 顺延**)
+- [ ] i18n 初始化顺序:先读 settings 再渲染 UI;读取失败回退系统语言,不阻塞看图
+- [ ] 自动擦除规则永久 scope(directory / directory_recursive / global)+「存为默认规则」+ applyOn 多模式(**M4 顺延**;现为 `autoModeStore` 会话内存)
+- [ ] 快速保存规则持久化(**M5 顺延**;现为 `saveStore.quickRule` 会话内存,程序重启即丢)
+- [ ] 任务历史持久化(**M4 顺延**;现为主进程内存,重启即清)
+- [ ] 设置页(PRD §10.1)+ 快捷键配置 UI
+
+### E. 打包与发布（PRD §18 / §19.5）
+
+- [ ] electron-builder 打包 Windows / macOS / Linux
+- [ ] 原生模块 `asarUnpack`:exiftool-vendored(**M3 顺延**)+ sharp(**M6 顺延**)预编译二进制
+- [ ] sharp 跨平台二进制验证:Windows / Linux 预编译 libvips(**M6 顺延**;macOS 已 spike 验证)
+- [ ] macOS 代码签名 + 公证
 - [ ] 崩溃日志
 
 **验收**（PRD §17 全量 + §19.5 发布清单）：三平台可装可启；1000 张不阻塞；四宫格连切不涨内存；擦除默认导出新文件；批处理有预览/确认/日志；不上传图片、不扫未选目录。
+
+---
+
+## MVP 后增强（非 M7 核心，按需排期）
+
+> 以下是 M1–M6 中明确标为「增强 / 后续」而非「顺延 M7」的功能项。它们不阻塞 MVP 发布,集中登记以免遗漏;M7 完成后视优先级再排。
+
+- **交互式冲突「弹窗询问」**(**M5**):保存/转换冲突时逐文件询问(现已有 skip/overwrite/number/md5_compare 四种非交互策略覆盖安全默认)
+- **重命名撤销**(**M5**):现以「重命名日志(复制/导出)」替代(PRD §6.8 撤销与日志二选一,已选日志)
+- **格式转换增强**(**M6**):HEIC/JXL/PDF/ICO 输出(spike 证实 HEIC 读写可行,MVP 不输出)、递归转换 + 保留目录结构(现队列单层非递归)、动图保留(现仅转首帧)
+- **多图增强**(**M2**):同步平移、按中心/主体对齐、锁定比例、格内 pan;状态栏组内失败汇总;当前组批量操作快捷入口
+- **Exif keep-list 字段级编辑器**(**M4**):`remove_all_except_keep` 现仅经 分享/完全 预设暴露,缺自由编辑保留字段的 UI
+- **扫描期读取图片尺寸**(**M1**):队列元数据 `width/height` 现为 pending,状态栏尺寸取自 `<img>` 解码值;可在扫描/Exif 读取期回填
 
 ---
 
