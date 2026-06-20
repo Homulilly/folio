@@ -168,15 +168,21 @@
 
 ## M6 — 格式转换（PRD §6.9）
 
-- [ ] convert Worker（sharp）：输出 JPEG / PNG / WebP / AVIF / TIFF
-- [ ] 转换参数：JPEG(质量/渐进/保留Exif/ICC)、PNG(压缩/透明)、WebP(有损无损/质量)、AVIF(质量/速度/色深)
-- [ ] 转换流程 UI：选图→格式→参数→输出目录→预览任务→执行→结果
-- [ ] 🔴 安全：默认不覆盖原文件；失败保留原文件；批量可取消；失败重试；保留目录结构
-- [ ] 转换后可打开目标文件夹
-- [ ] 多图：焦点图加入转换 / 当前组加入转换队列（带预览）
-- [ ] 🔴 **spike**：验证 sharp libvips 的 HEIC 读取与（阶段二）输出可行性，确定回退方案
+- [x] convert（sharp）：输出 JPEG / PNG / WebP / AVIF / TIFF（sharp async 自带 libvips 线程池,**直接跑主进程**,Worker Threads 离线化顺延 M7)
+- [x] 转换参数：JPEG(质量/渐进/保留Exif/ICC)、PNG(压缩/透明)、WebP(有损无损/质量)、AVIF(质量/速度/色深)
+- [x] 转换流程 UI：选图(scope 图/组/夹)→格式→参数→输出位置(原地同目录/选文件夹)→预览→执行→结果(`ConvertDialog`)
+- [x] 🔴 安全：默认不覆盖原文件(只写新文件,原地 jpg→jpg 强制改名);失败保留原文件;批量可取消(复用 scheduler);失败重试(复用)；**保留目录结构顺延**(队列为单层非递归夹,暂不涉及递归)
+- [x] 转换后可打开目标文件夹（单图转换成功后 `showInFolder` 新文件）
+- [x] 多图：焦点图转换(scope=image,直接 IPC) / 当前组·文件夹走 `task.startConvertBatch` 批处理页（带预览）
+- [x] 🔴 **spike**：✅ sharp 0.35.1 / libvips 8.18.3 在 Electron 42(ABI 146)**零 rebuild 加载**(N-API);**HEIC 读+写均支持**(libheif 内置);JPEG/PNG/WebP/AVIF/TIFF 全通(见 `spike/sharp` 分支 commit)
 
-**验收**（PRD §17.5）：JPEG/PNG/WebP/AVIF 转换可用；任务可取消、有错误提示；默认不覆盖；可选保留 Exif；多图当前组可入队并预览。
+**验收**（PRD §17.5）：✅ typecheck/test(120 core + 4 服务集成,验证后移除)/lint/build 全绿；JPEG/PNG/WebP/AVIF/TIFF 转换可用;任务可取消/重试/有错误日志;默认不覆盖(只写新文件+原地强制改名,集成测试验证原图字节不变);可选保留 Exif/ICC;多图当前组可入队并预览。
+> M6 范围说明 / 顺延项：
+> - **分层**：格式列表/扩展名/输出名/默认参数/clamp 纯逻辑在 `packages/core/convert.ts`(单测);`services/convert.ts` 跑 sharp 管线(per-format 选项 + keepExif/keepIcc + alpha flatten + 冲突);`taskScheduler` 复用泛化 Control 加 `startConvertBatch`;`TaskType` 用既有 `'convert'`。
+> - **原生模块**:`sharp` 在 `electron.vite.config.ts` 显式 external(同 exiftool-vendored,已验证主进程包未 inline);`pnpm-workspace.yaml` allowBuilds 加 `sharp`。生产打包 `asarUnpack` + Windows/Linux 预编译二进制验证留 **M7**。
+> - **HEIC/JXL 输出**:spike 证实 HEIC 读写可行,但按 PRD 属增强档,MVP 输出格式仍限 JPEG/PNG/WebP/AVIF/TIFF;HEIC/JXL/PDF/ICO 输出顺延。
+> - **保留目录结构**:当前队列是单层非递归文件夹,结构保留无实际场景,递归转换 + 结构保留顺延。
+> - **动图**:仅转首帧(未开 `animated`),动图保留顺延。
 
 ---
 

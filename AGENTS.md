@@ -11,7 +11,7 @@
 - MVP 任务清单 / 里程碑:**`docs/mvp-tasks.md`**
 - UI 原型:**`.dev/design/GalleryViewer.dc.html`**(见下方「设计系统」)
 
-**当前状态**:**M0–M5 已落地**(M0 脚手架 · M1 基础看图 · M2 多图并列 · M3 Exif 查看 · M4 Exif 擦除/批处理/自动模式 · M5 保存到目标 + 批量重命名)。**下一步 M6**(格式转换)。各里程碑范围/顺延说明见 `docs/mvp-tasks.md`;**持久化相关(SQLite 缓存、settings.json、自动规则永久 scope、语言设置迁移)统一顺延 M7**。已落地的跨文件约定见下方「已落地架构」。
+**当前状态**:**M0–M6 已落地**(M0 脚手架 · M1 基础看图 · M2 多图并列 · M3 Exif 查看 · M4 Exif 擦除/批处理/自动模式 · M5 保存到目标 + 批量重命名 · M6 格式转换)。**下一步 M7**(缓存、性能优化、打包发布)。各里程碑范围/顺延说明见 `docs/mvp-tasks.md`;**持久化相关(SQLite 缓存、settings.json、自动规则永久 scope、语言设置迁移、自动规则)统一顺延 M7**。已落地的跨文件约定见下方「已落地架构」。
 
 ## 技术栈
 
@@ -97,7 +97,13 @@ folio/
 - **重命名执行**:`services/rename.ts` 的 `renameInDirectory` **两阶段**:源→唯一临时名(`.folio-rename-<i>.tmp`)→目标名,任一步失败回滚已完成项;**外部已存在文件的目标会被拒绝并回滚**(防 clobber),保证「失败不破坏未处理文件」。批量重命名**不走 scheduler**(快、原子性),是对话框 + 单 IPC + 结果日志(复制/导出 `file:saveText`)。
 - **scheduler 泛化**:`services/taskScheduler.ts` 的 `Control` 改为通用 `{ type; files; execute(filePath); spawn(files) }`;`startEraseBatch`/`startSaveBatch` 各自构造 execute+spawn 调用共享 `launch`/`run`/`retry`。**save 批量(组/夹)走 `task:startSaveBatch` 上批处理页**;单图 save 走 `file:saveToTarget` 直接返回。`TaskType` 新增 `'save'`。
 - **快速保存**:`saveStore.quickRule`(会话内存,首次保存时由对话框记录 `{targetDir, naming, conflict}`)+ `actions.quickSaveCurrent`(`T` 键/工具栏快速按钮:一键存焦点图,首次无规则则打开对话框询问)。右键菜单「保存到文件夹…」始终打开完整对话框。规则持久化到 settings.json 顺延 M7。
-- **新增 IPC(均单一来源于 `shared-types`)**:`file:chooseDirectory`(目标夹选择)、`file:saveToTarget`、`file:batchRename`、`file:saveText`(导出日志)、`task:startSaveBatch`。对话框组件 `SaveDialog`/`RenameDialog` 复用 `DialogPrimitives`(`ScopeButton`/`RadioRow`/`Field`),入口在工具栏 + 右键菜单。
+- **新增 IPC(均单一来源于 `shared-types`)**:`file:chooseDirectory`(目标夹选择)、`file:saveToTarget`、`file:batchRename`、`file:saveText`(导出日志)、`task:startSaveBatch`。对话框组件 `SaveDialog`/`RenameDialog` 复用 `DialogPrimitives`(`ScopeButton`/`RadioRow`/`Field`/`Toggle`),入口在工具栏 + 右键菜单。
+
+### 格式转换(M6,sharp 跑主进程,批处理复用 scheduler)
+- **纯逻辑** `packages/core/convert.ts`:`CONVERT_FORMATS`(jpeg/png/webp/avif/tiff)、`extensionForFormat`、`outputNameForConvert`(换扩展名)、`defaultConvertOptions`/`clampConvertOptions`、`formatSupportsAlpha`(单测)。
+- **sharp 管线** `services/convert.ts` 的 `convertFile`:据 `ConvertOptions` 应用 per-format 参数(质量/渐进/压缩/effort/bitdepth)+ `keepExif()`/`keepIccProfile()` + `keepAlpha:false→flatten`;输出 = `targetDir ?? 原目录` + 换扩展名;冲突 skip/overwrite/number(md5_compare 当 number)。**只写新文件,绝不覆盖原图**——`intended===源文件`(原地同扩展名)强制 `suggestExportPath` 改名。sharp 0.35 是 **N-API,Electron 下零 rebuild**;async API 自带 libvips 线程,故**直接跑主进程,不需要 Worker**(M6 spike 已验证,HEIC 读写也支持但 MVP 不输出)。
+- **接线**:`taskScheduler.startConvertBatch` 复用泛化 Control(`type:'convert'`);IPC `file:convert`(单图直接)+ `task:startConvertBatch`(组/夹);渲染端 `convertStore` + `ConvertDialog`(scope/格式/参数/输出 beside|folder/冲突/预览),工具栏 + 右键入口;单图成功后 `showInFolder` 新文件。
+- **打包坑**:`sharp` 必须在 `electron.vite.config.ts` 显式 external(同 exiftool-vendored,否则预编译 libvips 二进制按模块路径定位失效);`pnpm-workspace.yaml` allowBuilds 加 `sharp`。生产 `asarUnpack` + 跨平台预编译二进制验证留 M7。
 
 ### electron-vite 配置坑(`electron.vite.config.ts`)
 - `electron` 是 devDependency,需在 main/preload 的 `rollupOptions.external` 里**显式 external**,否则会打包 npm 启动桩、触发二进制下载。
