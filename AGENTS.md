@@ -11,7 +11,7 @@
 - MVP 任务清单 / 里程碑:**`docs/mvp-tasks.md`**
 - UI 原型:**`.dev/design/GalleryViewer.dc.html`**(见下方「设计系统」)
 
-**当前状态**:**M0–M6 已落地**(M0 脚手架 · M1 基础看图 · M2 多图并列 · M3 Exif 查看 · M4 Exif 擦除/批处理/自动模式 · M5 保存到目标 + 批量重命名 · M6 格式转换)。**下一步 M7**(缓存、性能优化、打包发布)。各里程碑范围/顺延说明见 `docs/mvp-tasks.md`;**持久化相关(SQLite 缓存、settings.json、自动规则永久 scope、语言设置迁移、自动规则)统一顺延 M7**。已落地的跨文件约定见下方「已落地架构」。
+**当前状态**:**M0–M6 + M7 大部分已落地**(M0 脚手架 · M1 基础看图 · M2 多图并列 · M3 Exif 查看 · M4 Exif 擦除/批处理/自动模式 · M5 保存到目标 + 批量重命名 · M6 格式转换 · **M7 缓存/缩略图/预览显示/持久化设置/虚拟化/大图策略**)。**M7 仅剩 electron-builder 打包发布(签名/公证,需证书与平台)+ 多图长时内存压测 + 快捷键自定义 UI**。各里程碑范围/顺延说明见 `docs/mvp-tasks.md`。已落地的跨文件约定见下方「已落地架构」。
 
 ## 技术栈
 
@@ -68,7 +68,7 @@ folio/
 - **绝大多数通道是 invoke(请求/响应)**;main→renderer **推送**目前有两个:`task:update`(批处理进度,scheduler 每次 mutation 推全量任务快照,preload 暴露成 `task.onUpdate(cb)`)与 `win:fullscreenChanged`(进出全屏,preload 暴露成 `win.onFullscreenChanged(cb)`,驱动沉浸式全屏布局)。两者都走 `ipcRenderer.on` + 返回退订函数的模式。要再加推送通道照此模式,别用 invoke 轮询。
 
 ### 图片加载走 `gv-img://`,不走 IPC
-- URL 形状:`gv-img://<variant>/<absolute-path>`,**variant 是 host**(`original` | `thumb` | `preview`)。当前仅 `original` 实现(流式 `createReadStream`),`thumb`/`preview` 返回 501,待 M7 接 sharp。
+- URL 形状:`gv-img://<variant>/<absolute-path>`,**variant 是 host**(`original` | `thumb` | `preview`)。`original` 流式 `createReadStream`;`thumb`(256px)/ `preview`(2048px)**已接 sharp**(M7,`isCacheVariant` 路由到 `services/thumbnail.ts` 的 `getVariant`,生成失败回 415)。缓存细节见下方「缓存层(M7)」。
 - scheme 在 `protocol.ts` 用 `registerSchemesAsPrivileged` 声明,**必须在 app `ready` 之前调用**(`index.ts` 顶层已调)。
 - Windows 路径修正:`/C:/…` 开头会去掉前导斜杠(见 `protocol.ts`,对应 commit `263c698`)。
 - 渲染进程零 fs 访问;拖拽文件拿绝对路径用 preload 的 `webUtils.getPathForFile`(Electron 已移除 `File.path`)。
@@ -105,9 +105,27 @@ folio/
 - **接线**:`taskScheduler.startConvertBatch` 复用泛化 Control(`type:'convert'`);IPC `file:convert`(单图直接)+ `task:startConvertBatch`(组/夹);渲染端 `convertStore` + `ConvertDialog`(scope/格式/参数/输出 beside|folder/冲突/预览),工具栏 + 右键入口;单图成功后 `showInFolder` 新文件。
 - **打包坑**:`sharp` 必须在 `electron.vite.config.ts` 显式 external(同 exiftool-vendored,否则预编译 libvips 二进制按模块路径定位失效);`pnpm-workspace.yaml` allowBuilds 加 `sharp`。生产 `asarUnpack` + 跨平台预编译二进制验证留 M7。
 
+### 缓存层(M7,better-sqlite3 主进程,SQLite 索引 + 磁盘文件)
+- **单连接** `services/db.ts`:`getDb()` 懒开(WAL + synchronous=NORMAL,**须在 app `ready` 之后**,因要 userData),`cacheDir()` = `userData/cache`,`closeDb()` 在 `will-quit` 调。三张表各自 `ensure*()` 建表,共用这一连接。
+- **缩略图/预览** `services/thumbnail.ts` 的 `getVariant(src, 'thumb'|'preview')`:stat → `variantCacheKey`(纯函数在 `@folio/image-processing/variant.ts`:`sha1(variant+spec+mtime+size+path)`,含 `VARIANT_SPECS`={thumb:256/webp/q70, preview:2048/webp/q80} 单测)→ 查 `variants` 表 → 命中流式回传、未命中 sharp 生成 webp(`.rotate()` 烘焙方向 + `fit:inside,withoutEnlargement`)落 `cache/<variant>/<key>.webp` 并 INSERT。**in-flight 去重 + 并发上限**(`sharp.concurrency()-1`)防大文件夹打开时炸内存;按 `accessed_ms` LRU 淘汰,预算 = settings 的 `thumbnail/previewCacheSizeMB`。**缓存字节绝不经 IPC 回渲染——`protocol.ts` 流式回传文件**。
+- **Exif 摘要 / 哈希** `services/metaCache.ts`(`exif` + `hashes` 表)作 **L2 持久层**,坐在 `exiftool.ts`/`hash.ts` 既有内存 L1 之后,mtime 失效 + 行数 LRU;就地擦除调 `dropExif`。跨重启免重跑 ExifTool / 重算哈希。
+- **任务历史** `services/taskHistory.ts`:终态任务存 `task_history`(上限 200),`scheduler.init()`(app ready 后,setEmitter 之后调)加载并标 `restored`;`restored` 任务无运行期 Control 故 `canRetry` 返回 false(隐藏重试),`clearFinished` 连带清历史。
+- **真实尺寸** `services/imageInfo.ts` 的 `imageDimensions(path)`:sharp `metadata()` 只读文件头(不全解码)+ EXIF 方向校正,mtime 内存缓存;IPC `image:dimensions`。供「大图策略」判断尺寸、给非可解码格式喂正确 `setNatural`。
+
+### 持久化设置(M7,settings.json + 类型化 IPC)
+- **类型在 shared-types**:`AppSettings`/`AppLanguage`/`QuickSaveRule`/`DefaultEraseRule`/`SettingsPatch` 都在 `shared-types`(属 IPC 契约);`@folio/config` 改为 **re-export 类型 + 持有 `DEFAULT_SETTINGS`**(别再在 config 定义类型)。`SettingsPatch` 把嵌套 `multiView` 设为深 Partial。
+- **主进程** `services/settings.ts`:sync 读写(文件小、用得少)+ 合并默认(`multiView` 深合并)+ 原子写(tmp→rename);首启无文件按 `app.getLocale()` 取系统语言。IPC `settings.get/update/reset`。
+- **渲染端 boot 先读后渲染**:`main.tsx` `await settings.get()` 再 `createRoot().render`(语言无闪烁),并把状态 hydrate 进各 store;旧 `localStorage` 语言 key 一次性迁入后删除;旧单目标 `quickSaveRule` 结构迁移成 `targetDirs[]`。
+- **「记住上次」模式**:排序(`queueStore`)、多图模式/循环/同步缩放(`multiViewStore`)、擦除默认规则(`eraseStore`)、快速保存规则(`saveStore`)——**各自 mutator 里 `window.gv.settings.update({...})`**,boot 时对应 `hydrate*` 回灌。设置页(`SettingsPage`)只暴露无操作入口的「纯设置」(语言、删除确认、缓存大小、快速保存目标列表)。
+
+### 显示变体策略(M7,Canvas 单图 vs MultiView 网格)
+- **单图(Canvas)按偏好一律原图**:可解码格式 → `original`(全质量,无 preview 替换);仅不可解码格式(HEIC/TIFF/JXL)→ `preview`,并经 `image.dimensions` 喂真实尺寸(`<img>` 报的是 preview 尺寸,**只在 `variant==='original'` 时用 onLoad 的 naturalWidth**)。
+- **多图网格(MultiView Slot)省内存**:每格探测 `image.dimensions`,**大图栅格(>2048px 且 `item.format!=null` 排除 svg/ico)→ preview**,小图栅格/svg/ico → original,不可解码 → preview;**等 variant 判定后再加载**(spinner 期间不抢拉原图),展开进单图仍原图。
+- **队列侧栏虚拟化**:`QueueRail` 固定行高(54px)窗口化,只渲染可视区 + overscan 行(绝对定位于全高占位 div),`scrollIntoView` 改手动滚动到选中项。
+
 ### electron-vite 配置坑(`electron.vite.config.ts`)
 - `electron` 是 devDependency,需在 main/preload 的 `rollupOptions.external` 里**显式 external**,否则会打包 npm 启动桩、触发二进制下载。
-- **`exiftool-vendored` 同样必须显式 external**(`externalizeDepsPlugin({include})` + `rollupOptions.external`),否则其源码被 inline、vendored 二进制按模块路径定位失效(主进程包体会从 ~17kB 暴涨)。新增 sharp/better-sqlite3 等原生模块照此处理。
+- **`exiftool-vendored` / `sharp` / `better-sqlite3` 都已显式 external**(`externalizeDepsPlugin({include})` + `rollupOptions.external`),否则其源码被 inline、原生二进制(vendored ExifTool / 预编译 libvips / 按 ABI 编译的 `.node`)按模块路径定位失效。新增原生模块照此处理。
 - preload 输出强制为 **`.cjs`**(`format: 'cjs'`)——根 `"type": "module"` 下 sandbox preload 必须是 CommonJS;`index.ts` 里 preload 路径也写的是 `../preload/index.cjs`。
 - renderer 有 alias `@renderer` → `src/renderer/src`。
 - typecheck 分两份:`tsconfig.node.json`(main/preload)+ `tsconfig.web.json`(renderer);`pnpm typecheck` 跑全包,`@folio/desktop` 的 `typecheck` 会两份都跑。
