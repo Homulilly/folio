@@ -136,4 +136,5 @@ export const canPause = (task: Task): boolean => task.status === 'running'
 export const canResume = (task: Task): boolean => task.status === 'paused'
 export const canCancel = (task: Task): boolean => !isTerminal(task.status)
 export const canRetry = (task: Task): boolean =>
-  task.status === 'failed' || (task.status === 'cancelled' && task.failed > 0)
+  // A restored task (loaded from history) has no runtime control, so it can't be re-run.
+  !task.restored && (task.status === 'failed' || (task.status === 'cancelled' && task.failed > 0))

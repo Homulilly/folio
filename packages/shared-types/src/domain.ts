@@ -130,4 +130,7 @@ export interface Task {
   label?: string
   /** File currently being processed, for the batch page's "current file" line (PRD §8.4). */
   currentFile?: string
+  /** Loaded from persisted history on a later run (M7). Its runtime control is gone, so it can't be
+   * retried/paused — only viewed and its log exported. */
+  restored?: boolean
 }

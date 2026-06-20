@@ -25,6 +25,7 @@ import { convertFile } from './convert'
 import { eraseMetadata } from './exiftool'
 import { suggestExportPath } from './paths'
 import { nowStamp, type SaveStamp, saveFile } from './save'
+import { loadHistory, persistTask, removeHistory } from './taskHistory'
 
 // Main-process Task Scheduler (PRD §9.3). Owns task execution and lifecycle; the pure transition
 // rules / counters live in @folio/core. A batch runs files sequentially (the per-file work —
@@ -59,10 +60,21 @@ export class TaskScheduler {
   private tasks = new Map<string, Task>()
   private controls = new Map<string, Control>()
   private emit: () => void = () => {}
+  private loadedHistory = false
 
   /** Wire the renderer push channel. `fn` is called after every task mutation. */
   setEmitter(fn: () => void): void {
     this.emit = fn
+  }
+
+  /** Load persisted finished tasks into the list (call once after app `ready`). */
+  init(): void {
+    if (this.loadedHistory) return
+    this.loadedHistory = true
+    for (const task of loadHistory()) {
+      if (!this.tasks.has(task.id)) this.tasks.set(task.id, task)
+    }
+    this.emit()
   }
 
   /** All tasks, newest first (matches the batch page's stacking order). */
@@ -72,6 +84,8 @@ export class TaskScheduler {
 
   private update(task: Task): void {
     this.tasks.set(task.id, task)
+    // Persist finished tasks so they survive a restart (loaded back as `restored`).
+    if (isTerminal(task.status)) persistTask(task)
     this.emit()
   }
 
@@ -314,6 +328,7 @@ export class TaskScheduler {
       if (isTerminal(task.status)) {
         this.tasks.delete(id)
         this.controls.delete(id)
+        removeHistory(id)
       }
     }
     this.emit()

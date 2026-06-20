@@ -266,6 +266,8 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   taskScheduler.setEmitter(() => {
     getWindow()?.webContents.send(IpcChannel.taskUpdate, taskScheduler.list())
   })
+  // Restore persisted finished tasks (app is ready here, so the cache DB is available).
+  taskScheduler.init()
 
   ipcMain.handle(IpcChannel.taskList, (): Task[] => taskScheduler.list())
   ipcMain.handle(IpcChannel.taskStartEraseBatch, (_e, request: BatchEraseRequest): string =>
