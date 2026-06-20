@@ -197,8 +197,8 @@
 - [x] 接入 `better-sqlite3`(主进程,WAL),作为缩略图/预览(后续 Exif/哈希)的统一元数据缓存层(`services/db.ts`;非 N-API,`postinstall` 走 `electron-rebuild` 对齐 Electron ABI,见 spike)
 - [x] 缩略图缓存:sharp 生成 webp,key=`sha1(variant+spec+mtime+size+path)`,文件落 `userData/cache/thumb`,SQLite 索引(`services/thumbnail.ts` + `image-processing/variant.ts`,纯 key 逻辑含单测)
 - [x] 预览图缓存:同上,2048px webp,落 `userData/cache/preview`;mtime/size 变化即换 key 失效
-- [ ] Exif 摘要缓存入库(**M3 顺延**;现为主进程内存 LRU,path+mtime 失效)
-- [ ] 哈希(MD5/SHA1)缓存入库(**M5 顺延**;现为 `services/hash.ts` 内存有界缓存)
+- [x] Exif 摘要缓存入库(**M3 顺延**完成;`services/metaCache.ts` 的 `exif` 表作 L2 持久层,内存 L1 之后,mtime 失效 + 行数 LRU;就地擦除 `dropExif` 失效)
+- [x] 哈希(MD5/SHA1)缓存入库(**M5 顺延**完成;`hashes` 表 `(path,algo)` 主键,同样 L1+L2、mtime 失效;重开同夹再保存不重算)
 - [x] 缓存大小上限管理 + 淘汰策略:per-variant 字节预算(512MB/1GB,**暂硬编码**)超额按 `accessed_ms` LRU 淘汰,每 128 次写入批量触发(settings 化的预算待 Phase D)
 
 ### B. 缩略图 / 预览管线（sharp 主进程异步;Worker 离线化按需）
