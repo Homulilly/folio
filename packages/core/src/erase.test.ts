@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildRemoveArgs,
   ERASE_CATEGORIES,
+  isRemovableGroup,
   isValidTagPattern,
   matchesTagPattern,
   parseTagList,
@@ -188,6 +189,26 @@ describe('partitionExifByRule', () => {
     expect(removed.map((r) => r.key)).not.toContain('Orientation') // baseline kept
     expect(keptCount).toBe(1)
   })
+
+  it('never marks non-removable groups (File/Composite/ExifTool) as removed', () => {
+    const withSynthetic = [
+      ...groups,
+      { group: 'File', entries: [{ key: 'FileName', value: 'a.jpg' }] },
+      { group: 'Composite', entries: [{ key: 'Megapixels', value: '12' }] },
+      { group: 'ExifTool', entries: [{ key: 'ExifToolVersion', value: '13.5' }] },
+    ]
+    // Even full strip (keep nothing) must not claim it removes filesystem/derived tags.
+    const { removed } = partitionExifByRule(withSynthetic, {
+      mode: 'remove_all_except_keep',
+      removeTags: [],
+      keepTags: [],
+    })
+    const keys = removed.map((r) => r.key)
+    expect(keys).not.toContain('FileName')
+    expect(keys).not.toContain('Megapixels')
+    expect(keys).not.toContain('ExifToolVersion')
+    expect(keys).toContain('Make') // real metadata still removed
+  })
 })
 
 describe('verifyRemoval', () => {
@@ -222,5 +243,37 @@ describe('verifyRemoval', () => {
     expect(res.stillPresent).toContain('make')
     expect(res.stillPresent).not.toContain('copyright')
     expect(res.stillPresent).not.toContain('orientation')
+  })
+
+  it('keep-only mode ignores non-removable groups (File/Composite/ExifTool)', () => {
+    // Regression: these always remain after deleteAllTags and must not be reported as leftovers.
+    const after: ExifGroup[] = [
+      {
+        group: 'File',
+        entries: [
+          { key: 'FileName', value: 'a.jpg' },
+          { key: 'FileSize', value: '1' },
+          { key: 'EncodingProcess', value: 'Baseline' },
+        ],
+      },
+      { group: 'Composite', entries: [{ key: 'ImageSize', value: '1x1' }] },
+      { group: 'ExifTool', entries: [{ key: 'ExifToolVersion', value: '13.59' }] },
+    ]
+    const res = verifyRemoval(
+      { mode: 'remove_all_except_keep', removeTags: [], keepTags: [] },
+      after,
+    )
+    expect(res.stillPresent).toEqual([])
+  })
+})
+
+describe('isRemovableGroup', () => {
+  it('treats File/Composite/ExifTool as non-removable, everything else removable', () => {
+    expect(isRemovableGroup('File')).toBe(false)
+    expect(isRemovableGroup('Composite')).toBe(false)
+    expect(isRemovableGroup('ExifTool')).toBe(false)
+    expect(isRemovableGroup('EXIF')).toBe(true)
+    expect(isRemovableGroup('GPS')).toBe(true)
+    expect(isRemovableGroup('JFIF')).toBe(true)
   })
 })

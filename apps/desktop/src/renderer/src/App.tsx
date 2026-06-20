@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { BatchTasksPage } from './components/BatchTasksPage'
 import { Canvas } from './components/Canvas'
 import { ContextMenu } from './components/ContextMenu'
 import { EmptyState } from './components/EmptyState'
@@ -17,6 +18,7 @@ import { openPaths } from './lib/actions'
 import { useExifStore } from './stores/exifStore'
 import { useMultiViewStore } from './stores/multiViewStore'
 import { useQueueStore } from './stores/queueStore'
+import { useTaskStore } from './stores/taskStore'
 import { useUiStore } from './stores/uiStore'
 import { useViewerStore } from './stores/viewerStore'
 
@@ -39,6 +41,13 @@ export function App(): React.JSX.Element {
     if (useMultiViewStore.getState().mode === 'single') resetViewer()
   }, [currentId])
 
+  // Mirror the main-process scheduler's task list (initial snapshot + live push updates).
+  useEffect(() => {
+    const setTasks = useTaskStore.getState().setTasks
+    void window.gv.task.list().then(setTasks)
+    return window.gv.task.onUpdate(setTasks)
+  }, [])
+
   const single = mode === 'single' || expanded
 
   const onDrop = (e: React.DragEvent): void => {
@@ -59,6 +68,8 @@ export function App(): React.JSX.Element {
       <div className="flex min-h-0 min-w-0 flex-1">
         {activeView === 'settings' ? (
           <SettingsPage />
+        ) : activeView === 'batch_tasks' ? (
+          <BatchTasksPage />
         ) : hasImages ? (
           <>
             {!queueCollapsed && <QueueRail />}

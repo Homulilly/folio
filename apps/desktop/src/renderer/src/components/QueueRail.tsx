@@ -1,6 +1,7 @@
-import { groupStartForIndex, viewCountForMode } from '@folio/core'
+import { groupStartForIndex, SORT_MODES, viewCountForMode } from '@folio/core'
+import type { SortMode } from '@folio/shared-types'
 import { useEffect, useRef } from 'react'
-import { useT } from '../i18n'
+import { SORT_LABEL_KEYS, useT } from '../i18n'
 import { formatBytes, formatLabel } from '../lib/format'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
@@ -11,6 +12,8 @@ export function QueueRail(): React.JSX.Element {
   const items = useQueueStore((s) => s.items)
   const currentIndex = useQueueStore((s) => s.currentIndex)
   const select = useQueueStore((s) => s.select)
+  const sortMode = useQueueStore((s) => s.sortMode)
+  const setSortMode = useQueueStore((s) => s.setSortMode)
   const mode = useMultiViewStore((s) => s.mode)
   const activeRef = useRef<HTMLButtonElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -26,13 +29,28 @@ export function QueueRail(): React.JSX.Element {
 
   return (
     <div className="flex w-72 flex-none flex-col border-r border-white/[0.06] bg-[#161618]">
-      <div className="flex h-10 flex-none items-center justify-between border-b border-white/[0.06] px-3.5">
-        <span className="text-xs font-semibold uppercase tracking-wide text-[rgba(235,235,245,0.6)]">
-          {t('queue.title')}
+      <div className="flex h-10 flex-none items-center justify-between gap-2 border-b border-white/[0.06] px-3.5">
+        <span className="flex min-w-0 items-baseline gap-1.5">
+          <span className="text-xs font-semibold uppercase tracking-wide text-[rgba(235,235,245,0.6)]">
+            {t('queue.title')}
+          </span>
+          <span className="truncate font-mono text-[11px] text-[rgba(235,235,245,0.3)]">
+            · {t('queue.images', { count: items.length })}
+          </span>
         </span>
-        <span className="font-mono text-[11px] text-[rgba(235,235,245,0.3)]">
-          {t('queue.images', { count: items.length })}
-        </span>
+        <select
+          title={t('toolbar.sortOrder')}
+          value={sortMode}
+          onChange={(e) => setSortMode(e.target.value as SortMode)}
+          disabled={items.length === 0}
+          className="flex-none rounded-md bg-[#2C2C2E] px-2 py-1 text-[11px] text-[rgba(235,235,245,0.85)] outline-none disabled:opacity-30"
+        >
+          {SORT_MODES.map((m) => (
+            <option key={m} value={m}>
+              {t(SORT_LABEL_KEYS[m])}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="relative min-h-0 flex-1">
         <div ref={listRef} className="no-scrollbar absolute inset-0 overflow-y-auto p-1.5">

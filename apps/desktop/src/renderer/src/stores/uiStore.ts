@@ -1,6 +1,7 @@
+import type { AppViewMode } from '@folio/shared-types'
 import { create } from 'zustand'
 
-export type AppView = 'viewer' | 'settings'
+export type AppView = AppViewMode
 
 /** Chrome layout toggles that aren't tied to the queue or viewer state. */
 interface UiState {
@@ -9,6 +10,7 @@ interface UiState {
   queueCollapsed: boolean
   showViewer: () => void
   showSettings: () => void
+  showBatchTasks: () => void
   toggleQueue: () => void
 }
 
@@ -17,5 +19,6 @@ export const useUiStore = create<UiState>((set) => ({
   queueCollapsed: false,
   showViewer: () => set({ activeView: 'viewer' }),
   showSettings: () => set({ activeView: 'settings' }),
+  showBatchTasks: () => set({ activeView: 'batch_tasks' }),
   toggleQueue: () => set((s) => ({ queueCollapsed: !s.queueCollapsed })),
 }))

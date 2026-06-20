@@ -1,16 +1,21 @@
 import {
   type EraseField,
+  groupStartForIndex,
   parseTagList,
   partitionExifByRule,
   presetRule,
   tagsForCategories,
+  viewCountForMode,
 } from '@folio/core'
 import type { ErasePresetId, EraseRule, EraseTarget, ExifGroup } from '@folio/shared-types'
 import { useEffect, useMemo, useState } from 'react'
 import { tNow, useT } from '../i18n'
-import { ERASE_CATEGORY_LIST, useEraseStore } from '../stores/eraseStore'
+import { ERASE_CATEGORY_LIST, type EraseScope, useEraseStore } from '../stores/eraseStore'
 import { useExifStore } from '../stores/exifStore'
+import { useMultiViewStore } from '../stores/multiViewStore'
+import { useQueueStore } from '../stores/queueStore'
 import { useToastStore } from '../stores/toastStore'
+import { useUiStore } from '../stores/uiStore'
 import { CheckIcon, ShieldIcon } from './icons'
 
 const PRESETS: ErasePresetId[] = ['privacy', 'share', 'full', 'copyright', 'custom']
@@ -32,14 +37,34 @@ export function EraseDialog(): React.JSX.Element | null {
   const customTags = useEraseStore((s) => s.customTags)
   const setCustomTags = useEraseStore((s) => s.setCustomTags)
   const exportNew = useEraseStore((s) => s.exportNew)
+  const scope = useEraseStore((s) => s.scope)
+  const setScope = useEraseStore((s) => s.setScope)
   const setPreset = useEraseStore((s) => s.setPreset)
   const toggleCategory = useEraseStore((s) => s.toggleCategory)
   const setExportNew = useEraseStore((s) => s.setExportNew)
   const close = useEraseStore((s) => s.close)
 
+  const items = useQueueStore((s) => s.items)
+  const currentIndex = useQueueStore((s) => s.currentIndex)
+  const mode = useMultiViewStore((s) => s.mode)
+  const showBatchTasks = useUiStore((s) => s.showBatchTasks)
+
   const [preview, setPreview] = useState<PreviewState>({ status: 'loading' })
   const [exportPath, setExportPath] = useState<string | null>(null)
   const [running, setRunning] = useState(false)
+  /** Second-click arm for the destructive in-place batch overwrite (PRD §13.10). */
+  const [armed, setArmed] = useState(false)
+
+  // File paths the current multi-view group covers (group scope) and the whole folder (folder scope).
+  const groupPaths = useMemo(() => {
+    const start = groupStartForIndex(currentIndex, mode)
+    return items.slice(start, start + viewCountForMode(mode)).map((it) => it.filePath)
+  }, [items, currentIndex, mode])
+  const folderPaths = useMemo(() => items.map((it) => it.filePath), [items])
+
+  // Reset the destructive-overwrite arming whenever the relevant choice changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: re-arm only on these inputs
+  useEffect(() => setArmed(false), [scope, exportNew, open])
 
   // Load current metadata (for the diff preview) and a free export path when the dialog opens.
   useEffect(() => {
@@ -84,9 +109,20 @@ export function EraseDialog(): React.JSX.Element | null {
 
   if (!open || !filePath) return null
 
-  const canErase = !running && (keepMode || rule.removeTags.length > 0)
+  const scopePaths: Record<EraseScope, string[]> = {
+    image: [filePath],
+    group: groupPaths,
+    folder: folderPaths,
+  }
+  const targetPaths = scopePaths[scope]
+  const isBatch = scope !== 'image'
+  const fileCount = targetPaths.length
 
-  const onErase = async (): Promise<void> => {
+  const hasTags = keepMode || rule.removeTags.length > 0
+  const canErase = !running && fileCount > 0 && hasTags
+
+  // Single-image erase (the original path): run, verify, toast, refresh the drawer.
+  const eraseSingle = async (): Promise<void> => {
     const target: EraseTarget =
       exportNew && exportPath ? { kind: 'export', targetPath: exportPath } : { kind: 'in_place' }
     setRunning(true)
@@ -107,6 +143,34 @@ export function EraseDialog(): React.JSX.Element | null {
       toast(tNow('toast.eraseFailed', { error: res.error ?? '' }), 'error')
     }
   }
+
+  // Group/folder erase: hand off to the main-process scheduler and jump to the batch page.
+  const eraseBatch = async (): Promise<void> => {
+    // Destructive in-place batch requires a second click (PRD §13.10).
+    if (!exportNew && !armed) {
+      setArmed(true)
+      return
+    }
+    await window.gv.task.startEraseBatch({
+      filePaths: targetPaths,
+      rule,
+      output: exportNew ? 'export' : 'in_place',
+      exportSuffix: '-noexif',
+    })
+    useToastStore.getState().show(tNow('toast.batchStarted', { count: fileCount }), 'info')
+    showBatchTasks()
+    close()
+  }
+
+  const onErase = (): Promise<void> => (isBatch ? eraseBatch() : eraseSingle())
+
+  const confirmLabel = isBatch
+    ? exportNew
+      ? t('erase.confirmExportBatch', { count: fileCount })
+      : armed
+        ? t('erase.confirmOverwriteArm', { count: fileCount })
+        : t('erase.confirmOverwriteBatch', { count: fileCount })
+    : t(exportNew ? 'erase.confirmExport' : 'erase.confirmOverwrite')
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: modal backdrop click-to-dismiss; Esc and the Cancel button are the primary affordances
@@ -139,6 +203,30 @@ export function EraseDialog(): React.JSX.Element | null {
 
         {/* Body (scrolls) */}
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          {/* Scope — which images this rule applies to */}
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[rgba(235,235,245,0.45)]">
+            {t('erase.scopeLabel')}
+          </div>
+          <div className="mb-4 flex flex-wrap gap-1.5">
+            <ScopeButton
+              active={scope === 'image'}
+              onClick={() => setScope('image')}
+              label={t('erase.scope.image')}
+            />
+            {mode !== 'single' && (
+              <ScopeButton
+                active={scope === 'group'}
+                onClick={() => setScope('group')}
+                label={t('erase.scope.group', { count: groupPaths.length })}
+              />
+            )}
+            <ScopeButton
+              active={scope === 'folder'}
+              onClick={() => setScope('folder')}
+              label={t('erase.scope.folder', { count: folderPaths.length })}
+            />
+          </div>
+
           {/* Presets */}
           <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-[rgba(235,235,245,0.45)]">
             {t('erase.presetLabel')}
@@ -200,30 +288,39 @@ export function EraseDialog(): React.JSX.Element | null {
             </>
           )}
 
-          {/* Diff summary */}
-          <div className="mt-4 rounded-lg bg-[#161618] px-3.5 py-3">
-            {preview.status === 'loading' ? (
-              <span className="text-[13px] text-[rgba(235,235,245,0.5)]">{t('exif.loading')}</span>
-            ) : removed.length === 0 ? (
-              <span className="text-[13px] text-[rgba(235,235,245,0.5)]">
-                {t('erase.noFields')}
-              </span>
-            ) : (
-              <>
-                <div className="text-[13px] font-medium text-white">
-                  {t('erase.summary', { removed: removed.length, kept: keptCount })}
-                </div>
-                <div className="mt-1.5 font-mono text-[11px] leading-4 text-[#FF453A]">
-                  −{' '}
-                  {removed
-                    .slice(0, 8)
-                    .map((r: EraseField) => r.key)
-                    .join(', ')}
-                  {removed.length > 8 ? ` +${removed.length - 8}` : ''}
-                </div>
-              </>
-            )}
-          </div>
+          {/* Batch note (group/folder) — the diff below is per-file and can't preview a batch. */}
+          {isBatch ? (
+            <div className="mt-4 rounded-lg bg-[#161618] px-3.5 py-3 text-[13px] leading-5 text-[rgba(235,235,245,0.7)]">
+              {t('erase.batchNote', { count: fileCount })}
+            </div>
+          ) : (
+            /* Diff summary (single image) */
+            <div className="mt-4 rounded-lg bg-[#161618] px-3.5 py-3">
+              {preview.status === 'loading' ? (
+                <span className="text-[13px] text-[rgba(235,235,245,0.5)]">
+                  {t('exif.loading')}
+                </span>
+              ) : removed.length === 0 ? (
+                <span className="text-[13px] text-[rgba(235,235,245,0.5)]">
+                  {t('erase.noFields')}
+                </span>
+              ) : (
+                <>
+                  <div className="text-[13px] font-medium text-white">
+                    {t('erase.summary', { removed: removed.length, kept: keptCount })}
+                  </div>
+                  <div className="mt-1.5 font-mono text-[11px] leading-4 text-[#FF453A]">
+                    −{' '}
+                    {removed
+                      .slice(0, 8)
+                      .map((r: EraseField) => r.key)
+                      .join(', ')}
+                    {removed.length > 8 ? ` +${removed.length - 8}` : ''}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
 
           {/* Output target */}
           <div className="mt-4 flex flex-col gap-2">
@@ -231,7 +328,7 @@ export function EraseDialog(): React.JSX.Element | null {
               checked={exportNew}
               onSelect={() => setExportNew(true)}
               label={t('erase.exportNew')}
-              hint={exportPath ? `→ ${baseName(exportPath)}` : undefined}
+              hint={isBatch ? '→ *-noexif' : exportPath ? `→ ${baseName(exportPath)}` : undefined}
             />
             <RadioRow
               checked={!exportNew}
@@ -270,11 +367,35 @@ export function EraseDialog(): React.JSX.Element | null {
             {running && (
               <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
             )}
-            {t(exportNew ? 'erase.confirmExport' : 'erase.confirmOverwrite')}
+            {confirmLabel}
           </button>
         </div>
       </div>
     </div>
+  )
+}
+
+function ScopeButton({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean
+  onClick: () => void
+  label: string
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-lg px-3 py-1.5 text-[13px] transition-colors ${
+        active
+          ? 'bg-[#0A84FF]/20 text-[#0A84FF]'
+          : 'bg-white/[0.05] text-[rgba(235,235,245,0.8)] hover:bg-white/[0.09]'
+      }`}
+    >
+      {label}
+    </button>
   )
 }
 

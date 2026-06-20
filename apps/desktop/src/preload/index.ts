@@ -41,6 +41,21 @@ const api: Bridge = {
     toggleFullscreen: () => ipcRenderer.invoke(IpcChannel.winToggleFullscreen),
     isFullscreen: () => ipcRenderer.invoke(IpcChannel.winIsFullscreen),
   },
+  task: {
+    list: () => ipcRenderer.invoke(IpcChannel.taskList),
+    startEraseBatch: (request) => ipcRenderer.invoke(IpcChannel.taskStartEraseBatch, request),
+    pause: (id) => ipcRenderer.invoke(IpcChannel.taskPause, id),
+    resume: (id) => ipcRenderer.invoke(IpcChannel.taskResume, id),
+    cancel: (id) => ipcRenderer.invoke(IpcChannel.taskCancel, id),
+    retry: (id) => ipcRenderer.invoke(IpcChannel.taskRetry, id),
+    exportLog: (id) => ipcRenderer.invoke(IpcChannel.taskExportLog, id),
+    clearFinished: () => ipcRenderer.invoke(IpcChannel.taskClearFinished),
+    onUpdate: (callback) => {
+      const listener = (_e: unknown, tasks: Parameters<typeof callback>[0]): void => callback(tasks)
+      ipcRenderer.on(IpcChannel.taskUpdate, listener)
+      return () => ipcRenderer.removeListener(IpcChannel.taskUpdate, listener)
+    },
+  },
   // webUtils resolves the absolute path of a dropped File (File.path was removed in Electron).
   getPathForFile: (file) => webUtils.getPathForFile(file),
 }

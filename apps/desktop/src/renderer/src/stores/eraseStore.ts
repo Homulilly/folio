@@ -7,6 +7,9 @@ export const ERASE_CATEGORY_LIST = ERASE_CATEGORY_ORDER
 
 type CategoryFlags = Record<EraseCategory, boolean>
 
+/** Which images an erase applies to: just this one, the current multi-view group, or the folder. */
+export type EraseScope = 'image' | 'group' | 'folder'
+
 const flagsFor = (cats: EraseCategory[] = []): CategoryFlags =>
   Object.fromEntries(ERASE_CATEGORY_LIST.map((c) => [c, cats.includes(c)])) as CategoryFlags
 
@@ -15,6 +18,7 @@ interface EraseDialogState {
   open: boolean
   filePath: string | null
   fileName: string | null
+  scope: EraseScope
   preset: ErasePresetId
   categories: CategoryFlags
   /** Free-text extra tags (comma/space-separated) added on top of the checked categories. */
@@ -23,6 +27,7 @@ interface EraseDialogState {
   exportNew: boolean
   openFor: (filePath: string, fileName: string) => void
   close: () => void
+  setScope: (scope: EraseScope) => void
   setPreset: (preset: ErasePresetId) => void
   toggleCategory: (cat: EraseCategory) => void
   setCustomTags: (v: string) => void
@@ -33,6 +38,7 @@ export const useEraseStore = create<EraseDialogState>((set) => ({
   open: false,
   filePath: null,
   fileName: null,
+  scope: 'image',
   preset: 'privacy',
   categories: flagsFor(CATEGORY_PRESETS.privacy),
   customTags: '',
@@ -42,12 +48,14 @@ export const useEraseStore = create<EraseDialogState>((set) => ({
       open: true,
       filePath,
       fileName,
+      scope: 'image',
       preset: 'privacy',
       categories: flagsFor(CATEGORY_PRESETS.privacy),
       customTags: '',
       exportNew: true,
     }),
   close: () => set({ open: false }),
+  setScope: (scope) => set({ scope }),
   setPreset: (preset) =>
     set(
       preset === 'share' || preset === 'full'

@@ -29,6 +29,22 @@ export interface EraseRule {
  */
 export type EraseTarget = { kind: 'export'; targetPath: string } | { kind: 'in_place' }
 
+/**
+ * A batch erase request (Phase C). The same `rule` is applied to every file; the scheduler
+ * computes each output target itself:
+ * - `export`: write a stripped copy beside each original (`exportSuffix`, default `-noexif`),
+ *   auto-incrementing on conflict. Safe — originals are untouched.
+ * - `in_place`: overwrite each original (destructive; the UI double-confirms, PRD §13.10).
+ */
+export interface BatchEraseRequest {
+  filePaths: string[]
+  rule: EraseRule
+  output: 'export' | 'in_place'
+  exportSuffix?: string
+  /** Human-readable title for the batch page. */
+  label?: string
+}
+
 export type EraseStatus = 'success' | 'failed' | 'skipped'
 
 /** Outcome of erasing one file. */

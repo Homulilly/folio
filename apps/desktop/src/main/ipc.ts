@@ -1,5 +1,7 @@
+import { writeFile } from 'node:fs/promises'
 import { SUPPORTED_EXTENSIONS } from '@folio/image-processing'
 import {
+  type BatchEraseRequest,
   type EraseResult,
   type EraseRule,
   type EraseTarget,
@@ -7,6 +9,7 @@ import {
   IpcChannel,
   type ScanResult,
   type SystemInfo,
+  type Task,
   type TrashResult,
 } from '@folio/shared-types'
 import { app, type BrowserWindow, clipboard, dialog, ipcMain, nativeImage, shell } from 'electron'
@@ -19,6 +22,7 @@ import {
   removeRecentFolder,
 } from './services/recent'
 import { buildScanResult } from './services/scan'
+import { taskScheduler } from './services/taskScheduler'
 
 const IMAGE_EXTENSIONS = [...SUPPORTED_EXTENSIONS]
 
@@ -131,4 +135,32 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     return next
   })
   ipcMain.handle(IpcChannel.winIsFullscreen, (): boolean => getWindow()?.isFullScreen() ?? false)
+
+  // --- task scheduler (batch operations, PRD §9.3) ---
+  // Push the full task list to the renderer after every scheduler mutation.
+  taskScheduler.setEmitter(() => {
+    getWindow()?.webContents.send(IpcChannel.taskUpdate, taskScheduler.list())
+  })
+
+  ipcMain.handle(IpcChannel.taskList, (): Task[] => taskScheduler.list())
+  ipcMain.handle(IpcChannel.taskStartEraseBatch, (_e, request: BatchEraseRequest): string =>
+    taskScheduler.startEraseBatch(request),
+  )
+  ipcMain.handle(IpcChannel.taskPause, (_e, id: string): void => taskScheduler.pause(id))
+  ipcMain.handle(IpcChannel.taskResume, (_e, id: string): void => taskScheduler.resume(id))
+  ipcMain.handle(IpcChannel.taskCancel, (_e, id: string): void => taskScheduler.cancel(id))
+  ipcMain.handle(IpcChannel.taskRetry, (_e, id: string): string | null => taskScheduler.retry(id))
+  ipcMain.handle(IpcChannel.taskClearFinished, (): void => taskScheduler.clearFinished())
+
+  ipcMain.handle(IpcChannel.taskExportLog, async (_e, id: string): Promise<string | null> => {
+    const text = taskScheduler.logText(id)
+    if (text === null) return null
+    const win = getWindow()
+    const result = await (win
+      ? dialog.showSaveDialog(win, { defaultPath: `folio-task-${id}.log` })
+      : dialog.showSaveDialog({ defaultPath: `folio-task-${id}.log` }))
+    if (result.canceled || !result.filePath) return null
+    await writeFile(result.filePath, text, 'utf8')
+    return result.filePath
+  })
 }

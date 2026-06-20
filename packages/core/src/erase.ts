@@ -56,6 +56,22 @@ export const CATEGORY_PRESETS: Partial<Record<ErasePresetId, EraseCategory[]>> =
 /** Tags every preset keeps — display-intrinsic and non-identifying (PRD §11.2 保留). */
 const KEEP_BASELINE = ['Orientation', 'ColorSpace', 'ICC_Profile', 'ImageWidth', 'ImageHeight']
 
+/**
+ * Family-0 groups ExifTool can never strip, so they must never be shown as "will be removed" in
+ * the preview nor counted as leftovers in post-erase verification:
+ * - `File`: filesystem facts (FileName/FileSize/dates/permissions) + values read from the JPEG
+ *   structure (EncodingProcess, BitsPerSample, ColorComponents, ImageWidth/Height, Adobe APP14…).
+ * - `Composite`: values ExifTool derives on read (ImageSize, Megapixels).
+ * - `ExifTool`: ExifTool's own version.
+ * Without this, a keep-only erase (share/full) "fails" verification because these always remain.
+ */
+const NON_REMOVABLE_GROUPS = new Set(['file', 'composite', 'exiftool'])
+
+/** Whether a family-0 group holds tags ExifTool can actually remove. */
+export function isRemovableGroup(group: string): boolean {
+  return !NON_REMOVABLE_GROUPS.has(group.toLowerCase())
+}
+
 const uniq = (xs: string[]): string[] => [...new Set(xs)]
 
 /** Flatten a set of categories into a de-duplicated remove list. */
@@ -163,6 +179,12 @@ export function partitionExifByRule(
   let keptCount = 0
   const keepBaseline = KEEP_BASELINE.map((t) => t.toLowerCase())
   for (const g of groups) {
+    // Filesystem/derived/ExifTool groups can't be stripped — they always remain, so count them
+    // as kept and never show them as removable.
+    if (!isRemovableGroup(g.group)) {
+      keptCount += g.entries.length
+      continue
+    }
     for (const e of g.entries) {
       let isRemoved: boolean
       if (rule.mode === 'remove_selected') {
@@ -203,11 +225,18 @@ export function verifyRemoval(
   groupsAfter: ExifGroup[],
 ): { verifiedRemoved: string[]; stillPresent: string[] } {
   if (rule.mode !== 'remove_selected') {
-    // Keep-only mode: anything outside keepTags should be gone.
+    // Keep-only mode: any *removable* tag outside keepTags + baseline should be gone. Filesystem /
+    // derived / ExifTool groups always remain and must not be reported as leftovers.
     const keep = new Set(rule.keepTags.map((t) => t.toLowerCase()))
-    const stillPresent = [...presentKeys(groupsAfter)].filter(
-      (k) => !keep.has(k) && !KEEP_BASELINE.map((t) => t.toLowerCase()).includes(k),
-    )
+    const baseline = KEEP_BASELINE.map((t) => t.toLowerCase())
+    const stillPresent: string[] = []
+    for (const g of groupsAfter) {
+      if (!isRemovableGroup(g.group)) continue
+      for (const e of g.entries) {
+        const k = e.key.toLowerCase()
+        if (!keep.has(k) && !baseline.includes(k)) stillPresent.push(k)
+      }
+    }
     return { verifiedRemoved: [], stillPresent }
   }
   const present = presentKeys(groupsAfter)

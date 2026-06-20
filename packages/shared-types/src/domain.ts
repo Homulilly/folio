@@ -125,4 +125,8 @@ export interface Task {
   createdAt: number
   updatedAt: number
   logs: TaskLog[]
+  /** Human-readable title for the batch page (e.g. "Erase metadata · 24 files"). */
+  label?: string
+  /** File currently being processed, for the batch page's "current file" line (PRD §8.4). */
+  currentFile?: string
 }

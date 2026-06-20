@@ -103,7 +103,7 @@
 
 ## M4 — Exif 擦除 + 自动模式 + 任务系统（PRD §6.5 / §6.6）
 
-> 拆分为四个阶段推进：**A 擦除基础 + B 擦除弹窗已落地**;**C 任务调度器 + 批处理页**、**D 自动模式**待做。
+> 拆分为四个阶段推进：**A 擦除基础 + B 擦除弹窗 + C 任务调度器 + 批处理页已落地**;**D 自动模式**待做。
 
 ### 已完成（Phase A — 擦除基础）
 
@@ -123,12 +123,12 @@
 - [x] 入口：Exif 抽屉底部「擦除元信息」;就地擦除后抽屉自动重读
 - [x] `file:suggestExportPath` IPC（主进程计算无冲突导出路径）
 
-### 待做（Phase C — 任务调度器 + 批处理页）
+### 已完成（Phase C — 任务调度器 + 批处理页）
 
-- [ ] Task Scheduler 完整化：状态机 + 进度 + 暂停/取消/重试 + 日志（PRD §9.3）
-- [ ] 批处理任务页（PRD §8.4）：进度条/已完成/失败/当前文件/错误列表/导出日志（`AppViewMode` 新增 `batch_tasks` 视图）
-- [ ] 当前文件夹 / 当前组批量擦除接入调度器
-- [ ] 多图：默认只操作焦点图（已是默认）；批量当前组须二次确认 + 日志（PRD §13.10）
+- [x] Task Scheduler 完整化：状态机 + 进度 + 暂停/取消/重试 + 日志（PRD §9.3）— 纯状态机 `packages/core/task.ts`（合法迁移表 + 计数 + 派生视图,12 单测）;主进程 `services/taskScheduler.ts` 负责执行(逐文件 erase、文件间检查暂停/取消、失败项重试)
+- [x] 批处理任务页（PRD §8.4）：进度条/已完成/失败/当前文件/错误列表/导出日志 + 暂停·继续·取消·重试（`BatchTasksPage`,经 `AppViewMode` 的 `batch_tasks` 视图路由,工具栏出现任务入口 + 运行指示点）
+- [x] 当前文件夹 / 当前组批量擦除接入调度器（擦除弹窗新增「应用范围」段:当前图片 / 当前组 / 文件夹;组、夹走 `task:startEraseBatch` 并跳转批处理页）
+- [x] 多图：默认只操作焦点图（已是默认）;批量就地覆盖须二次确认（按钮二次点击 arm）+ 日志（PRD §13.10）
 
 ### 待做（Phase D — 自动模式，PRD §6.6）
 
@@ -136,11 +136,12 @@
 - [ ] `ExifAutoRule` 结构 + scope（session_directory / directory / directory_recursive / global）+ applyOn + 持久化（`packages/config`）
 - [ ] 防误操作：明确状态提示 + 当前目录启用标识 + 执行前确认 + 一键关闭
 
-**验收**（PRD §17.3）：能擦 GPS/指定字段并验证移除（✅ A）；默认不覆盖原图（✅ A/B）；自动模式可应用同目录、可关闭（待 D）；批量有确认+日志（待 C）。
+**验收**（PRD §17.3）：能擦 GPS/指定字段并验证移除（✅ A）；默认不覆盖原图（✅ A/B）；自动模式可应用同目录、可关闭（待 D）；批量有确认+日志（✅ C）。
 > M4 范围说明：
-> - **分层**：擦除规则/预设/校验/差异/验证纯逻辑全在 `packages/core/erase.ts`（25 单测）;主进程 `services/exiftool.ts` 的 `eraseMetadata` 负责 fs 编排（copyFile→strip→verify）。
+> - **分层**：擦除规则/预设/校验/差异/验证 + 任务状态机纯逻辑全在 `packages/core`（`erase.ts` + `task.ts`,共 37 单测）;主进程 `services/exiftool.ts` 的 `eraseMetadata` 负责单文件 fs 编排（copyFile→strip→verify）,`services/taskScheduler.ts` 负责批处理执行与生命周期。
 > - **exiftool 写入**：`remove_selected` 走 `write(file,{},{writeArgs:['-tag=',…]})`;`remove_all_except_keep` 走 `deleteAllTags(file,{retain})`。导出/无备份就地追加 `-overwrite_original`,保留备份则不加（exiftool 自动留 `_original`）。写入参数已 headless 验证（GPS/设备剥离、Orientation 保留、原图不变）。
-> - **持久化 Exif 摘要缓存**仍随 **M7**;自动规则持久化（Phase D）落 `packages/config` 的 settings。
+> - **任务推送**：批处理进度走新的 main→renderer 推送通道 `task:update`（每次 mutation 推全量任务快照）,preload 经 `task.onUpdate(cb)` 订阅;其余仍是 invoke 请求/响应。批处理串行执行（exiftool 写入不可中断,暂停/取消在文件之间检查）。
+> - **持久化 Exif 摘要缓存**仍随 **M7**;自动规则持久化（Phase D）落 `packages/config` 的 settings。任务历史目前仅在主进程内存（重启即清,持久化任务日志非 MVP 必需）。
 
 ---
 

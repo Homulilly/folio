@@ -215,3 +215,20 @@ export const LoopIcon = (p: IconProps) =>
 
 export const LayoutSwap = (p: IconProps) =>
   svg(<path d="M16 3l4 4-4 4M20 7H4M8 21l-4-4 4-4M4 17h16" />, p)
+
+export const PauseIcon = (p: IconProps) =>
+  svg(
+    <>
+      <rect x="6" y="5" width="4" height="14" rx="1" />
+      <rect x="14" y="5" width="4" height="14" rx="1" />
+    </>,
+    p,
+  )
+
+export const PlayIcon = (p: IconProps) => svg(<path d="M7 4v16l13-8z" />, p)
+
+export const DownloadIcon = (p: IconProps) =>
+  svg(<path d="M12 3v12m0 0 4-4m-4 4-4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />, p)
+
+export const TasksIcon = (p: IconProps) =>
+  svg(<path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01" />, p)

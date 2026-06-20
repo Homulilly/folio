@@ -1,10 +1,10 @@
-import { SORT_MODES } from '@folio/core'
-import type { MultiViewMode, SortMode } from '@folio/shared-types'
-import { type I18nKey, SORT_LABEL_KEYS, useT } from '../i18n'
+import type { MultiViewMode } from '@folio/shared-types'
+import { type I18nKey, useT } from '../i18n'
 import { openFile, openFolder, toggleFullscreen } from '../lib/actions'
 import { useExifStore } from '../stores/exifStore'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
+import { useTaskStore } from '../stores/taskStore'
 import { useUiStore } from '../stores/uiStore'
 import { useViewerStore } from '../stores/viewerStore'
 import {
@@ -26,6 +26,7 @@ import {
   ShuffleIcon,
   SidebarIcon,
   SyncIcon,
+  TasksIcon,
   ZoomIn,
   ZoomOut,
 } from './icons'
@@ -75,8 +76,6 @@ export function Toolbar(): React.JSX.Element {
   const t = useT()
   const items = useQueueStore((s) => s.items)
   const currentIndex = useQueueStore((s) => s.currentIndex)
-  const sortMode = useQueueStore((s) => s.sortMode)
-  const setSortMode = useQueueStore((s) => s.setSortMode)
   const random = useQueueStore((s) => s.random)
 
   const mode = useMultiViewStore((s) => s.mode)
@@ -95,7 +94,11 @@ export function Toolbar(): React.JSX.Element {
   const toggleExif = useExifStore((s) => s.toggle)
   const showViewer = useUiStore((s) => s.showViewer)
   const showSettings = useUiStore((s) => s.showSettings)
+  const showBatchTasks = useUiStore((s) => s.showBatchTasks)
   const toggleQueue = useUiStore((s) => s.toggleQueue)
+  const tasks = useTaskStore((s) => s.tasks)
+  const tasksActive = activeView === 'batch_tasks'
+  const anyRunning = tasks.some((t) => t.status === 'running' || t.status === 'paused')
 
   const fit = useViewerStore((s) => s.fit)
   const zoom = useViewerStore((s) => s.zoom)
@@ -210,34 +213,32 @@ export function Toolbar(): React.JSX.Element {
         <RotateResetIcon />
       </TbButton>
 
-      <Divider />
-
-      <TbButton
-        title={t('toolbar.exifInfo')}
-        onClick={toggleExif}
-        active={exifOpen}
-        disabled={!hasImages}
-      >
-        <InfoIcon size={17} />
-      </TbButton>
-
-      <div className="ml-auto flex items-center gap-2">
-        <select
-          title={t('toolbar.sortOrder')}
-          value={sortMode}
-          onChange={(e) => setSortMode(e.target.value as SortMode)}
-          disabled={!hasImages}
-          className="rounded-lg bg-[#2C2C2E] px-2.5 py-1.5 text-[13px] text-[rgba(235,235,245,0.85)] outline-none disabled:opacity-30"
-        >
-          {SORT_MODES.map((m) => (
-            <option key={m} value={m}>
-              {t(SORT_LABEL_KEYS[m])}
-            </option>
-          ))}
-        </select>
+      <div className="ml-auto flex items-center gap-1.5">
         <TbButton title={t('toolbar.fullscreen')} onClick={toggleFullscreen} disabled={!hasImages}>
           <FullscreenIcon size={17} />
         </TbButton>
+        <TbButton
+          title={t('toolbar.exifInfo')}
+          onClick={toggleExif}
+          active={exifOpen}
+          disabled={!hasImages}
+        >
+          <InfoIcon size={17} />
+        </TbButton>
+        {tasks.length > 0 && (
+          <TbButton
+            title={t('toolbar.tasks')}
+            onClick={tasksActive ? showViewer : showBatchTasks}
+            active={tasksActive}
+          >
+            <span className="relative">
+              <TasksIcon size={17} />
+              {anyRunning && (
+                <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-[#0A84FF] ring-2 ring-[#1C1C1E]" />
+              )}
+            </span>
+          </TbButton>
+        )}
         <TbButton
           title={activeView === 'settings' ? t('toolbar.backToViewer') : t('toolbar.settings')}
           onClick={activeView === 'settings' ? showViewer : showSettings}

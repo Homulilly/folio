@@ -1,8 +1,8 @@
 // IPC contract between renderer (via preload contextBridge) and main process.
 // Namespaces follow PRD §9.2: image.* / file.* / recent.* / win.* (+ system.*).
 
-import type { ImageQueueItem } from './domain'
-import type { EraseResult, EraseRule, EraseTarget } from './erase'
+import type { ImageQueueItem, Task } from './domain'
+import type { BatchEraseRequest, EraseResult, EraseRule, EraseTarget } from './erase'
 import type { ExifMetadata } from './metadata'
 
 /** Custom privileged protocol used to stream images to the renderer (never base64 over IPC). */
@@ -72,6 +72,23 @@ export interface FolioApi {
     toggleFullscreen: () => Promise<boolean>
     isFullscreen: () => Promise<boolean>
   }
+  task: {
+    /** Snapshot of all known tasks (newest first), for the batch page's initial render. */
+    list: () => Promise<Task[]>
+    /** Start a batch erase; returns the new task id. Progress arrives via `onUpdate`. */
+    startEraseBatch: (request: BatchEraseRequest) => Promise<string>
+    pause: (id: string) => Promise<void>
+    resume: (id: string) => Promise<void>
+    cancel: (id: string) => Promise<void>
+    /** Re-run the failed files of a finished task as a new batch; returns the new id (or null). */
+    retry: (id: string) => Promise<string | null>
+    /** Write the task's log to a user-chosen file; returns the path (or null if cancelled). */
+    exportLog: (id: string) => Promise<string | null>
+    /** Drop finished (success/failed/cancelled) tasks from the list. */
+    clearFinished: () => Promise<void>
+    /** Subscribe to task-list updates pushed from main. Returns an unsubscribe function. */
+    onUpdate: (callback: (tasks: Task[]) => void) => () => void
+  }
 }
 
 /** IPC channel names — single source of truth for both ends. */
@@ -94,6 +111,16 @@ export const IpcChannel = {
   recentClear: 'recent:clear',
   winToggleFullscreen: 'win:toggleFullscreen',
   winIsFullscreen: 'win:isFullscreen',
+  taskList: 'task:list',
+  taskStartEraseBatch: 'task:startEraseBatch',
+  taskPause: 'task:pause',
+  taskResume: 'task:resume',
+  taskCancel: 'task:cancel',
+  taskRetry: 'task:retry',
+  taskExportLog: 'task:exportLog',
+  taskClearFinished: 'task:clearFinished',
+  /** Push channel: main → renderer, full task-list snapshot on every change. */
+  taskUpdate: 'task:update',
 } as const
 
 export type IpcChannelName = (typeof IpcChannel)[keyof typeof IpcChannel]
