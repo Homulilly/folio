@@ -4,6 +4,7 @@ import { AutoModeStrip } from './components/AutoModeStrip'
 import { BatchTasksPage } from './components/BatchTasksPage'
 import { Canvas } from './components/Canvas'
 import { ContextMenu } from './components/ContextMenu'
+import { ConvertDialog } from './components/ConvertDialog'
 import { EmptyState } from './components/EmptyState'
 import { EraseDialog } from './components/EraseDialog'
 import { ExifDrawer } from './components/ExifDrawer'
@@ -108,6 +109,7 @@ export function App(): React.JSX.Element {
       <EraseDialog />
       <SaveDialog />
       <RenameDialog />
+      <ConvertDialog />
       <AutoModePrompt />
       <FolderPrompt />
       <Toast />

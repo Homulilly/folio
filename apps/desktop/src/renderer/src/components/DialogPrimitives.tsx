@@ -90,6 +90,34 @@ export function Field({
   )
 }
 
+/** A compact checkbox row. */
+export function Toggle({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  label: string
+}): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className="flex items-center gap-2 text-[12px] text-[rgba(235,235,245,0.85)]"
+    >
+      <span
+        className={`flex h-4 w-4 flex-none items-center justify-center rounded border text-[10px] transition-colors ${
+          checked ? 'border-[#0A84FF] bg-[#0A84FF] text-white' : 'border-white/20 bg-white/[0.04]'
+        }`}
+      >
+        {checked ? '✓' : ''}
+      </span>
+      {label}
+    </button>
+  )
+}
+
 /** Shared input styling (mono, dark fill). Spread onto an <input>. */
 export const inputClass =
   'w-full rounded-lg bg-[#2C2C2E] px-3 py-2 font-mono text-[12px] text-white outline-none placeholder:font-sans placeholder:text-[rgba(235,235,245,0.35)]'

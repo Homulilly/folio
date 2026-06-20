@@ -3,6 +3,7 @@ import { type I18nKey, useT } from '../i18n'
 import {
   copyImageCurrent,
   copyPathCurrent,
+  openConvertDialog,
   openRenameDialog,
   openSaveDialog,
   revealCurrent,
@@ -20,6 +21,7 @@ const items: { labelKey: I18nKey; run: () => void; danger?: boolean }[] = [
   { labelKey: 'context.copyPath', run: () => void copyPathCurrent() },
   { labelKey: 'context.saveTo', run: () => openSaveDialog() },
   { labelKey: 'context.rename', run: () => openRenameDialog() },
+  { labelKey: 'context.convert', run: () => openConvertDialog() },
   { labelKey: revealLabelKey(), run: () => void revealCurrent() },
   { labelKey: trashTextKeys().context, run: () => void trashCurrent(), danger: true },
 ]

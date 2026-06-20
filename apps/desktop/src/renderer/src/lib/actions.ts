@@ -1,5 +1,6 @@
 import type { ImageQueueItem, ScanResult } from '@folio/shared-types'
 import { type I18nKey, tNow } from '../i18n'
+import { useConvertStore } from '../stores/convertStore'
 import { useFolderStore } from '../stores/folderStore'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
@@ -132,6 +133,12 @@ export function openSaveDialog(): void {
 export function openRenameDialog(): void {
   if (queue().items.length === 0) return
   useRenameStore.getState().openDialog()
+}
+
+/** Open the format-conversion dialog (no-op when no images are loaded). */
+export function openConvertDialog(): void {
+  if (queue().items.length === 0) return
+  useConvertStore.getState().openDialog()
 }
 
 const baseNameOf = (p: string): string => p.replaceAll('\\', '/').split('/').pop() ?? p

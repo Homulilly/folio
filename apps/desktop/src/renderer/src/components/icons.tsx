@@ -276,6 +276,18 @@ export const SaveIcon = (p: IconProps) =>
     1.7,
   )
 
+// Two opposing arrows — format conversion.
+export const ConvertIcon = (p: IconProps) =>
+  svg(
+    <>
+      <path d="M4 8h13l-3-3M20 16H7l3 3" />
+      <rect x="2.5" y="3" width="6" height="6" rx="1.2" />
+      <rect x="15.5" y="15" width="6" height="6" rx="1.2" />
+    </>,
+    p,
+    1.6,
+  )
+
 // Arrow into a tray — quick save (one-click send to the remembered folder).
 export const QuickSaveIcon = (p: IconProps) =>
   svg(

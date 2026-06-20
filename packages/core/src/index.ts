@@ -1,3 +1,4 @@
+export * from './convert'
 export * from './erase'
 export * from './exif'
 export * from './multi-view'

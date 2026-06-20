@@ -14,12 +14,14 @@ import {
 } from '@folio/core'
 import type {
   BatchEraseRequest,
+  ConvertRequest,
   EraseRule,
   EraseTarget,
   SaveRequest,
   Task,
   TaskType,
 } from '@folio/shared-types'
+import { convertFile } from './convert'
 import { eraseMetadata } from './exiftool'
 import { suggestExportPath } from './paths'
 import { nowStamp, type SaveStamp, saveFile } from './save'
@@ -187,6 +189,28 @@ export class TaskScheduler {
       request.conflict,
       stamp,
     )
+    if (res.status === 'failed') return { ok: false, message: res.error ?? 'failed' }
+    if (res.status === 'skipped') return { ok: true, message: `skipped (${res.outputPath ?? ''})` }
+    return { ok: true, message: res.outputPath }
+  }
+
+  // ---- Format-conversion batch (M6) ----
+
+  startConvertBatch(request: ConvertRequest): string {
+    return this.launch({
+      paused: false,
+      cancelled: false,
+      waiters: [],
+      type: 'convert',
+      files: request.filePaths,
+      label: request.label,
+      execute: (filePath) => this.convertOne(filePath, request),
+      spawn: (files) => this.startConvertBatch({ ...request, filePaths: files }),
+    })
+  }
+
+  private async convertOne(filePath: string, request: ConvertRequest): Promise<ItemOutcome> {
+    const res = await convertFile(filePath, request.targetDir, request.options, request.conflict)
     if (res.status === 'failed') return { ok: false, message: res.error ?? 'failed' }
     if (res.status === 'skipped') return { ok: true, message: `skipped (${res.outputPath ?? ''})` }
     return { ok: true, message: res.outputPath }

@@ -1,6 +1,7 @@
 // IPC contract between renderer (via preload contextBridge) and main process.
 // Namespaces follow PRD §9.2: image.* / file.* / recent.* / win.* (+ system.*).
 
+import type { ConvertRequest, ConvertResult } from './convert'
 import type { ImageQueueItem, Task } from './domain'
 import type { BatchEraseRequest, EraseResult, EraseRule, EraseTarget } from './erase'
 import type { DirListing } from './fs'
@@ -76,6 +77,9 @@ export interface FolioApi {
     batchRename: (request: RenameExecRequest) => Promise<RenameResult>
     /** Write text to a user-chosen file (e.g. the rename log). Returns the path, or null if cancelled. */
     saveText: (defaultName: string, text: string) => Promise<string | null>
+    /** Convert images to another format, writing new files (PRD §6.9); never overwrites the
+     * original. Used for a single focused image; group/folder go through `task.startConvertBatch`. */
+    convert: (request: ConvertRequest) => Promise<ConvertResult[]>
   }
   metadata: {
     /** Read full grouped Exif/XMP/IPTC/… metadata. Resolves null when the read fails. */
@@ -105,6 +109,8 @@ export interface FolioApi {
     startEraseBatch: (request: BatchEraseRequest) => Promise<string>
     /** Start a batch save-to-target; returns the new task id. Progress arrives via `onUpdate`. */
     startSaveBatch: (request: SaveRequest) => Promise<string>
+    /** Start a batch format conversion; returns the new task id. Progress arrives via `onUpdate`. */
+    startConvertBatch: (request: ConvertRequest) => Promise<string>
     pause: (id: string) => Promise<void>
     resume: (id: string) => Promise<void>
     cancel: (id: string) => Promise<void>
@@ -138,6 +144,7 @@ export const IpcChannel = {
   fileSaveToTarget: 'file:saveToTarget',
   fileBatchRename: 'file:batchRename',
   fileSaveText: 'file:saveText',
+  fileConvert: 'file:convert',
   metadataRead: 'metadata:read',
   metadataErase: 'metadata:erase',
   clipboardWriteText: 'clipboard:writeText',
@@ -151,6 +158,7 @@ export const IpcChannel = {
   taskList: 'task:list',
   taskStartEraseBatch: 'task:startEraseBatch',
   taskStartSaveBatch: 'task:startSaveBatch',
+  taskStartConvertBatch: 'task:startConvertBatch',
   taskPause: 'task:pause',
   taskResume: 'task:resume',
   taskCancel: 'task:cancel',

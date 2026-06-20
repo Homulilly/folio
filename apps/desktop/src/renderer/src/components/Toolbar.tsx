@@ -1,6 +1,7 @@
 import type { MultiViewMode } from '@folio/shared-types'
 import { type I18nKey, useT } from '../i18n'
 import {
+  openConvertDialog,
   openFile,
   openFolder,
   openRenameDialog,
@@ -17,6 +18,7 @@ import { useViewerStore } from '../stores/viewerStore'
 import {
   ChevronLeft,
   ChevronRight,
+  ConvertIcon,
   FolderIcon,
   FullscreenIcon,
   ImageIcon,
@@ -159,6 +161,9 @@ export function Toolbar(): React.JSX.Element {
       </TbButton>
       <TbButton title={t('toolbar.rename')} onClick={openRenameDialog} disabled={!hasImages}>
         <RenameIcon size={17} />
+      </TbButton>
+      <TbButton title={t('toolbar.convert')} onClick={openConvertDialog} disabled={!hasImages}>
+        <ConvertIcon size={17} />
       </TbButton>
 
       <Divider />

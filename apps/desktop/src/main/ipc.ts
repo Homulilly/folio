@@ -3,6 +3,8 @@ import { access, stat, writeFile } from 'node:fs/promises'
 import { SUPPORTED_EXTENSIONS } from '@folio/image-processing'
 import {
   type BatchEraseRequest,
+  type ConvertRequest,
+  type ConvertResult,
   type DirListing,
   type EraseResult,
   type EraseRule,
@@ -20,6 +22,7 @@ import {
   type TrashResult,
 } from '@folio/shared-types'
 import { app, type BrowserWindow, clipboard, dialog, ipcMain, nativeImage, shell } from 'electron'
+import { convertFile } from './services/convert'
 import { eraseMetadata, readMetadata } from './services/exiftool'
 import { suggestExportPath } from './services/paths'
 import {
@@ -188,6 +191,19 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     IpcChannel.fileBatchRename,
     (_e, request: RenameExecRequest): Promise<RenameResult> => renameInDirectory(request),
   )
+  // Single/direct convert (a focused image). Group/folder go through task:startConvertBatch.
+  ipcMain.handle(
+    IpcChannel.fileConvert,
+    async (_e, request: ConvertRequest): Promise<ConvertResult[]> => {
+      const results: ConvertResult[] = []
+      for (const filePath of request.filePaths) {
+        results.push(
+          await convertFile(filePath, request.targetDir, request.options, request.conflict),
+        )
+      }
+      return results
+    },
+  )
   ipcMain.handle(
     IpcChannel.fileSaveText,
     async (_e, defaultName: string, text: string): Promise<string | null> => {
@@ -246,6 +262,9 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   )
   ipcMain.handle(IpcChannel.taskStartSaveBatch, (_e, request: SaveRequest): string =>
     taskScheduler.startSaveBatch(request),
+  )
+  ipcMain.handle(IpcChannel.taskStartConvertBatch, (_e, request: ConvertRequest): string =>
+    taskScheduler.startConvertBatch(request),
   )
   ipcMain.handle(IpcChannel.taskPause, (_e, id: string): void => taskScheduler.pause(id))
   ipcMain.handle(IpcChannel.taskResume, (_e, id: string): void => taskScheduler.resume(id))

@@ -30,6 +30,7 @@ const api: Bridge = {
     saveToTarget: (request) => ipcRenderer.invoke(IpcChannel.fileSaveToTarget, request),
     batchRename: (request) => ipcRenderer.invoke(IpcChannel.fileBatchRename, request),
     saveText: (defaultName, text) => ipcRenderer.invoke(IpcChannel.fileSaveText, defaultName, text),
+    convert: (request) => ipcRenderer.invoke(IpcChannel.fileConvert, request),
   },
   metadata: {
     read: (filePath) => ipcRenderer.invoke(IpcChannel.metadataRead, filePath),
@@ -57,6 +58,7 @@ const api: Bridge = {
     list: () => ipcRenderer.invoke(IpcChannel.taskList),
     startEraseBatch: (request) => ipcRenderer.invoke(IpcChannel.taskStartEraseBatch, request),
     startSaveBatch: (request) => ipcRenderer.invoke(IpcChannel.taskStartSaveBatch, request),
+    startConvertBatch: (request) => ipcRenderer.invoke(IpcChannel.taskStartConvertBatch, request),
     pause: (id) => ipcRenderer.invoke(IpcChannel.taskPause, id),
     resume: (id) => ipcRenderer.invoke(IpcChannel.taskResume, id),
     cancel: (id) => ipcRenderer.invoke(IpcChannel.taskCancel, id),

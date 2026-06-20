@@ -1,3 +1,4 @@
+export * from './convert'
 export * from './domain'
 export * from './erase'
 export * from './fs'
