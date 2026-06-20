@@ -1,6 +1,12 @@
 import type { MultiViewMode } from '@folio/shared-types'
 import { useEffect } from 'react'
-import { copyImageCurrent, copyPathCurrent, toggleFullscreen, trashCurrent } from '../lib/actions'
+import {
+  advance,
+  copyImageCurrent,
+  copyPathCurrent,
+  toggleFullscreen,
+  trashCurrent,
+} from '../lib/actions'
 import { useExifStore } from '../stores/exifStore'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
@@ -51,8 +57,9 @@ export function useShortcuts(): void {
         case 'd':
         case 'D':
           e.preventDefault()
+          // Plain step offers the next folder at the queue's end; Shift always jumps a group.
           if (e.shiftKey) mv.nextGroup()
-          else mv.nextImage()
+          else void advance()
           break
         case 'ArrowLeft':
         case 'a':

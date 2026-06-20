@@ -10,7 +10,11 @@ interface QueueState {
   /** Bumped on every mutation; lets later workers discard stale results (PRD §9.3). */
   version: number
 
-  loadResult: (result: ScanResult) => void
+  /**
+   * Replace the queue from a scan. With `keepFocus`, the currently focused image is re-selected
+   * by path if it survived (used by refresh); otherwise the scan's own `currentIndex` is honoured.
+   */
+  loadResult: (result: ScanResult, opts?: { keepFocus?: boolean }) => void
   setSortMode: (mode: SortMode) => void
   select: (index: number) => void
   next: () => void
@@ -37,13 +41,20 @@ export const useQueueStore = create<QueueState>((set) => ({
   sortMode: 'name_asc',
   version: 0,
 
-  loadResult: (result) =>
+  loadResult: (result, opts) =>
     set((s) => {
-      const { sorted, idx } = resort(result.items, result.currentIndex, s.sortMode)
+      // Refresh keeps the user on the same image (by path); a fresh open uses the scan's focus.
+      const keepPath = opts?.keepFocus ? s.items[s.currentIndex]?.filePath : undefined
+      const sorted = sortItems(result.items, s.sortMode)
+      let idx = keepPath ? sorted.findIndex((it) => it.filePath === keepPath) : -1
+      if (idx < 0) {
+        const targetPath = result.items[result.currentIndex]?.filePath
+        idx = targetPath ? sorted.findIndex((it) => it.filePath === targetPath) : 0
+      }
       return {
         directory: result.directory,
         items: sorted,
-        currentIndex: idx,
+        currentIndex: idx >= 0 ? idx : 0,
         version: s.version + 1,
       }
     }),

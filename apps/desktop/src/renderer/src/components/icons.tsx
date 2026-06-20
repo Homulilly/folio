@@ -234,3 +234,33 @@ export const TasksIcon = (p: IconProps) =>
   svg(<path d="M9 6h12M9 12h12M9 18h12M4 6h.01M4 12h.01M4 18h.01" />, p)
 
 export const ZapIcon = (p: IconProps) => svg(<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z" />, p)
+
+// Circular refresh arrows — re-scan the open folder.
+export const RefreshIcon = (p: IconProps) =>
+  svg(
+    <>
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+      <path d="M21 3v5h-5" />
+    </>,
+    p,
+    1.7,
+  )
+
+// Folder with a branch — toggle the folder browser.
+export const FolderTreeIcon = (p: IconProps) =>
+  svg(
+    <>
+      <path d="M3 6a1 1 0 0 1 1-1h4l1.5 2H20a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6Z" />
+      <path d="M8 13v3a2 2 0 0 0 2 2h2" />
+      <rect x="12" y="16" width="8" height="5" rx="1" />
+    </>,
+    p,
+    1.6,
+  )
+
+// Up-and-left arrow — step out to the parent folder (the ".." row).
+export const CornerUpLeftIcon = (p: IconProps) =>
+  svg(<path d="M9 14 4 9l5-5M4 9h11a5 5 0 0 1 5 5v6" />, p, 1.7)
+
+// Descending bars — the sort-order menu trigger.
+export const SortIcon = (p: IconProps) => svg(<path d="M4 6h13M4 12h9M4 18h5" />, p, 1.8)

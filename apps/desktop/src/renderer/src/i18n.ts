@@ -55,6 +55,15 @@ const en = {
 
   'queue.title': 'Queue',
   'queue.images': '{count} images',
+  'queue.refresh': 'Refresh file list',
+  'queue.browseFolders': 'Browse folders',
+
+  'folder.loading': 'Loading…',
+  'folder.empty': 'No subfolders',
+  'folder.noSubfolders': 'No subfolders',
+  'folder.nextTitle': 'Load the next folder?',
+  'folder.nextCancel': 'Stay',
+  'folder.nextConfirm': 'Load folder',
 
   'canvas.previewUnavailable': '{format} preview not available yet',
   'canvas.previewUnavailableDetail':
@@ -277,6 +286,15 @@ const zhCN: Record<keyof typeof en, string> = {
 
   'queue.title': '队列',
   'queue.images': '{count} 张图片',
+  'queue.refresh': '刷新文件列表',
+  'queue.browseFolders': '浏览文件夹',
+
+  'folder.loading': '加载中…',
+  'folder.empty': '无子文件夹',
+  'folder.noSubfolders': '无子文件夹',
+  'folder.nextTitle': '载入下一个文件夹？',
+  'folder.nextCancel': '留在本页',
+  'folder.nextConfirm': '载入文件夹',
 
   'canvas.previewUnavailable': '暂不支持预览 {format}',
   'canvas.previewUnavailableDetail':

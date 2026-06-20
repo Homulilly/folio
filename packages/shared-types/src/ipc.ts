@@ -3,6 +3,7 @@
 
 import type { ImageQueueItem, Task } from './domain'
 import type { BatchEraseRequest, EraseResult, EraseRule, EraseTarget } from './erase'
+import type { DirListing } from './fs'
 import type { ExifMetadata } from './metadata'
 
 /** Custom privileged protocol used to stream images to the renderer (never base64 over IPC). */
@@ -62,6 +63,8 @@ export interface FolioApi {
     probe: (filePath: string) => Promise<FileProbe>
     /** A non-existing export path: `<dir>/<base><suffix><ext>`, incrementing on conflict. */
     suggestExportPath: (filePath: string, suffix: string) => Promise<string>
+    /** List a directory's immediate subdirectories (for the queue rail's folder browser). */
+    listDirectory: (directory: string) => Promise<DirListing | null>
   }
   metadata: {
     /** Read full grouped Exif/XMP/IPTC/… metadata. Resolves null when the read fails. */
@@ -117,6 +120,7 @@ export const IpcChannel = {
   fileStartDrag: 'file:startDrag',
   fileProbe: 'file:probe',
   fileSuggestExportPath: 'file:suggestExportPath',
+  fileListDirectory: 'file:listDirectory',
   metadataRead: 'metadata:read',
   metadataErase: 'metadata:erase',
   clipboardWriteText: 'clipboard:writeText',

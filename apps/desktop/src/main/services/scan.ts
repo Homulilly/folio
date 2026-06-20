@@ -2,7 +2,13 @@ import type { Stats } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { extOf, isSupportedImage } from '@folio/image-processing'
-import type { ImageFormat, ImageQueueItem, ScanResult } from '@folio/shared-types'
+import type {
+  DirEntry,
+  DirListing,
+  ImageFormat,
+  ImageQueueItem,
+  ScanResult,
+} from '@folio/shared-types'
 import { detectFileFormat } from './format'
 
 const STAT_CONCURRENCY = 32
@@ -98,4 +104,49 @@ export async function buildScanResult(paths: readonly string[]): Promise<ScanRes
     }),
   )
   return items.length ? { items, currentIndex: 0 } : null
+}
+
+/** Hidden (dot-prefixed) entries are skipped throughout the folder browser. */
+const isHidden = (name: string): boolean => name.startsWith('.')
+
+/** Cheap, extension-only counts of a directory's direct children — no stat, no magic bytes. */
+async function countChildren(dir: string): Promise<{ imageCount: number; subdirCount: number }> {
+  let imageCount = 0
+  let subdirCount = 0
+  try {
+    for (const e of await readdir(dir, { withFileTypes: true })) {
+      if (e.isFile() && isSupportedImage(e.name)) imageCount++
+      else if (e.isDirectory() && !isHidden(e.name)) subdirCount++
+    }
+  } catch {
+    /* unreadable subfolder → reported as empty */
+  }
+  return { imageCount, subdirCount }
+}
+
+/**
+ * List a directory's immediate subdirectories for the queue rail's folder browser.
+ * Each entry carries cheap child counts (images / subfolders) used to hint and to find the
+ * next folder with images. Returns null if the directory itself can't be read.
+ */
+export async function listDirectory(directory: string): Promise<DirListing | null> {
+  let names: string[]
+  try {
+    const entries = await readdir(directory, { withFileTypes: true })
+    names = entries.filter((e) => e.isDirectory() && !isHidden(e.name)).map((e) => e.name)
+  } catch {
+    return null
+  }
+  const directories: DirEntry[] = await mapLimit(names, STAT_CONCURRENCY, async (name) => {
+    const path = join(directory, name)
+    return { name, path, ...(await countChildren(path)) }
+  })
+  directories.sort((a, b) => a.name.localeCompare(b.name))
+  const parent = dirname(directory)
+  return {
+    path: directory,
+    parent: parent === directory ? null : parent,
+    name: basename(directory) || directory,
+    directories,
+  }
 }

@@ -25,6 +25,7 @@ const api: Bridge = {
     probe: (filePath) => ipcRenderer.invoke(IpcChannel.fileProbe, filePath),
     suggestExportPath: (filePath, suffix) =>
       ipcRenderer.invoke(IpcChannel.fileSuggestExportPath, filePath, suffix),
+    listDirectory: (directory) => ipcRenderer.invoke(IpcChannel.fileListDirectory, directory),
   },
   metadata: {
     read: (filePath) => ipcRenderer.invoke(IpcChannel.metadataRead, filePath),

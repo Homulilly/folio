@@ -7,6 +7,7 @@ import { ContextMenu } from './components/ContextMenu'
 import { EmptyState } from './components/EmptyState'
 import { EraseDialog } from './components/EraseDialog'
 import { ExifDrawer } from './components/ExifDrawer'
+import { FolderPrompt } from './components/FolderPrompt'
 import { ImmersiveChrome } from './components/ImmersiveChrome'
 import { MultiView } from './components/MultiView'
 import { QueueRail } from './components/QueueRail'
@@ -104,6 +105,7 @@ export function App(): React.JSX.Element {
       <TrashConfirmDialog />
       <EraseDialog />
       <AutoModePrompt />
+      <FolderPrompt />
       <Toast />
     </div>
   )

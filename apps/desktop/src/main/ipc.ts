@@ -3,6 +3,7 @@ import { access, stat, writeFile } from 'node:fs/promises'
 import { SUPPORTED_EXTENSIONS } from '@folio/image-processing'
 import {
   type BatchEraseRequest,
+  type DirListing,
   type EraseResult,
   type EraseRule,
   type EraseTarget,
@@ -23,7 +24,7 @@ import {
   listRecentFolders,
   removeRecentFolder,
 } from './services/recent'
-import { buildScanResult } from './services/scan'
+import { buildScanResult, listDirectory } from './services/scan'
 import { taskScheduler } from './services/taskScheduler'
 
 const IMAGE_EXTENSIONS = [...SUPPORTED_EXTENSIONS]
@@ -151,6 +152,10 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(
     IpcChannel.fileSuggestExportPath,
     (_e, filePath: string, suffix: string): Promise<string> => suggestExportPath(filePath, suffix),
+  )
+  ipcMain.handle(
+    IpcChannel.fileListDirectory,
+    (_e, directory: string): Promise<DirListing | null> => listDirectory(directory),
   )
 
   // --- metadata (Exif) ---
