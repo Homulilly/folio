@@ -91,6 +91,23 @@ export function Canvas(): React.JSX.Element {
     setFailReason(null)
   }, [itemId])
 
+  // Warm the next/prev images so single-view navigation is instant: Chromium serves the live
+  // resource from its in-memory cache when the real <img> mounts with the same URL. Hold at most
+  // two Image() refs (replaced each navigation), so only two extra decoded bitmaps live at once —
+  // bounded memory, in line with the multi-view decode limit (architecture rule §6).
+  const preloadRefs = useRef<HTMLImageElement[]>([])
+  useEffect(() => {
+    const { items } = useQueueStore.getState()
+    const neighbors = [items[currentIndex + 1], items[currentIndex - 1]].filter(
+      (it): it is NonNullable<typeof it> => it != null,
+    )
+    preloadRefs.current = neighbors.map((it) => {
+      const img = new Image()
+      img.src = displaySrc(it)
+      return img
+    })
+  }, [currentIndex])
+
   // On load failure, ask main *why* (the <img> error gives no reason) so we can distinguish a
   // missing/unreadable file from a genuine decode failure. Ignore a stale result if the user
   // has already navigated to another image.
