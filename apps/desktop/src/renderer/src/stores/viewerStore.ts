@@ -23,6 +23,8 @@ interface ViewerState {
   reset: () => void
   toggleFit: () => void
   fitWindow: () => void
+  /** Fit for grid mode: drops single-image geometry so zoom resumes from a 100% baseline. */
+  fitForGrid: () => void
   originalSize: () => void
   zoomIn: () => void
   zoomOut: () => void
@@ -67,6 +69,18 @@ export const useViewerStore = create<ViewerState>((set) => ({
   reset: () => set({ fit: true, zoom: 100, rotation: 0, naturalWidth: null, naturalHeight: null }),
   toggleFit: () => set((s) => ({ fit: !s.fit, zoom: 100 })),
   fitWindow: () => set({ fit: true, zoom: 100 }),
+  // Grid zoom is scale(zoom/100) over each cell's contain-fit, so the fit baseline is 100%, not a
+  // fraction of natural pixels. Clearing the (single-image) geometry makes fitPercent fall back to
+  // 100, so button/keyboard zoom resumes from the displayed size instead of a stale single-view %.
+  fitForGrid: () =>
+    set({
+      fit: true,
+      zoom: 100,
+      naturalWidth: null,
+      naturalHeight: null,
+      viewportWidth: null,
+      viewportHeight: null,
+    }),
   originalSize: () => set({ fit: false, zoom: 100 }),
   zoomIn: () => set((s) => ({ fit: false, zoom: clampZoom(currentPercent(s) * ZOOM_STEP_FACTOR) })),
   zoomOut: () =>

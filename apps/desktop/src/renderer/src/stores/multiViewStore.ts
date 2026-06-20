@@ -71,8 +71,11 @@ export const useMultiViewStore = create<MultiViewStore>((set, get) => ({
   setMode: (mode) => {
     // Realign so the previously focused image lands in slot 0 of its new group.
     queue().select(groupStartForIndex(queue().currentIndex, mode))
-    // Different layouts size cells differently, so start fresh at the fit scale.
-    useViewerStore.getState().fitWindow()
+    // Start fresh at the fit scale. Grid fit is cell-relative (baseline 100%), single fit is
+    // measured by the Canvas — so drop stale geometry when entering a grid.
+    const v = useViewerStore.getState()
+    if (mode === 'single') v.fitWindow()
+    else v.fitForGrid()
     set({ mode, layout: DEFAULT_LAYOUT[mode], expanded: false })
   },
 
@@ -159,7 +162,8 @@ export const useMultiViewStore = create<MultiViewStore>((set, get) => ({
     set({ expanded: true })
   },
   collapse: () => {
-    useViewerStore.getState().fitWindow()
+    // Back to the grid — reset to the grid fit baseline (drops the expanded view's geometry).
+    useViewerStore.getState().fitForGrid()
     set({ expanded: false })
   },
 }))
