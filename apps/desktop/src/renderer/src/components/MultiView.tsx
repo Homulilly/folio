@@ -1,5 +1,5 @@
 import { groupSlots, groupStartForIndex } from '@folio/core'
-import type { ImageQueueItem, MultiViewLayout } from '@folio/shared-types'
+import type { FileProbe, ImageQueueItem, MultiViewLayout } from '@folio/shared-types'
 import { useRef, useState } from 'react'
 import { useT } from '../i18n'
 import { canRenderNatively, formatBytes, formatLabel, imageUrl } from '../lib/format'
@@ -58,6 +58,7 @@ function Slot({
   // Slot is remounted (keyed by image id) whenever its image changes, so load state
   // starts fresh and the offscreen <img> unmounts to release its decoded bitmap.
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading')
+  const [reason, setReason] = useState<FileProbe | null>(null)
 
   if (!item) {
     return (
@@ -88,7 +89,13 @@ function Slot({
         </div>
       ) : status === 'error' ? (
         <div className="px-4 text-center text-[12px] text-[#FF453A]">
-          {t('multi.failedToDecode')}
+          {t(
+            reason === 'missing'
+              ? 'multi.fileNotFound'
+              : reason === 'unreadable'
+                ? 'multi.fileUnreadable'
+                : 'multi.failedToDecode',
+          )}
         </div>
       ) : (
         <>
@@ -103,7 +110,10 @@ function Slot({
             alt={item.fileName}
             draggable={false}
             onLoad={() => setStatus('loaded')}
-            onError={() => setStatus('error')}
+            onError={() => {
+              setStatus('error')
+              void window.gv.file.probe(item.filePath).then(setReason)
+            }}
             className="max-h-full max-w-full object-contain transition-opacity"
             style={{ opacity: status === 'loaded' ? 1 : 0, transform }}
           />

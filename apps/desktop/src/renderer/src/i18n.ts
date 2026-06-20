@@ -60,6 +60,8 @@ const en = {
   'canvas.previewUnavailableDetail':
     '{fileName} - rendering for this format arrives with the sharp preview pipeline (M6/M7).',
   'canvas.failedToDecode': 'Failed to decode {fileName}',
+  'canvas.fileNotFound': 'File not found: {fileName}',
+  'canvas.fileUnreadable': 'Can’t read {fileName} (permission denied)',
   'canvas.previous': 'Previous (←)',
   'canvas.next': 'Next (→)',
   'canvas.backToGrid': 'Back to grid (Esc)',
@@ -67,6 +69,8 @@ const en = {
   'multi.noMoreImages': 'No more images',
   'multi.previewUnavailable': '{format} preview not available yet',
   'multi.failedToDecode': 'Failed to decode',
+  'multi.fileNotFound': 'File not found',
+  'multi.fileUnreadable': 'Can’t read file',
 
   'status.mode.single': 'Single',
   'status.mode.dual': 'Dual',
@@ -278,6 +282,8 @@ const zhCN: Record<keyof typeof en, string> = {
   'canvas.previewUnavailableDetail':
     '{fileName} - 该格式的渲染会随 sharp 预览管线一起到来 (M6/M7)。',
   'canvas.failedToDecode': '无法解码 {fileName}',
+  'canvas.fileNotFound': '文件不存在：{fileName}',
+  'canvas.fileUnreadable': '无法读取 {fileName}（权限不足）',
   'canvas.previous': '上一张 (←)',
   'canvas.next': '下一张 (→)',
   'canvas.backToGrid': '返回网格 (Esc)',
@@ -285,6 +291,8 @@ const zhCN: Record<keyof typeof en, string> = {
   'multi.noMoreImages': '没有更多图片',
   'multi.previewUnavailable': '暂不支持预览 {format}',
   'multi.failedToDecode': '无法解码',
+  'multi.fileNotFound': '文件不存在',
+  'multi.fileUnreadable': '无法读取文件',
 
   'status.mode.single': '单图',
   'status.mode.dual': '双图',

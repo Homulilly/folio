@@ -29,6 +29,12 @@ export interface ScanResult {
 export type TrashResult = 'trashed' | 'failed'
 
 /**
+ * Why an image failed to load — diagnosed after `<img>` fires onError (which carries no reason).
+ * `decodable` means the file is present and readable, so the failure is a decode/format problem.
+ */
+export type FileProbe = 'missing' | 'unreadable' | 'decodable'
+
+/**
  * The full surface exposed on `window.gv` by the preload bridge.
  * Async methods are backed by ipcRenderer.invoke. Renderer has zero direct fs access.
  */
@@ -52,6 +58,8 @@ export interface FolioApi {
     copyImage: (filePath: string) => Promise<boolean>
     /** Begin a native OS file drag of the real file (drag-out to Finder/Explorer/web upload). */
     startDrag: (filePath: string) => void
+    /** Diagnose why an image failed to load (missing / unreadable / present-but-undecodable). */
+    probe: (filePath: string) => Promise<FileProbe>
     /** A non-existing export path: `<dir>/<base><suffix><ext>`, incrementing on conflict. */
     suggestExportPath: (filePath: string, suffix: string) => Promise<string>
   }
@@ -105,6 +113,7 @@ export const IpcChannel = {
   fileCopyPath: 'file:copyPath',
   fileCopyImage: 'file:copyImage',
   fileStartDrag: 'file:startDrag',
+  fileProbe: 'file:probe',
   fileSuggestExportPath: 'file:suggestExportPath',
   metadataRead: 'metadata:read',
   metadataErase: 'metadata:erase',

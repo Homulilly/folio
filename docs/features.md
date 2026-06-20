@@ -46,6 +46,7 @@
   - 覆盖 JPEG/PNG/GIF/WebP/BMP/TIFF/AVIF/HEIC/HEIF/JPEG XL;纯检测逻辑在 `@folio/image-processing`(含单测)。
   - `gv-img://` 协议据此返回正确的 `Content-Type`;渲染层据此判断可渲染性与格式标签。
 - **渲染范围**:Chromium 原生可解码的格式直接显示;暂不支持的格式(TIFF/HEIC/HEIF/JXL 等)显示占位提示,待 M6/M7 接入 sharp 预览。
+- **加载失败按原因提示**:载入失败时回探文件状态,区分 **文件不存在** / **无法读取(权限)** / **无法解码**,单图与多图格子均给出对应文案。
 
 ## Exif 查看(M3)
 

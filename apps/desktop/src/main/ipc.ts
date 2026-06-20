@@ -1,5 +1,5 @@
-import { statSync } from 'node:fs'
-import { writeFile } from 'node:fs/promises'
+import { constants, statSync } from 'node:fs'
+import { access, stat, writeFile } from 'node:fs/promises'
 import { SUPPORTED_EXTENSIONS } from '@folio/image-processing'
 import {
   type BatchEraseRequest,
@@ -7,6 +7,7 @@ import {
   type EraseRule,
   type EraseTarget,
   type ExifMetadata,
+  type FileProbe,
   IpcChannel,
   type ScanResult,
   type SystemInfo,
@@ -131,6 +132,21 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.on(IpcChannel.fileStartDrag, (event, filePath: string): void => {
     if (typeof filePath !== 'string' || !isExistingFile(filePath)) return
     event.sender.startDrag({ file: filePath, icon: dragIconForFile(filePath) })
+  })
+  // Diagnose a failed image load: gone/not-a-file → missing, present but no read access →
+  // unreadable, otherwise it's a decode/format problem (decodable = the bytes are reachable).
+  ipcMain.handle(IpcChannel.fileProbe, async (_e, filePath: string): Promise<FileProbe> => {
+    try {
+      if (!(await stat(filePath)).isFile()) return 'missing'
+    } catch {
+      return 'missing'
+    }
+    try {
+      await access(filePath, constants.R_OK)
+      return 'decodable'
+    } catch {
+      return 'unreadable'
+    }
   })
   ipcMain.handle(
     IpcChannel.fileSuggestExportPath,

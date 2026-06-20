@@ -1,3 +1,4 @@
+import type { FileProbe } from '@folio/shared-types'
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../i18n'
 import { canRenderNatively, formatLabel, imageUrl } from '../lib/format'
@@ -69,6 +70,7 @@ export function Canvas(): React.JSX.Element {
   const setNatural = useViewerStore((s) => s.setNatural)
 
   const [failed, setFailed] = useState(false)
+  const [failReason, setFailReason] = useState<FileProbe | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
   const zoomRaf = useRef<number | null>(null)
@@ -83,10 +85,25 @@ export function Canvas(): React.JSX.Element {
   // re-applies the same value rather than fighting the in-flight DOM mutation.
   const displayScaleRef = useRef(1)
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: setFailed is stable; reset on image change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: setters are stable; reset on image change
   useEffect(() => {
     setFailed(false)
+    setFailReason(null)
   }, [itemId])
+
+  // On load failure, ask main *why* (the <img> error gives no reason) so we can distinguish a
+  // missing/unreadable file from a genuine decode failure. Ignore a stale result if the user
+  // has already navigated to another image.
+  const onImageError = (): void => {
+    setFailed(true)
+    setFailReason(null)
+    if (!item) return
+    const id = item.id
+    void window.gv.file.probe(item.filePath).then((reason) => {
+      const q = useQueueStore.getState()
+      if (q.items[q.currentIndex]?.id === id) setFailReason(reason)
+    })
+  }
 
   // Mouse wheel zooms the image. A native, non-passive listener is required because React's
   // onWheel is passive, so preventDefault() there can't stop the canvas from scrolling. Canvas
@@ -334,7 +351,14 @@ export function Canvas(): React.JSX.Element {
             </div>
           ) : failed ? (
             <div className="px-6 text-center text-[13px] text-[#FF453A]">
-              {t('canvas.failedToDecode', { fileName: item.fileName })}
+              {t(
+                failReason === 'missing'
+                  ? 'canvas.fileNotFound'
+                  : failReason === 'unreadable'
+                    ? 'canvas.fileUnreadable'
+                    : 'canvas.failedToDecode',
+                { fileName: item.fileName },
+              )}
             </div>
           ) : (
             <img
@@ -347,7 +371,7 @@ export function Canvas(): React.JSX.Element {
                 setFailed(false)
                 setNatural(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)
               }}
-              onError={() => setFailed(true)}
+              onError={onImageError}
               className={imgClassName}
               style={imgStyle}
             />
