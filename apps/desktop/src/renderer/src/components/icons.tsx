@@ -264,3 +264,25 @@ export const CornerUpLeftIcon = (p: IconProps) =>
 
 // Descending bars — the sort-order menu trigger.
 export const SortIcon = (p: IconProps) => svg(<path d="M4 6h13M4 12h9M4 18h5" />, p, 1.8)
+
+// Floppy disk — save to a target folder.
+export const SaveIcon = (p: IconProps) =>
+  svg(
+    <>
+      <path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+      <path d="M7 3v5h8V3M8 15h8" />
+    </>,
+    p,
+    1.7,
+  )
+
+// Pencil over a baseline — batch rename.
+export const RenameIcon = (p: IconProps) =>
+  svg(
+    <>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+    </>,
+    p,
+    1.7,
+  )

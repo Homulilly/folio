@@ -1,6 +1,12 @@
 import type { MultiViewMode } from '@folio/shared-types'
 import { type I18nKey, useT } from '../i18n'
-import { openFile, openFolder, toggleFullscreen } from '../lib/actions'
+import {
+  openFile,
+  openFolder,
+  openRenameDialog,
+  openSaveDialog,
+  toggleFullscreen,
+} from '../lib/actions'
 import { useExifStore } from '../stores/exifStore'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
@@ -20,8 +26,10 @@ import {
   LayoutSwap,
   LayoutTriple,
   LoopIcon,
+  RenameIcon,
   RotateIcon,
   RotateResetIcon,
+  SaveIcon,
   SettingsIcon,
   ShuffleIcon,
   SidebarIcon,
@@ -129,6 +137,12 @@ export function Toolbar(): React.JSX.Element {
       </TbButton>
       <TbButton title={t('toolbar.openFile')} onClick={openFile}>
         <ImageIcon />
+      </TbButton>
+      <TbButton title={t('toolbar.saveTo')} onClick={openSaveDialog} disabled={!hasImages}>
+        <SaveIcon size={17} />
+      </TbButton>
+      <TbButton title={t('toolbar.rename')} onClick={openRenameDialog} disabled={!hasImages}>
+        <RenameIcon size={17} />
       </TbButton>
 
       <Divider />

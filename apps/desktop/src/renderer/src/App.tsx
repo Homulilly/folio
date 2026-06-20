@@ -11,6 +11,8 @@ import { FolderPrompt } from './components/FolderPrompt'
 import { ImmersiveChrome } from './components/ImmersiveChrome'
 import { MultiView } from './components/MultiView'
 import { QueueRail } from './components/QueueRail'
+import { RenameDialog } from './components/RenameDialog'
+import { SaveDialog } from './components/SaveDialog'
 import { SettingsPage } from './components/SettingsPage'
 import { StatusBar } from './components/StatusBar'
 import { TitleBar } from './components/TitleBar'
@@ -104,6 +106,8 @@ export function App(): React.JSX.Element {
       {!immersive && <StatusBar />}
       <TrashConfirmDialog />
       <EraseDialog />
+      <SaveDialog />
+      <RenameDialog />
       <AutoModePrompt />
       <FolderPrompt />
       <Toast />

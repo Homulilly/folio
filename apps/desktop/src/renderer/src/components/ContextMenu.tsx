@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 import { type I18nKey, useT } from '../i18n'
-import { copyImageCurrent, copyPathCurrent, revealCurrent, trashCurrent } from '../lib/actions'
+import {
+  copyImageCurrent,
+  copyPathCurrent,
+  openRenameDialog,
+  openSaveDialog,
+  revealCurrent,
+  trashCurrent,
+} from '../lib/actions'
 import { revealLabelKey, trashTextKeys } from '../lib/platform'
 
 interface MenuPos {
@@ -11,6 +18,8 @@ interface MenuPos {
 const items: { labelKey: I18nKey; run: () => void; danger?: boolean }[] = [
   { labelKey: 'context.copyImage', run: () => void copyImageCurrent() },
   { labelKey: 'context.copyPath', run: () => void copyPathCurrent() },
+  { labelKey: 'context.saveTo', run: () => openSaveDialog() },
+  { labelKey: 'context.rename', run: () => openRenameDialog() },
   { labelKey: revealLabelKey(), run: () => void revealCurrent() },
   { labelKey: trashTextKeys().context, run: () => void trashCurrent(), danger: true },
 ]

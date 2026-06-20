@@ -3,6 +3,8 @@ import { type I18nKey, tNow } from '../i18n'
 import { useFolderStore } from '../stores/folderStore'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
+import { useRenameStore } from '../stores/renameStore'
+import { useSaveStore } from '../stores/saveStore'
 import { useToastStore } from '../stores/toastStore'
 import { useTrashConfirmStore } from '../stores/trashConfirmStore'
 import { useUiStore } from '../stores/uiStore'
@@ -118,6 +120,18 @@ export async function revealCurrent(): Promise<void> {
 
 export async function toggleFullscreen(): Promise<void> {
   await window.gv.win.toggleFullscreen()
+}
+
+/** Open the save-to-target dialog (no-op when no images are loaded). */
+export function openSaveDialog(): void {
+  if (queue().items.length === 0) return
+  useSaveStore.getState().openDialog()
+}
+
+/** Open the batch-rename dialog (no-op when no folder is open). */
+export function openRenameDialog(): void {
+  if (queue().items.length === 0) return
+  useRenameStore.getState().openDialog()
 }
 
 /** Copy arbitrary text (an Exif field, or the full metadata JSON) to the clipboard. */
