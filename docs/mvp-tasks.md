@@ -226,9 +226,9 @@
 - [x] i18n 初始化顺序:`main.tsx` 先 `await settings.get()` 再 render(无语言闪烁);读取失败回退系统语言、不阻塞看图
 - [x] 快速保存规则持久化(**M5 顺延**完成;`saveStore.setQuickRule` → `settings.update`,boot 时 hydrate)
 - [x] 缓存大小预算接 settings(`thumbnail/previewCacheSizeMB` 驱动 Phase A 的 LRU 预算,去掉硬编码)
-- [ ] 自动擦除规则永久 scope(directory / directory_recursive / global)+「存为默认规则」+ applyOn 多模式(**M4 顺延**;现为 `autoModeStore` 会话内存)——属功能项,backbone 已就绪,UI 待做
-- [ ] 任务历史持久化(**M4 顺延**;现为主进程内存,重启即清)——价值较低,可选
-- [ ] 设置页扩展 + 快捷键配置 UI(现仅语言段已走新 backbone;其余 `AppSettings` 字段 schema 齐备,待逐项接 UI)
+- [x] 「存为默认规则」(**M4 顺延**完成):擦除对话框记住上次 preset/分类/自定义标签 → `settings.defaultErase`,下次开框预填;boot 时 hydrate。**全局自动应用 scope(directory_recursive/global)刻意不做**——会在每个浏览过的文件夹散落导出副本,UX 风险大;跨图应用仍走 session-directory 自动模式(已有)
+- [x] 任务历史持久化(**M4 顺延**完成):`services/taskHistory.ts` 把终态任务存 SQLite(上限 200),`scheduler.init()` 启动加载、标 `restored`;`restored` 任务无运行期 Control 故 `canRetry` 返回 false(隐藏重试),仍可查看/导出日志;`clearFinished` 一并清历史
+- [x] 设置页扩展(语言 + 浏览[循环/同步缩放] + 安全[删除确认] + 缓存[缩略图/预览 MB]);**排序/多图模式/循环/同步缩放从各自既有控件自动记忆**(setSortMode/setMode/toggleLoop/toggleSync 现持久化),无需额外 UI。**快捷键自定义 UI 仍未做**(键位目前固定,见 §7;非 MVP 阻塞项)
 
 ### E. 打包与发布（PRD §18 / §19.5）
 
