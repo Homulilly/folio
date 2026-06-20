@@ -42,6 +42,8 @@ interface MultiViewStore {
   expanded: boolean
 
   setMode: (mode: MultiViewMode) => void
+  /** Seed persisted multi-view prefs on boot (mode + loop/sync), without the setMode side effects. */
+  hydrate: (prefs: { mode: MultiViewMode; loopEnabled: boolean; syncZoom: boolean }) => void
   cycleMode: () => void
   cycleLayout: () => void
   /** Make slot `slot` (0-based) of the current group the focused image. No-op for blank slots. */
@@ -77,7 +79,13 @@ export const useMultiViewStore = create<MultiViewStore>((set, get) => ({
     if (mode === 'single') v.fitWindow()
     else v.fitForGrid()
     set({ mode, layout: DEFAULT_LAYOUT[mode], expanded: false })
+    void window.gv.settings.update({ defaultMultiViewMode: mode })
   },
+
+  // Boot-time seed: set mode + its default layout and the loop/sync prefs directly, without the
+  // queue/viewer realignment setMode does (the queue is empty at boot).
+  hydrate: ({ mode, loopEnabled, syncZoom }) =>
+    set({ mode, layout: DEFAULT_LAYOUT[mode], loopEnabled, syncZoom }),
 
   cycleMode: () => {
     const i = MODE_CYCLE.indexOf(get().mode)
@@ -153,8 +161,18 @@ export const useMultiViewStore = create<MultiViewStore>((set, get) => ({
     )
   },
 
-  toggleSync: () => set((s) => ({ syncZoom: !s.syncZoom })),
-  toggleLoop: () => set((s) => ({ loopEnabled: !s.loopEnabled })),
+  toggleSync: () =>
+    set((s) => {
+      const syncZoom = !s.syncZoom
+      void window.gv.settings.update({ multiView: { syncZoom } })
+      return { syncZoom }
+    }),
+  toggleLoop: () =>
+    set((s) => {
+      const loopEnabled = !s.loopEnabled
+      void window.gv.settings.update({ multiView: { loopEnabled } })
+      return { loopEnabled }
+    }),
   // Switching between the grid and the focused single view always starts at the fit scale.
   expand: () => {
     if (get().mode === 'single') return

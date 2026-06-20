@@ -18,6 +18,7 @@ import {
   type SaveRequest,
   type SaveResult,
   type ScanResult,
+  type SettingsPatch,
   type SystemInfo,
   type Task,
   type TrashResult,
@@ -238,7 +239,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IpcChannel.settingsGet, (): AppSettings => getSettings())
   ipcMain.handle(
     IpcChannel.settingsUpdate,
-    (_e, patch: Partial<AppSettings>): AppSettings => updateSettings(patch),
+    (_e, patch: SettingsPatch): AppSettings => updateSettings(patch),
   )
   ipcMain.handle(IpcChannel.settingsReset, (): AppSettings => resetSettings())
 

@@ -28,3 +28,11 @@ export interface AppSettings {
   /** Remembered quick-save rule (PRD §6.7); null until the user first saves with one. */
   quickSaveRule: QuickSaveRule | null
 }
+
+/**
+ * A partial settings update. Top-level keys are optional, and the nested `multiView` may itself be
+ * partial (e.g. toggling just `loopEnabled`) — the main process deep-merges it over current values.
+ */
+export type SettingsPatch = Partial<Omit<AppSettings, 'multiView'>> & {
+  multiView?: Partial<AppSettings['multiView']>
+}

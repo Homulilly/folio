@@ -1,4 +1,5 @@
 import type { AppLanguage } from '@folio/config'
+import type { AppSettings } from '@folio/shared-types'
 import { create } from 'zustand'
 
 export type { AppLanguage } from '@folio/config'
@@ -7,21 +8,48 @@ function systemLanguage(): AppLanguage {
   return navigator.language.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en'
 }
 
+// Renderer mirror of the "pure" settings that have no operational store of their own (browsing
+// prefs like sort/mode/loop live in queueStore/multiViewStore and persist from there). Hydrated
+// from settings.json on boot (main.tsx); each setter writes back via the settings IPC.
 interface SettingsState {
   language: AppLanguage
-  /** Seed the language from persisted settings on boot (see main.tsx). */
-  hydrate: (language: AppLanguage) => void
+  confirmDeleteToTrash: boolean
+  thumbnailCacheSizeMB: number
+  previewCacheSizeMB: number
+  /** Seed from persisted settings on boot. */
+  hydrate: (settings: AppSettings) => void
   setLanguage: (language: AppLanguage) => void
+  setConfirmDeleteToTrash: (confirm: boolean) => void
+  setCacheSizeMB: (which: 'thumbnail' | 'preview', mb: number) => void
 }
 
-// Persistence moved to settings.json (M7): the language is hydrated from main on boot (main.tsx)
-// and every change is written back via the settings IPC. Until hydration runs the store shows the
-// system language so the very first paint isn't wrong if hydration is slow.
 export const useSettingsStore = create<SettingsState>((set) => ({
   language: systemLanguage(),
-  hydrate: (language) => set({ language }),
+  confirmDeleteToTrash: true,
+  thumbnailCacheSizeMB: 1024,
+  previewCacheSizeMB: 2048,
+  hydrate: (s) =>
+    set({
+      language: s.language,
+      confirmDeleteToTrash: s.confirmDeleteToTrash,
+      thumbnailCacheSizeMB: s.thumbnailCacheSizeMB,
+      previewCacheSizeMB: s.previewCacheSizeMB,
+    }),
   setLanguage: (language) => {
     set({ language })
     void window.gv.settings.update({ language })
+  },
+  setConfirmDeleteToTrash: (confirmDeleteToTrash) => {
+    set({ confirmDeleteToTrash })
+    void window.gv.settings.update({ confirmDeleteToTrash })
+  },
+  setCacheSizeMB: (which, mb) => {
+    if (which === 'thumbnail') {
+      set({ thumbnailCacheSizeMB: mb })
+      void window.gv.settings.update({ thumbnailCacheSizeMB: mb })
+    } else {
+      set({ previewCacheSizeMB: mb })
+      void window.gv.settings.update({ previewCacheSizeMB: mb })
+    }
   },
 }))

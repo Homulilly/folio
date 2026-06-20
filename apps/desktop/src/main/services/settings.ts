@@ -1,7 +1,7 @@
 import { readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { DEFAULT_SETTINGS } from '@folio/config'
-import type { AppLanguage, AppSettings } from '@folio/shared-types'
+import type { AppLanguage, AppSettings, SettingsPatch } from '@folio/shared-types'
 import { app } from 'electron'
 
 // settings.json persistence (PRD §10.1). Synchronous reads/writes — the file is tiny and touched
@@ -55,8 +55,11 @@ function persist(settings: AppSettings): void {
   renameSync(tmp, path)
 }
 
-export function updateSettings(patch: Partial<AppSettings>): AppSettings {
-  const next = merge({ ...getSettings(), ...patch })
+export function updateSettings(patch: SettingsPatch): AppSettings {
+  const cur = getSettings()
+  // Deep-merge the nested multiView so a partial patch (e.g. just loopEnabled) doesn't drop its
+  // siblings (syncZoom / layouts).
+  const next = merge({ ...cur, ...patch, multiView: { ...cur.multiView, ...patch.multiView } })
   cached = next
   persist(next)
   return next

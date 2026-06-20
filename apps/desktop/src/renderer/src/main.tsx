@@ -2,6 +2,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import './index.css'
+import { useMultiViewStore } from './stores/multiViewStore'
+import { useQueueStore } from './stores/queueStore'
 import { useSaveStore } from './stores/saveStore'
 import { type AppLanguage, useSettingsStore } from './stores/settingsStore'
 
@@ -33,8 +35,14 @@ async function hydrateFromSettings(): Promise<void> {
       /* localStorage unavailable — nothing to migrate. */
     }
 
-    useSettingsStore.getState().hydrate(language)
+    useSettingsStore.getState().hydrate({ ...settings, language })
     useSaveStore.getState().hydrateQuickRule(settings.quickSaveRule)
+    useQueueStore.getState().hydrateSortMode(settings.sortMode)
+    useMultiViewStore.getState().hydrate({
+      mode: settings.defaultMultiViewMode,
+      loopEnabled: settings.multiView.loopEnabled,
+      syncZoom: settings.multiView.syncZoom,
+    })
   } catch {
     /* Keep the in-memory defaults; viewing must not depend on settings being readable. */
   }

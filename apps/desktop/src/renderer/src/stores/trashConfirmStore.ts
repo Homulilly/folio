@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useSettingsStore } from './settingsStore'
 
 interface TrashConfirmRequest {
   fileName: string
@@ -18,6 +19,8 @@ export const useTrashConfirmStore = create<TrashConfirmState>((set, get) => ({
   skipUntilRestart: false,
 
   confirmTrash: (fileName) => {
+    // Setting turned off → never prompt. Session "skip until restart" is a separate override.
+    if (!useSettingsStore.getState().confirmDeleteToTrash) return Promise.resolve(true)
     if (get().skipUntilRestart) return Promise.resolve(true)
     if (get().request) return Promise.resolve(false)
 

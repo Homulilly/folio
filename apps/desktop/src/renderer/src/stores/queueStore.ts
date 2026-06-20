@@ -16,6 +16,8 @@ interface QueueState {
    */
   loadResult: (result: ScanResult, opts?: { keepFocus?: boolean }) => void
   setSortMode: (mode: SortMode) => void
+  /** Seed the persisted sort order on boot (before any folder is loaded). */
+  hydrateSortMode: (mode: SortMode) => void
   select: (index: number) => void
   next: () => void
   prev: () => void
@@ -59,11 +61,15 @@ export const useQueueStore = create<QueueState>((set) => ({
       }
     }),
 
-  setSortMode: (mode) =>
+  setSortMode: (mode) => {
+    void window.gv.settings.update({ sortMode: mode })
     set((s) => {
       const { sorted, idx } = resort(s.items, s.currentIndex, mode)
       return { sortMode: mode, items: sorted, currentIndex: idx, version: s.version + 1 }
-    }),
+    })
+  },
+
+  hydrateSortMode: (mode) => set({ sortMode: mode }),
 
   select: (index) =>
     set((s) => ({ currentIndex: Math.max(0, Math.min(s.items.length - 1, index)) })),

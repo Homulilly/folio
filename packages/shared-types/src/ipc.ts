@@ -8,7 +8,7 @@ import type { DirListing } from './fs'
 import type { ExifMetadata } from './metadata'
 import type { RenameExecRequest, RenameResult } from './rename'
 import type { SaveRequest, SaveResult } from './save'
-import type { AppSettings } from './settings'
+import type { AppSettings, SettingsPatch } from './settings'
 
 /** Custom privileged protocol used to stream images to the renderer (never base64 over IPC). */
 export const GV_IMG_SCHEME = 'gv-img'
@@ -96,7 +96,7 @@ export interface FolioApi {
     /** Read the full persisted settings (settings.json merged over defaults). */
     get: () => Promise<AppSettings>
     /** Merge a partial update into settings.json; returns the new full settings. */
-    update: (patch: Partial<AppSettings>) => Promise<AppSettings>
+    update: (patch: SettingsPatch) => Promise<AppSettings>
     /** Reset all settings to defaults; returns them. */
     reset: () => Promise<AppSettings>
   }
