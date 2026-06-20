@@ -21,4 +21,5 @@ export const DEFAULT_SETTINGS: AppSettings = {
   thumbnailCacheSizeMB: 1024,
   previewCacheSizeMB: 2048,
   quickSaveRule: null,
+  defaultErase: null,
 }

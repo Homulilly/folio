@@ -1,4 +1,5 @@
 import type { MultiViewLayout, MultiViewMode, SortMode } from './domain'
+import type { DefaultEraseRule } from './erase'
 import type { QuickSaveRule } from './save'
 
 export type AppLanguage = 'zh-CN' | 'en'
@@ -27,6 +28,8 @@ export interface AppSettings {
   previewCacheSizeMB: number
   /** Remembered quick-save rule (PRD §6.7); null until the user first saves with one. */
   quickSaveRule: QuickSaveRule | null
+  /** Remembered erase configuration (PRD §6.6 「存为默认规则」); null = the built-in Privacy default. */
+  defaultErase: DefaultEraseRule | null
 }
 
 /**

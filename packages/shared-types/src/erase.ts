@@ -11,6 +11,18 @@ export type EraseMode = 'remove_selected' | 'remove_all_except_keep'
 /** Built-in presets (PRD §6.5 常用预设) plus a user-defined `custom`. */
 export type ErasePresetId = 'privacy' | 'share' | 'full' | 'copyright' | 'custom'
 
+/**
+ * The user's remembered erase configuration (persisted to settings.json, M7): last-used preset,
+ * checked category keys, and extra tags. The erase dialog pre-fills from this so a chosen rule
+ * survives restarts. `categories` are plain strings (validated against the renderer's category list)
+ * to avoid coupling the settings contract to @folio/core's EraseCategory type.
+ */
+export interface DefaultEraseRule {
+  preset: ErasePresetId
+  categories: string[]
+  customTags: string
+}
+
 /** A resolved erasure rule. Tag entries are ExifTool tag names/patterns without `-`/`=`. */
 export interface EraseRule {
   mode: EraseMode

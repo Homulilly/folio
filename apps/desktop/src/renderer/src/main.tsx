@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import './index.css'
+import { useEraseStore } from './stores/eraseStore'
 import { useMultiViewStore } from './stores/multiViewStore'
 import { useQueueStore } from './stores/queueStore'
 import { useSaveStore } from './stores/saveStore'
@@ -38,6 +39,7 @@ async function hydrateFromSettings(): Promise<void> {
     useSettingsStore.getState().hydrate({ ...settings, language })
     useSaveStore.getState().hydrateQuickRule(settings.quickSaveRule)
     useQueueStore.getState().hydrateSortMode(settings.sortMode)
+    useEraseStore.getState().hydrateDefault(settings.defaultErase)
     useMultiViewStore.getState().hydrate({
       mode: settings.defaultMultiViewMode,
       loopEnabled: settings.multiView.loopEnabled,
