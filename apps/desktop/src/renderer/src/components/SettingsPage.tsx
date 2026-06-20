@@ -62,8 +62,8 @@ function SwitchRow({
         }`}
       >
         <span
-          className={`absolute top-[2px] h-[18px] w-[18px] rounded-full bg-white shadow transition-transform ${
-            on ? 'translate-x-[18px]' : 'translate-x-[2px]'
+          className={`absolute left-[2px] top-[2px] h-[18px] w-[18px] rounded-full bg-white shadow transition-transform ${
+            on ? 'translate-x-[16px]' : 'translate-x-0'
           }`}
         />
       </button>
