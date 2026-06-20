@@ -2,7 +2,7 @@ import { groupSlots, groupStartForIndex } from '@folio/core'
 import type { FileProbe, ImageQueueItem, MultiViewLayout } from '@folio/shared-types'
 import { useRef, useState } from 'react'
 import { useT } from '../i18n'
-import { canRenderNatively, formatBytes, formatLabel, imageUrl } from '../lib/format'
+import { canRenderNatively, displaySrc, formatBytes, formatLabel } from '../lib/format'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
 import { useViewerStore } from '../stores/viewerStore'
@@ -88,20 +88,23 @@ function Slot({
       className={`group relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-black transition-shadow duration-150 ${ring}`}
       style={{ background: 'radial-gradient(circle at 50% 38%, #131315 0%, #000 80%)' }}
     >
-      {!renderable ? (
-        <div className="px-4 text-center text-[12px] text-[rgba(235,235,245,0.55)]">
-          {t('multi.previewUnavailable', { format: formatLabel(item) })}
-        </div>
-      ) : status === 'error' ? (
-        <div className="px-4 text-center text-[12px] text-[#FF453A]">
-          {t(
-            reason === 'missing'
-              ? 'multi.fileNotFound'
-              : reason === 'unreadable'
-                ? 'multi.fileUnreadable'
-                : 'multi.failedToDecode',
-          )}
-        </div>
+      {status === 'error' ? (
+        !renderable ? (
+          // Non-decodable original AND its sharp preview failed (e.g. JXL) — placeholder.
+          <div className="px-4 text-center text-[12px] text-[rgba(235,235,245,0.55)]">
+            {t('multi.previewUnavailable', { format: formatLabel(item) })}
+          </div>
+        ) : (
+          <div className="px-4 text-center text-[12px] text-[#FF453A]">
+            {t(
+              reason === 'missing'
+                ? 'multi.fileNotFound'
+                : reason === 'unreadable'
+                  ? 'multi.fileUnreadable'
+                  : 'multi.failedToDecode',
+            )}
+          </div>
+        )
       ) : (
         <>
           {status === 'loading' && (
@@ -109,9 +112,10 @@ function Slot({
               <Spinner />
             </div>
           )}
+          {/* Renderable → original; otherwise the sharp-generated preview so HEIC/TIFF/etc. show. */}
           <img
             key={item.id}
-            src={imageUrl('original', item.filePath)}
+            src={displaySrc(item)}
             alt={item.fileName}
             draggable={false}
             onLoad={() => setStatus('loaded')}

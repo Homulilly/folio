@@ -20,6 +20,18 @@ export function imageUrl(variant: 'original' | 'thumb' | 'preview', filePath: st
   return `${GV_IMG_SCHEME}://${variant}${encoded}`
 }
 
+/**
+ * The gv-img variant to display an item with: the full-res original when Chromium can decode it,
+ * otherwise the sharp-generated `preview` (webp) so HEIC/TIFF/etc. render instead of showing a
+ * "preview unavailable" placeholder. Falls back to the placeholder only if preview generation also
+ * fails (e.g. a format sharp can't decode, like JXL).
+ */
+export function displaySrc(item: FormatInfo & { filePath: string }): string {
+  return canRenderNatively(item)
+    ? imageUrl('original', item.filePath)
+    : imageUrl('preview', item.filePath)
+}
+
 const FORMAT_LABELS: Record<ImageFormat, string> = {
   jpeg: 'JPEG',
   png: 'PNG',

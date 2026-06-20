@@ -1,7 +1,7 @@
 import type { FileProbe } from '@folio/shared-types'
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../i18n'
-import { canRenderNatively, formatLabel, imageUrl } from '../lib/format'
+import { canRenderNatively, displaySrc, formatLabel } from '../lib/format'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
 import { useViewerStore } from '../stores/viewerStore'
@@ -340,30 +340,34 @@ export function Canvas(): React.JSX.Element {
         {/* At least viewport-sized so a small image stays centered; grows to a zoomed image so
             it scrolls (and pans) on both axes from the top-left, not from a clipped centre. */}
         <div className="flex min-h-full min-w-full items-center justify-center">
-          {!renderable ? (
-            <div className="max-w-sm px-6 text-center">
-              <div className="text-base font-medium text-[rgba(235,235,245,0.85)]">
-                {t('canvas.previewUnavailable', { format: formatLabel(item) })}
+          {failed ? (
+            !renderable ? (
+              // Non-decodable original AND its sharp preview failed (e.g. JXL) — placeholder.
+              <div className="max-w-sm px-6 text-center">
+                <div className="text-base font-medium text-[rgba(235,235,245,0.85)]">
+                  {t('canvas.previewUnavailable', { format: formatLabel(item) })}
+                </div>
+                <div className="mt-2 text-[13px] text-[rgba(235,235,245,0.45)]">
+                  {t('canvas.previewUnavailableDetail', { fileName: item.fileName })}
+                </div>
               </div>
-              <div className="mt-2 text-[13px] text-[rgba(235,235,245,0.45)]">
-                {t('canvas.previewUnavailableDetail', { fileName: item.fileName })}
+            ) : (
+              <div className="px-6 text-center text-[13px] text-[#FF453A]">
+                {t(
+                  failReason === 'missing'
+                    ? 'canvas.fileNotFound'
+                    : failReason === 'unreadable'
+                      ? 'canvas.fileUnreadable'
+                      : 'canvas.failedToDecode',
+                  { fileName: item.fileName },
+                )}
               </div>
-            </div>
-          ) : failed ? (
-            <div className="px-6 text-center text-[13px] text-[#FF453A]">
-              {t(
-                failReason === 'missing'
-                  ? 'canvas.fileNotFound'
-                  : failReason === 'unreadable'
-                    ? 'canvas.fileUnreadable'
-                    : 'canvas.failedToDecode',
-                { fileName: item.fileName },
-              )}
-            </div>
+            )
           ) : (
+            // Renderable → original; otherwise the sharp-generated preview so HEIC/TIFF/etc. show.
             <img
               key={item.id}
-              src={imageUrl('original', item.filePath)}
+              src={displaySrc(item)}
               alt={item.fileName}
               draggable={canDragOut}
               onDragStart={onImageDragStart}
