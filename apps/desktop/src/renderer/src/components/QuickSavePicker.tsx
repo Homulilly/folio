@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useT } from '../i18n'
 import { quickSaveTo } from '../lib/actions'
 import { useSaveStore } from '../stores/saveStore'
@@ -11,29 +11,61 @@ const folderName = (p: string): string =>
 /**
  * Folder picker shown when the quick-save shortcut (T) fires and the rule has several target
  * folders. Pick one → the focused image is saved there with the rule's naming. With a single target
- * the shortcut sends directly and this never opens.
+ * the shortcut sends directly and this never opens. ↑/↓ move the highlight, Enter confirms, Esc
+ * cancels — handled in the capture phase so the global viewer shortcuts (arrows = prev/next image)
+ * don't also fire underneath while the picker is open.
  */
 export function QuickSavePicker(): React.JSX.Element | null {
   const t = useT()
   const open = useSaveStore((s) => s.quickPickerOpen)
   const close = useSaveStore((s) => s.closeQuickPicker)
   const dirs = useSaveStore((s) => s.quickRule?.targetDirs ?? [])
-
-  useEffect(() => {
-    if (!open) return
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') close()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [open, close])
-
-  if (!open) return null
+  const [index, setIndex] = useState(0)
 
   const pick = (dir: string): void => {
     close()
     void quickSaveTo(dir)
   }
+
+  // Start the highlight at the top each time the picker opens.
+  useEffect(() => {
+    if (open) setIndex(0)
+  }, [open])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: pick is stable; re-bind on index/dirs
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent): void => {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault()
+          e.stopPropagation()
+          setIndex((i) => Math.min(dirs.length - 1, i + 1))
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          e.stopPropagation()
+          setIndex((i) => Math.max(0, i - 1))
+          break
+        case 'Enter':
+          e.preventDefault()
+          e.stopPropagation()
+          if (dirs[index]) pick(dirs[index])
+          break
+        case 'Escape':
+          e.preventDefault()
+          e.stopPropagation()
+          close()
+          break
+      }
+    }
+    // Capture phase: stopPropagation here prevents the bubble-phase global shortcut handler
+    // (also on window) from acting on the same key — arrows stay confined to the picker.
+    window.addEventListener('keydown', onKey, { capture: true })
+    return () => window.removeEventListener('keydown', onKey, { capture: true })
+  }, [open, close, dirs, index])
+
+  if (!open) return null
 
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: backdrop click dismisses; Esc also dismisses
@@ -61,7 +93,12 @@ export function QuickSavePicker(): React.JSX.Element | null {
               type="button"
               key={dir}
               onClick={() => pick(dir)}
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-white/[0.06]"
+              onMouseEnter={() => setIndex(i)}
+              className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors ${
+                i === index
+                  ? 'bg-[#0A84FF]/20 ring-1 ring-inset ring-[#0A84FF]/40'
+                  : 'hover:bg-white/[0.06]'
+              }`}
             >
               <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-white/[0.06] text-[rgba(235,235,245,0.7)]">
                 <FolderIcon size={17} />
