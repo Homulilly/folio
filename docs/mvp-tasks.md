@@ -205,7 +205,7 @@
 
 - [x] `gv-img://` 的 `thumb` / `preview` variant 接 sharp(原返回 501;`protocol.ts` 流式回传缓存文件,生成失败回 415)
 - [x] 队列栏显示缩略图(**M1 顺延**;`QueueRail` 改 lazy `<img src=gv-img://thumb>`,`loading="lazy"` 仅请求可视行,解码失败回退格式徽章)
-- [ ] 大队列**虚拟化**渲染(**M1 顺延**;现一次性渲染所有行 + `loading="lazy"` 缓解,大目录仍待虚拟化)
+- [x] 大队列**虚拟化**渲染(**M1 顺延**完成):`QueueRail` 固定行高(54px)窗口化,仅渲染可视区(+overscan)行,绝对定位于全高占位 div 上;`scrollIntoView` 改为手动滚动到选中项(选中行可能未挂载);只有屏上行请求缩略图
 - [ ] hash / 缩略图 / 预览 / Exif 读取统一离线化到 Worker Threads(**M5/M6 顺延**;sharp async 已自带 libvips 线程池、主进程不阻塞,同 M6 取舍——仅在 profiling 显示主线程争用时再上 Worker)
 
 ### C. 性能与内存（PRD §14）
