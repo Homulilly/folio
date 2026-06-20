@@ -1,3 +1,4 @@
+import { statSync } from 'node:fs'
 import { writeFile } from 'node:fs/promises'
 import { SUPPORTED_EXTENSIONS } from '@folio/image-processing'
 import {
@@ -25,6 +26,34 @@ import { buildScanResult } from './services/scan'
 import { taskScheduler } from './services/taskScheduler'
 
 const IMAGE_EXTENSIONS = [...SUPPORTED_EXTENSIONS]
+
+// Native file drag-out: the drag image is a small thumbnail of the file itself, capped so a huge
+// photo doesn't produce a giant cursor. Falls back to a neutral square if the file can't be decoded.
+const DRAG_ICON_MAX_SIDE = 56
+const FALLBACK_DRAG_ICON = nativeImage.createFromDataURL(
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAQAAADZc7J/AAAAK0lEQVR42mNkoBAwUqifYdQAhtEwCkbDKBgNo2AUjIJRMApGwSgYBQAAepcBwa1EIb0AAAAASUVORK5CYII=',
+)
+
+function isExistingFile(filePath: string): boolean {
+  try {
+    return statSync(filePath).isFile()
+  } catch {
+    return false
+  }
+}
+
+function dragIconForFile(filePath: string): Electron.NativeImage {
+  const icon = nativeImage.createFromPath(filePath)
+  if (icon.isEmpty()) return FALLBACK_DRAG_ICON
+  const { width, height } = icon.getSize()
+  if (width <= 0 || height <= 0) return FALLBACK_DRAG_ICON
+  const scale = Math.min(DRAG_ICON_MAX_SIDE / width, DRAG_ICON_MAX_SIDE / height, 1)
+  return icon.resize({
+    width: Math.max(1, Math.round(width * scale)),
+    height: Math.max(1, Math.round(height * scale)),
+    quality: 'best',
+  })
+}
 
 async function rememberDirectory(result: ScanResult | null): Promise<ScanResult | null> {
   if (result?.directory) await addRecentFolder(result.directory)
@@ -97,6 +126,11 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     if (image.isEmpty()) return false
     clipboard.writeImage(image)
     return true
+  })
+  // Fire-and-forget: the renderer's dragstart hands us a path; main owns the OS drag session.
+  ipcMain.on(IpcChannel.fileStartDrag, (event, filePath: string): void => {
+    if (typeof filePath !== 'string' || !isExistingFile(filePath)) return
+    event.sender.startDrag({ file: filePath, icon: dragIconForFile(filePath) })
   })
   ipcMain.handle(
     IpcChannel.fileSuggestExportPath,

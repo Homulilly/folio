@@ -50,6 +50,8 @@ export interface FolioApi {
     copyPath: (filePath: string) => Promise<void>
     /** Copy the decoded image to the clipboard. Returns false if the format can't be decoded natively. */
     copyImage: (filePath: string) => Promise<boolean>
+    /** Begin a native OS file drag of the real file (drag-out to Finder/Explorer/web upload). */
+    startDrag: (filePath: string) => void
     /** A non-existing export path: `<dir>/<base><suffix><ext>`, incrementing on conflict. */
     suggestExportPath: (filePath: string, suffix: string) => Promise<string>
   }
@@ -102,6 +104,7 @@ export const IpcChannel = {
   fileShowInFolder: 'file:showInFolder',
   fileCopyPath: 'file:copyPath',
   fileCopyImage: 'file:copyImage',
+  fileStartDrag: 'file:startDrag',
   fileSuggestExportPath: 'file:suggestExportPath',
   metadataRead: 'metadata:read',
   metadataErase: 'metadata:erase',

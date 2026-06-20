@@ -108,7 +108,9 @@ export function useShortcuts(): void {
         case 'Enter':
           if (multi) {
             e.preventDefault()
-            mv.expand()
+            // Toggle: grid → focused single, focused single → grid (mirrors double-click).
+            if (mv.expanded) mv.collapse()
+            else mv.expand()
           }
           break
         case 'i':

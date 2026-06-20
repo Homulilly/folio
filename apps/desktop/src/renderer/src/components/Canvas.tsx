@@ -60,6 +60,7 @@ export function Canvas(): React.JSX.Element {
   const nextGroup = useMultiViewStore((s) => s.nextGroup)
   const fit = useViewerStore((s) => s.fit)
   const zoom = useViewerStore((s) => s.zoom)
+  const fitWindow = useViewerStore((s) => s.fitWindow)
   const rotation = useViewerStore((s) => s.rotation)
   const naturalWidth = useViewerStore((s) => s.naturalWidth)
   const naturalHeight = useViewerStore((s) => s.naturalHeight)
@@ -151,6 +152,9 @@ export function Canvas(): React.JSX.Element {
   const renderable = item ? canRenderNatively(item) : false
   const transform = `rotate(${rotation}deg)`
   const canPan = !fit
+  // Drag-out is only the "pick up the file" gesture while the image fully fits; once zoomed,
+  // dragging pans instead (see docs/file-drag-out.md). gv-img:// is never the drag payload.
+  const canDragOut = fit && renderable && !failed
   // Hover-reveal nav arrows; hidden at the ends unless looping.
   const showPrev = loopEnabled || currentIndex > 0
   const showNext = loopEnabled || currentIndex < total - 1
@@ -280,6 +284,21 @@ export function Canvas(): React.JSX.Element {
   const endDrag = () => {
     drag.current = null
   }
+  const onImageDragStart = (e: React.DragEvent<HTMLImageElement>) => {
+    if (!canDragOut || !item) return
+    // Hand the real file path to main, which owns the OS drag session; suppress the DOM drag.
+    e.dataTransfer.clearData()
+    e.dataTransfer.effectAllowed = 'copy'
+    window.gv.file.startDrag(item.filePath)
+    e.preventDefault()
+    e.stopPropagation()
+  }
+  // Double-click on the image: zoomed → snap back to Fit; already at Fit but expanded from the
+  // grid → return to the grid (mirrors Enter). At Fit in plain single mode it's a no-op.
+  const onDoubleClick = () => {
+    if (!fit) fitWindow()
+    else if (expanded) collapse()
+  }
 
   if (!item) return <div className="flex-1" />
 
@@ -291,13 +310,15 @@ export function Canvas(): React.JSX.Element {
       className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
       style={{ background: 'radial-gradient(circle at 50% 38%, #131315 0%, #000 78%)' }}
     >
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: image pan/zoom surface; keyboard has Space/+/- /Enter equivalents */}
       <div
         ref={scrollRef}
-        className={`no-scrollbar absolute inset-0 overflow-auto ${canPan ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        className={`no-scrollbar absolute inset-0 overflow-auto ${canPan || canDragOut ? 'cursor-grab active:cursor-grabbing' : ''}`}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
+        onDoubleClick={onDoubleClick}
       >
         {/* At least viewport-sized so a small image stays centered; grows to a zoomed image so
             it scrolls (and pans) on both axes from the top-left, not from a clipped centre. */}
@@ -320,7 +341,8 @@ export function Canvas(): React.JSX.Element {
               key={item.id}
               src={imageUrl('original', item.filePath)}
               alt={item.fileName}
-              draggable={false}
+              draggable={canDragOut}
+              onDragStart={onImageDragStart}
               onLoad={(e) => {
                 setFailed(false)
                 setNatural(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)

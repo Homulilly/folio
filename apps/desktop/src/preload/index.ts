@@ -21,6 +21,7 @@ const api: Bridge = {
     showInFolder: (filePath) => ipcRenderer.invoke(IpcChannel.fileShowInFolder, filePath),
     copyPath: (filePath) => ipcRenderer.invoke(IpcChannel.fileCopyPath, filePath),
     copyImage: (filePath) => ipcRenderer.invoke(IpcChannel.fileCopyImage, filePath),
+    startDrag: (filePath) => ipcRenderer.send(IpcChannel.fileStartDrag, filePath),
     suggestExportPath: (filePath, suffix) =>
       ipcRenderer.invoke(IpcChannel.fileSuggestExportPath, filePath, suffix),
   },
