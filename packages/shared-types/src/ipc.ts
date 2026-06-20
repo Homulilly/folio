@@ -5,6 +5,8 @@ import type { ImageQueueItem, Task } from './domain'
 import type { BatchEraseRequest, EraseResult, EraseRule, EraseTarget } from './erase'
 import type { DirListing } from './fs'
 import type { ExifMetadata } from './metadata'
+import type { RenameExecRequest, RenameResult } from './rename'
+import type { SaveRequest, SaveResult } from './save'
 
 /** Custom privileged protocol used to stream images to the renderer (never base64 over IPC). */
 export const GV_IMG_SCHEME = 'gv-img'
@@ -65,6 +67,15 @@ export interface FolioApi {
     suggestExportPath: (filePath: string, suffix: string) => Promise<string>
     /** List a directory's immediate subdirectories (for the queue rail's folder browser). */
     listDirectory: (directory: string) => Promise<DirListing | null>
+    /** Prompt for a target directory (save-to-target picker). Resolves null if cancelled. */
+    chooseDirectory: () => Promise<string | null>
+    /** Save (copy) images into a target folder under computed names (PRD §6.7); never moves the
+     * original. Used for a single focused image; group/folder go through `task.startSaveBatch`. */
+    saveToTarget: (request: SaveRequest) => Promise<SaveResult[]>
+    /** Apply a validated, cycle-safe batch rename within one directory (PRD §6.8). */
+    batchRename: (request: RenameExecRequest) => Promise<RenameResult>
+    /** Write text to a user-chosen file (e.g. the rename log). Returns the path, or null if cancelled. */
+    saveText: (defaultName: string, text: string) => Promise<string | null>
   }
   metadata: {
     /** Read full grouped Exif/XMP/IPTC/… metadata. Resolves null when the read fails. */
@@ -92,6 +103,8 @@ export interface FolioApi {
     list: () => Promise<Task[]>
     /** Start a batch erase; returns the new task id. Progress arrives via `onUpdate`. */
     startEraseBatch: (request: BatchEraseRequest) => Promise<string>
+    /** Start a batch save-to-target; returns the new task id. Progress arrives via `onUpdate`. */
+    startSaveBatch: (request: SaveRequest) => Promise<string>
     pause: (id: string) => Promise<void>
     resume: (id: string) => Promise<void>
     cancel: (id: string) => Promise<void>
@@ -121,6 +134,10 @@ export const IpcChannel = {
   fileProbe: 'file:probe',
   fileSuggestExportPath: 'file:suggestExportPath',
   fileListDirectory: 'file:listDirectory',
+  fileChooseDirectory: 'file:chooseDirectory',
+  fileSaveToTarget: 'file:saveToTarget',
+  fileBatchRename: 'file:batchRename',
+  fileSaveText: 'file:saveText',
   metadataRead: 'metadata:read',
   metadataErase: 'metadata:erase',
   clipboardWriteText: 'clipboard:writeText',
@@ -133,6 +150,7 @@ export const IpcChannel = {
   winFullscreenChanged: 'win:fullscreenChanged',
   taskList: 'task:list',
   taskStartEraseBatch: 'task:startEraseBatch',
+  taskStartSaveBatch: 'task:startSaveBatch',
   taskPause: 'task:pause',
   taskResume: 'task:resume',
   taskCancel: 'task:cancel',

@@ -1,5 +1,7 @@
 export * from './erase'
 export * from './exif'
 export * from './multi-view'
+export * from './naming'
+export * from './rename'
 export * from './sort'
 export * from './task'

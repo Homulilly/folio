@@ -100,6 +100,7 @@ export interface MultiViewState {
 export type TaskType =
   | 'metadata_read'
   | 'metadata_remove'
+  | 'save'
   | 'rename'
   | 'convert'
   | 'hash'

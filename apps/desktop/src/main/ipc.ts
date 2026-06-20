@@ -10,6 +10,10 @@ import {
   type ExifMetadata,
   type FileProbe,
   IpcChannel,
+  type RenameExecRequest,
+  type RenameResult,
+  type SaveRequest,
+  type SaveResult,
   type ScanResult,
   type SystemInfo,
   type Task,
@@ -24,6 +28,8 @@ import {
   listRecentFolders,
   removeRecentFolder,
 } from './services/recent'
+import { renameInDirectory } from './services/rename'
+import { nowStamp, saveFile } from './services/save'
 import { buildScanResult, listDirectory } from './services/scan'
 import { taskScheduler } from './services/taskScheduler'
 
@@ -157,6 +163,43 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
     IpcChannel.fileListDirectory,
     (_e, directory: string): Promise<DirListing | null> => listDirectory(directory),
   )
+  ipcMain.handle(IpcChannel.fileChooseDirectory, async (): Promise<string | null> => {
+    const result = await showOpen({ properties: ['openDirectory', 'createDirectory'] })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0] as string
+  })
+  // Single/direct save-to-target (a focused image, or a small set). Group/folder go through the
+  // scheduler (task:startSaveBatch) so they get progress + the batch page (PRD §6.7).
+  ipcMain.handle(
+    IpcChannel.fileSaveToTarget,
+    async (_e, request: SaveRequest): Promise<SaveResult[]> => {
+      const stamp = nowStamp()
+      const results: SaveResult[] = []
+      for (let i = 0; i < request.files.length; i++) {
+        const input = request.files[i] as SaveRequest['files'][number]
+        results.push(
+          await saveFile(input, i, request.targetDir, request.naming, request.conflict, stamp),
+        )
+      }
+      return results
+    },
+  )
+  ipcMain.handle(
+    IpcChannel.fileBatchRename,
+    (_e, request: RenameExecRequest): Promise<RenameResult> => renameInDirectory(request),
+  )
+  ipcMain.handle(
+    IpcChannel.fileSaveText,
+    async (_e, defaultName: string, text: string): Promise<string | null> => {
+      const win = getWindow()
+      const result = await (win
+        ? dialog.showSaveDialog(win, { defaultPath: defaultName })
+        : dialog.showSaveDialog({ defaultPath: defaultName }))
+      if (result.canceled || !result.filePath) return null
+      await writeFile(result.filePath, text, 'utf8')
+      return result.filePath
+    },
+  )
 
   // --- metadata (Exif) ---
   ipcMain.handle(
@@ -200,6 +243,9 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
   ipcMain.handle(IpcChannel.taskList, (): Task[] => taskScheduler.list())
   ipcMain.handle(IpcChannel.taskStartEraseBatch, (_e, request: BatchEraseRequest): string =>
     taskScheduler.startEraseBatch(request),
+  )
+  ipcMain.handle(IpcChannel.taskStartSaveBatch, (_e, request: SaveRequest): string =>
+    taskScheduler.startSaveBatch(request),
   )
   ipcMain.handle(IpcChannel.taskPause, (_e, id: string): void => taskScheduler.pause(id))
   ipcMain.handle(IpcChannel.taskResume, (_e, id: string): void => taskScheduler.resume(id))
