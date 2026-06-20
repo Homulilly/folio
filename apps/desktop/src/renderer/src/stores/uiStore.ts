@@ -8,17 +8,22 @@ interface UiState {
   activeView: AppView
   /** When true, the queue (image list) side rail is hidden to give the canvas more room. */
   queueCollapsed: boolean
+  /** Whether the window is fullscreen — drives the immersive viewer layout. */
+  fullscreen: boolean
   showViewer: () => void
   showSettings: () => void
   showBatchTasks: () => void
   toggleQueue: () => void
+  setFullscreen: (fullscreen: boolean) => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
   activeView: 'viewer',
   queueCollapsed: false,
+  fullscreen: false,
   showViewer: () => set({ activeView: 'viewer' }),
   showSettings: () => set({ activeView: 'settings' }),
   showBatchTasks: () => set({ activeView: 'batch_tasks' }),
   toggleQueue: () => set((s) => ({ queueCollapsed: !s.queueCollapsed })),
+  setFullscreen: (fullscreen) => set({ fullscreen }),
 }))

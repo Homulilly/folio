@@ -81,6 +81,8 @@ export interface FolioApi {
   win: {
     toggleFullscreen: () => Promise<boolean>
     isFullscreen: () => Promise<boolean>
+    /** Subscribe to fullscreen enter/leave (incl. OS-initiated). Returns an unsubscribe function. */
+    onFullscreenChanged: (callback: (fullscreen: boolean) => void) => () => void
   }
   task: {
     /** Snapshot of all known tasks (newest first), for the batch page's initial render. */
@@ -123,6 +125,8 @@ export const IpcChannel = {
   recentClear: 'recent:clear',
   winToggleFullscreen: 'win:toggleFullscreen',
   winIsFullscreen: 'win:isFullscreen',
+  /** Push channel: main → renderer, fired on fullscreen enter/leave. */
+  winFullscreenChanged: 'win:fullscreenChanged',
   taskList: 'task:list',
   taskStartEraseBatch: 'task:startEraseBatch',
   taskPause: 'task:pause',

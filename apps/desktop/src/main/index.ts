@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import { IpcChannel } from '@folio/shared-types'
 import { app, BrowserWindow, shell } from 'electron'
 import { registerIpcHandlers } from './ipc'
 import { handleImageProtocol, registerImageProtocolSchemes } from './protocol'
@@ -33,6 +34,11 @@ function createWindow(): void {
   win.on('closed', () => {
     if (mainWindow === win) mainWindow = null
   })
+
+  // Mirror fullscreen state to the renderer (covers F11, the toolbar button, and OS-initiated
+  // fullscreen via the macOS green button / Ctrl+Cmd+F) so it can switch to the immersive layout.
+  win.on('enter-full-screen', () => win.webContents.send(IpcChannel.winFullscreenChanged, true))
+  win.on('leave-full-screen', () => win.webContents.send(IpcChannel.winFullscreenChanged, false))
 
   // Keep navigation inside the app; open external links in the OS browser.
   win.webContents.setWindowOpenHandler(({ url }) => {

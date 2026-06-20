@@ -7,6 +7,7 @@ import { ContextMenu } from './components/ContextMenu'
 import { EmptyState } from './components/EmptyState'
 import { EraseDialog } from './components/EraseDialog'
 import { ExifDrawer } from './components/ExifDrawer'
+import { ImmersiveChrome } from './components/ImmersiveChrome'
 import { MultiView } from './components/MultiView'
 import { QueueRail } from './components/QueueRail'
 import { SettingsPage } from './components/SettingsPage'
@@ -35,6 +36,7 @@ export function App(): React.JSX.Element {
   const expanded = useMultiViewStore((s) => s.expanded)
   const activeView = useUiStore((s) => s.activeView)
   const queueCollapsed = useUiStore((s) => s.queueCollapsed)
+  const fullscreen = useUiStore((s) => s.fullscreen)
   const exifOpen = useExifStore((s) => s.open)
   const resetViewer = useViewerStore((s) => s.reset)
 
@@ -52,7 +54,17 @@ export function App(): React.JSX.Element {
     return window.gv.task.onUpdate(setTasks)
   }, [])
 
+  // Track fullscreen (initial + push) to switch into the immersive viewer layout.
+  useEffect(() => {
+    const setFullscreen = useUiStore.getState().setFullscreen
+    void window.gv.win.isFullscreen().then(setFullscreen)
+    return window.gv.win.onFullscreenChanged(setFullscreen)
+  }, [])
+
   const single = mode === 'single' || expanded
+  // Immersive only while actually viewing images — keeps chrome visible in settings/batch/empty so
+  // fullscreen there can't trap the user behind hidden controls.
+  const immersive = fullscreen && activeView === 'viewer' && hasImages
 
   const onDrop = (e: React.DragEvent): void => {
     e.preventDefault()
@@ -67,25 +79,28 @@ export function App(): React.JSX.Element {
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
     >
-      <TitleBar />
-      <Toolbar />
-      <AutoModeStrip />
-      <div className="flex min-h-0 min-w-0 flex-1">
+      {/* `{!immersive && …}` (not removed) keeps these as positional holes so the content row
+          stays at the same index and Canvas isn't remounted when toggling fullscreen. */}
+      {!immersive && <TitleBar />}
+      {!immersive && <Toolbar />}
+      {!immersive && <AutoModeStrip />}
+      <div className="relative flex min-h-0 min-w-0 flex-1">
         {activeView === 'settings' ? (
           <SettingsPage />
         ) : activeView === 'batch_tasks' ? (
           <BatchTasksPage />
         ) : hasImages ? (
           <>
-            {!queueCollapsed && <QueueRail />}
+            {!queueCollapsed && !immersive && <QueueRail />}
             <ContextMenu>{single ? <Canvas /> : <MultiView />}</ContextMenu>
             {exifOpen && <ExifDrawer />}
           </>
         ) : (
           <EmptyState />
         )}
+        {immersive && <ImmersiveChrome />}
       </div>
-      <StatusBar />
+      {!immersive && <StatusBar />}
       <TrashConfirmDialog />
       <EraseDialog />
       <AutoModePrompt />

@@ -42,6 +42,11 @@ const api: Bridge = {
   win: {
     toggleFullscreen: () => ipcRenderer.invoke(IpcChannel.winToggleFullscreen),
     isFullscreen: () => ipcRenderer.invoke(IpcChannel.winIsFullscreen),
+    onFullscreenChanged: (callback) => {
+      const listener = (_e: unknown, fullscreen: boolean): void => callback(fullscreen)
+      ipcRenderer.on(IpcChannel.winFullscreenChanged, listener)
+      return () => ipcRenderer.removeListener(IpcChannel.winFullscreenChanged, listener)
+    },
   },
   task: {
     list: () => ipcRenderer.invoke(IpcChannel.taskList),
