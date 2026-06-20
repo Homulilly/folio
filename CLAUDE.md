@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
-> ⚠️ AGENTS.md 写于建仓初期,「当前状态:M0 之前,仓库尚无代码」一句已过时。**实际进度:M0(脚手架)+ M1(基础看图:打开/扫描、队列、单图查看)已落地**,见 `docs/mvp-tasks.md` 各里程碑下的范围/顺延说明与 M1 注记。
+> ⚠️ AGENTS.md 写于建仓初期,「当前状态:M0 之前,仓库尚无代码」一句已过时。**实际进度:M0–M4 已落地**(M0 脚手架 · M1 基础看图 · M2 多图并列 · M3 Exif 查看 · M4 Exif 擦除/批处理/自动模式)。**下一步 M5**(保存到目标 + 批量重命名)。各里程碑的范围/顺延说明见 `docs/mvp-tasks.md`;**持久化相关(SQLite 缓存、settings.json、自动规则永久 scope、语言设置迁移)统一顺延 M7**。
 
 以下为 **Claude Code 专属** 补充。
 
@@ -36,6 +36,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 渲染进程可见的 API 形状是 `FolioApi` 接口;preload 把它(加一个 DOM-local 的 `getPathForFile`)合成 `Bridge` 类型,经 `contextBridge.exposeInMainWorld('gv', …)` 暴露为 `window.gv`。
 - `env.d.ts` 直接 `import type { Bridge } from '../../preload'` 来声明 `Window.gv`——**类型从 preload 反向引用,新增 API 改一处即可全链路生效**:在 `IpcChannel` 加通道 → `FolioApi` 加方法 → main 注册 handler → preload 转发。
 - 主进程 handler 全部在 `registerIpcHandlers(getWindow)` 内注册;窗口相关操作通过传入的 `getWindow()` 拿当前窗口,别持有全局 window 引用。
+- **绝大多数通道是 invoke(请求/响应)**;唯一的 main→renderer **推送**是 `task:update`(批处理进度)——preload 暴露成 `task.onUpdate(cb)`(返回退订函数),scheduler 每次 mutation 推全量任务快照。要再加推送通道照此模式(`ipcRenderer.on` + 退订),别用 invoke 轮询。
 
 ### 图片加载走 `gv-img://`,不走 IPC
 - URL 形状:`gv-img://<variant>/<absolute-path>`,**variant 是 host**(`original` | `thumb` | `preview`)。当前仅 `original` 实现(流式 `createReadStream`),`thumb`/`preview` 返回 501,待 M7 接 sharp。
@@ -49,8 +50,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - 渲染进程的 `lib/format.ts`(`canRenderNatively`/`formatLabel`)**优先用 `item.format`,无则回退 `ext`**;`gv-img://` 协议也用 `detectFileFormat` 设置正确的 `Content-Type`。扩展名说谎的图片(如 `.png` 实为 JPEG)因此能正确判定与显示。
 - 队列 / viewer 状态在 `renderer/src/stores`(`queueStore` / `viewerStore` / `toastStore`),纯排序/分组逻辑在 `packages/core`(`sortItems`、`nextGroupStart` 等,带 Vitest)。`queueStore.version` 每次 mutation 自增,供后续 worker 丢弃过期结果(PRD §9.3)。
 
+### Exif 查看 / 擦除 / 任务系统(M3–M4,核心是「纯逻辑在 core,fs/exiftool 编排在 main」)
+- **读取(M3)**:`services/exiftool.ts` 薄封装 exiftool-vendored 的 `readRaw(file,{readArgs:['-G0']})`(family-0 分组),值预先字符串化;纯转换(`buildExifGroups`/`summarizeExif`/`filterExifGroups`/`exifToJsonString`)在 `packages/core/exif.ts`。主进程内存 LRU(path+mtime 失效)代替 SQLite,后者顺延 M7。
+- **擦除(M4)**:规则/预设/校验/差异预览/验证全是纯函数,在 `packages/core/erase.ts`(`presetRule`/`partitionExifByRule`/`verifyRemoval`/`buildRemoveArgs`,单一来源 `ERASE_CATEGORIES`+`CATEGORY_PRESETS`);`services/exiftool.ts` 的 `eraseMetadata` 做 fs 编排(export=copyFile→strip→verify,在 place 直接 strip)。`remove_selected` 走 `write(…,{writeArgs:['-tag=',…]})` 且**对每个具体 tag 追加 `-IFD1:tag=`**(否则缩略图 IFD 残留副本);keep 模式走 `deleteAllTags({retain})`。
+- **验证踩坑**:`File`/`Composite`/`ExifTool` 三个 family-0 组是文件系统/派生/版本伪标签,exiftool **永远删不掉**——`isRemovableGroup` 把它们排除在预览与验证之外,否则 keep 模式会误报「未擦除」而整批失败。
+- **安全铁律(§13)**:默认导出新文件、绝不覆盖原图、失败绝不动/删原文件;就地覆盖需二次确认,批量就地覆盖再加一次 arm。
+- **任务系统(M4 Phase C)**:纯状态机(合法迁移表/计数/派生)在 `packages/core/task.ts`;`services/taskScheduler.ts` 是单例,**串行**跑批处理(exiftool 写入不可中断,暂停/取消在文件之间检查),失败项可 retry。渲染端 `taskStore` 经 `task:update` 推送镜像,批处理页是 `AppViewMode` 的 `batch_tasks` 视图。
+- **自动模式(M4 Phase D)几乎全在渲染进程**:`autoModeStore`(会话态,内存) + `useAutoErase`(导航触发) + `AutoModePrompt`/`AutoModeStrip`,复用既有 `metadata.erase`/`file.suggestExportPath`/`task.startEraseBatch`,**无新增 IPC**。安全取舍:自动应用**一律 export-new**,浏览触发不破坏原图;永久 scope/「存为默认规则」顺延 M7。
+
 ### electron-vite 配置坑(`electron.vite.config.ts`)
 - `electron` 是 devDependency,需在 main/preload 的 `rollupOptions.external` 里**显式 external**,否则会打包 npm 启动桩、触发二进制下载。
+- **`exiftool-vendored` 同样必须显式 external**(`externalizeDepsPlugin({include})` + `rollupOptions.external`),否则其源码被 inline、vendored 二进制按模块路径定位失效(主进程包体会从 ~17kB 暴涨)。新增 sharp/better-sqlite3 等原生模块照此处理。
 - preload 输出强制为 **`.cjs`**(`format: 'cjs'`)——根 `"type": "module"` 下 sandbox preload 必须是 CommonJS;`index.ts` 里 preload 路径也写的是 `../preload/index.cjs`。
 - renderer 有 alias `@renderer` → `src/renderer/src`。
 - typecheck 分两份:`tsconfig.node.json`(main/preload)+ `tsconfig.web.json`(renderer);`pnpm typecheck` 跑全包,`@folio/desktop` 的 `typecheck` 会两份都跑。
