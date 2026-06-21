@@ -8,6 +8,10 @@ import { FolderIcon } from './icons'
 const folderName = (p: string): string =>
   p.replaceAll('\\', '/').replace(/\/+$/, '').split('/').pop() ?? p
 
+// Stable empty fallback: a fresh `[]` inside the Zustand selector would change identity every
+// render and trip useSyncExternalStore's snapshot check → infinite re-render → blank window.
+const NO_DIRS: readonly string[] = []
+
 /**
  * Folder picker shown when the quick-save shortcut (T) fires and the rule has several target
  * folders. Pick one → the focused image is saved there with the rule's naming. With a single target
@@ -19,7 +23,7 @@ export function QuickSavePicker(): React.JSX.Element | null {
   const t = useT()
   const open = useSaveStore((s) => s.quickPickerOpen)
   const close = useSaveStore((s) => s.closeQuickPicker)
-  const dirs = useSaveStore((s) => s.quickRule?.targetDirs ?? [])
+  const dirs = useSaveStore((s) => s.quickRule?.targetDirs ?? NO_DIRS)
   const [index, setIndex] = useState(0)
 
   const pick = (dir: string): void => {
