@@ -9,6 +9,7 @@ import { useSaveStore } from '../stores/saveStore'
 import { useToastStore } from '../stores/toastStore'
 import { useTrashConfirmStore } from '../stores/trashConfirmStore'
 import { useUiStore } from '../stores/uiStore'
+import { canConvert, formatLabel } from './format'
 import { trashTextKeys } from './platform'
 
 const queue = () => useQueueStore.getState()
@@ -143,7 +144,15 @@ export function openRenameDialog(): void {
 
 /** Open the format-conversion dialog (no-op when no images are loaded). */
 export function openConvertDialog(): void {
-  if (queue().items.length === 0) return
+  const q = queue()
+  if (q.items.length === 0) return
+  // Pre-flight the focused image: if its format can't be a conversion input here (e.g. HEIC/JXL on
+  // Windows, or ICO/SVG anywhere), warn now instead of after the user picks options in the dialog.
+  const item = q.items[q.currentIndex]
+  if (item && !canConvert(item)) {
+    toast().show(tNow('toast.convertUnsupported', { format: formatLabel(item) }), 'error')
+    return
+  }
   useConvertStore.getState().openDialog()
 }
 

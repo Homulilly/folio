@@ -1,7 +1,40 @@
 import { GV_IMG_SCHEME, type ImageFormat } from '@folio/shared-types'
+import { isMac } from './platform'
 
 /** What the renderable / label helpers need from a queue item: prefer the sniffed format, fall back to ext. */
 type FormatInfo = { format?: ImageFormat; ext: string }
+
+/** Input formats sharp decodes directly — convertible on any platform. */
+const SHARP_DECODABLE = new Set<ImageFormat>(['jpeg', 'png', 'webp', 'gif', 'avif', 'tiff'])
+/** Input formats only the macOS OS decoder (sips) can read — see services/decode.ts. */
+const OS_ONLY_DECODABLE = new Set<ImageFormat>(['heic', 'heif', 'jxl', 'bmp'])
+// svg has no sniffed format but sharp rasterizes it (librsvg), so it's convertible everywhere.
+const SHARP_DECODABLE_EXTS = new Set([
+  'jpg',
+  'jpeg',
+  'png',
+  'webp',
+  'gif',
+  'avif',
+  'tif',
+  'tiff',
+  'svg',
+])
+
+/**
+ * Whether this image can be a format-conversion input on the current platform. sharp-decodable
+ * formats convert anywhere; HEIC/HEIF/JXL/BMP only on macOS (via the sips decode layer); ICO/SVG and
+ * anything else can't. Lets the convert entry warn up front instead of failing after the dialog.
+ */
+export function canConvert({ format, ext }: FormatInfo): boolean {
+  if (format) {
+    if (SHARP_DECODABLE.has(format)) return true
+    if (OS_ONLY_DECODABLE.has(format)) return isMac()
+    return false
+  }
+  // No sniffed format (SVG/ICO, or detection failed): only the always-sharp extensions.
+  return SHARP_DECODABLE_EXTS.has(ext.toLowerCase())
+}
 
 /** True formats Chromium can decode in an <img>. Others need a sharp-generated preview (later milestone). */
 const RENDERABLE_FORMATS = new Set<ImageFormat>(['jpeg', 'png', 'webp', 'gif', 'bmp', 'avif'])
