@@ -5,6 +5,7 @@ import type {
   EraseRule,
   EraseTarget,
   ExifGroup,
+  ExifIfd1Fallback,
   ExifMetadata,
 } from '@folio/shared-types'
 import { exiftool } from 'exiftool-vendored'
@@ -28,6 +29,35 @@ const cache = new Map<string, CacheEntry>()
 async function readGroups(filePath: string): Promise<ExifGroup[]> {
   const raw = await exiftool.readRaw(filePath, { readArgs: ['-G0'] })
   return buildExifGroups(raw as Record<string, unknown>)
+}
+
+/**
+ * Read IFD1's description / artist / copyright (tags 0x010E / 0x013B / 0x8298) for the summary
+ * fallback. Group-qualifying the tags (`-IFD1:…`) pulls the IFD1 copy specifically — the main
+ * `-G0` dump can't surface it when IFD0 holds an empty copy of the same tag. Returns undefined
+ * when none are present (the common case), so ExifMetadata.ifd1 stays absent.
+ */
+async function readIfd1Fallback(filePath: string): Promise<ExifIfd1Fallback | undefined> {
+  try {
+    const raw = (await exiftool.readRaw(filePath, {
+      readArgs: ['-IFD1:ImageDescription', '-IFD1:Artist', '-IFD1:Copyright'],
+    })) as Record<string, unknown>
+    const str = (v: unknown): string | undefined => {
+      const s = v == null ? '' : String(v).trim()
+      return s === '' ? undefined : s
+    }
+    const fallback: ExifIfd1Fallback = {}
+    const description = str(raw.ImageDescription)
+    const artist = str(raw.Artist)
+    const copyright = str(raw.Copyright)
+    if (description) fallback.description = description
+    if (artist) fallback.artist = artist
+    if (copyright) fallback.copyright = copyright
+    return description || artist || copyright ? fallback : undefined
+  } catch {
+    // A targeted read failing must never break the main metadata read.
+    return undefined
+  }
 }
 
 /**
@@ -58,7 +88,9 @@ export async function readMetadata(filePath: string): Promise<ExifMetadata | nul
   }
 
   try {
-    const data: ExifMetadata = { filePath, groups: await readGroups(filePath) }
+    // Run the full dump and the targeted IFD1 fallback read concurrently on the ExifTool pool.
+    const [groups, ifd1] = await Promise.all([readGroups(filePath), readIfd1Fallback(filePath)])
+    const data: ExifMetadata = ifd1 ? { filePath, groups, ifd1 } : { filePath, groups }
     remember(filePath, mtimeMs, data)
     putExif(filePath, mtimeMs, data)
     return data

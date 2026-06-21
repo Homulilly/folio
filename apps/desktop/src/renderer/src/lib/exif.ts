@@ -30,6 +30,11 @@ export const SUMMARY_LABEL_KEYS: Record<ExifSummaryId, I18nKey> = {
   aperture: 'exif.summary.aperture',
   focalLength: 'exif.summary.focalLength',
   gps: 'exif.summary.gps',
+  description: 'exif.summary.description',
+  artist: 'exif.summary.artist',
+  copyright: 'exif.summary.copyright',
+  comment: 'exif.summary.comment',
+  uniqueId: 'exif.summary.uniqueId',
 }
 
 /** Accent for a summary row value (GPS red, date orange; rest inherit). */

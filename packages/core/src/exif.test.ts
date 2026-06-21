@@ -93,6 +93,45 @@ describe('summarizeExif', () => {
     const rows2 = summarizeExif(buildExifGroups({ 'EXIF:Make': 'NIKON', 'EXIF:Model': 'Z9' }))
     expect(rows2.find((r) => r.id === 'camera')?.value).toBe('NIKON Z9')
   })
+
+  it('surfaces description / author / copyright / comment / unique id from IFD0', () => {
+    const groups = buildExifGroups({
+      'EXIF:ImageDescription': 'Sunset over the bay',
+      'EXIF:Artist': 'Ada Lovelace',
+      'EXIF:Copyright': '© 2026 Ada',
+      'EXIF:UserComment': 'shot handheld',
+      'EXIF:ImageUniqueID': 'ABC123',
+    })
+    const byId = Object.fromEntries(summarizeExif(groups).map((r) => [r.id, r.value]))
+    expect(byId.description).toBe('Sunset over the bay')
+    expect(byId.artist).toBe('Ada Lovelace')
+    expect(byId.copyright).toBe('© 2026 Ada')
+    expect(byId.comment).toBe('shot handheld')
+    expect(byId.uniqueId).toBe('ABC123')
+  })
+
+  it('falls back to IFD1 for description/artist/copyright only when the primary is empty', () => {
+    // IFD0 copies are empty (dropped by buildExifGroups), so the IFD1 fallback fills in.
+    const groups = buildExifGroups({ 'EXIF:ImageDescription': '', 'EXIF:Make': 'Canon' })
+    const byId = Object.fromEntries(
+      summarizeExif(groups, {
+        description: 'From thumbnail IFD',
+        artist: 'IFD1 Author',
+        copyright: 'IFD1 ©',
+      }).map((r) => [r.id, r.value]),
+    )
+    expect(byId.description).toBe('From thumbnail IFD')
+    expect(byId.artist).toBe('IFD1 Author')
+    expect(byId.copyright).toBe('IFD1 ©')
+  })
+
+  it('prefers the IFD0 value over the IFD1 fallback', () => {
+    const groups = buildExifGroups({ 'EXIF:Artist': 'Primary Author' })
+    const byId = Object.fromEntries(
+      summarizeExif(groups, { artist: 'IFD1 Author' }).map((r) => [r.id, r.value]),
+    )
+    expect(byId.artist).toBe('Primary Author')
+  })
 })
 
 describe('filterExifGroups', () => {

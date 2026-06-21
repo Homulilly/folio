@@ -1,4 +1,4 @@
-import type { ExifEntry, ExifGroup, ExifMetadata } from '@folio/shared-types'
+import type { ExifEntry, ExifGroup, ExifIfd1Fallback, ExifMetadata } from '@folio/shared-types'
 
 // ---- Raw tag normalisation -------------------------------------------------
 //
@@ -69,6 +69,11 @@ export type ExifSummaryId =
   | 'aperture'
   | 'focalLength'
   | 'gps'
+  | 'description'
+  | 'artist'
+  | 'copyright'
+  | 'comment'
+  | 'uniqueId'
 
 export interface ExifSummaryRow {
   id: ExifSummaryId
@@ -86,6 +91,11 @@ const SUMMARY_ORDER: ExifSummaryId[] = [
   'aperture',
   'focalLength',
   'gps',
+  'description',
+  'artist',
+  'copyright',
+  'comment',
+  'uniqueId',
 ]
 
 /** Candidate field names (group-stripped) for each summary row, in priority order. */
@@ -98,6 +108,11 @@ const SUMMARY_FIELDS: Record<Exclude<ExifSummaryId, 'camera'>, string[]> = {
   aperture: ['Aperture', 'FNumber'],
   focalLength: ['FocalLength'],
   gps: ['GPSPosition', 'GPSCoordinates'],
+  description: ['ImageDescription', 'Description', 'Caption-Abstract'],
+  artist: ['Artist', 'Creator', 'By-line'],
+  copyright: ['Copyright', 'Rights', 'CopyrightNotice'],
+  comment: ['UserComment', 'XPComment', 'Comment'],
+  uniqueId: ['ImageUniqueID', 'OriginalDocumentID', 'DocumentID'],
 }
 
 /** Flatten groups to a field→value lookup; first occurrence (in display order) wins. */
@@ -114,8 +129,12 @@ function cameraLabel(make: string | undefined, model: string | undefined): strin
   return model ?? make
 }
 
-/** Pick the common headline fields for the summary view. Omits rows with no data. */
-export function summarizeExif(groups: ExifGroup[]): ExifSummaryRow[] {
+/**
+ * Pick the common headline fields for the summary view. Omits rows with no data. `ifd1` supplies
+ * IFD1 fallbacks for description / artist / copyright (tags 0x010E / 0x013B / 0x8298), used only
+ * when the primary IFD0 value is empty.
+ */
+export function summarizeExif(groups: ExifGroup[], ifd1?: ExifIfd1Fallback): ExifSummaryRow[] {
   const lookup = flatten(groups)
   const pick = (names: string[]): string | undefined => {
     for (const n of names) {
@@ -134,6 +153,11 @@ export function summarizeExif(groups: ExifGroup[]): ExifSummaryRow[] {
     aperture: pick(SUMMARY_FIELDS.aperture),
     focalLength: pick(SUMMARY_FIELDS.focalLength),
     gps: pick(SUMMARY_FIELDS.gps),
+    description: pick(SUMMARY_FIELDS.description) ?? ifd1?.description,
+    artist: pick(SUMMARY_FIELDS.artist) ?? ifd1?.artist,
+    copyright: pick(SUMMARY_FIELDS.copyright) ?? ifd1?.copyright,
+    comment: pick(SUMMARY_FIELDS.comment),
+    uniqueId: pick(SUMMARY_FIELDS.uniqueId),
   }
   const rows: ExifSummaryRow[] = []
   for (const id of SUMMARY_ORDER) {

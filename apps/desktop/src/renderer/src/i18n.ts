@@ -148,6 +148,11 @@ const en = {
   'exif.summary.aperture': 'Aperture',
   'exif.summary.focalLength': 'Focal length',
   'exif.summary.gps': 'GPS',
+  'exif.summary.description': 'Description',
+  'exif.summary.artist': 'Author',
+  'exif.summary.copyright': 'Copyright',
+  'exif.summary.comment': 'Comment',
+  'exif.summary.uniqueId': 'Unique ID',
   'exif.erase': 'Erase metadata…',
 
   'erase.title': 'Erase metadata',
@@ -529,6 +534,11 @@ const zhCN: Record<keyof typeof en, string> = {
   'exif.summary.aperture': '光圈',
   'exif.summary.focalLength': '焦距',
   'exif.summary.gps': 'GPS',
+  'exif.summary.description': '描述',
+  'exif.summary.artist': '作者',
+  'exif.summary.copyright': '版权',
+  'exif.summary.comment': '注释',
+  'exif.summary.uniqueId': '唯一 ID',
   'exif.erase': '擦除元信息…',
 
   'erase.title': '擦除元信息',

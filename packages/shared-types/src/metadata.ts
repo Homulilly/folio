@@ -17,8 +17,21 @@ export interface ExifGroup {
   entries: ExifEntry[]
 }
 
+/**
+ * IFD1 (thumbnail IFD) copies of description / artist / copyright — tags 0x010E / 0x013B / 0x8298.
+ * Read separately (group-qualified) because when IFD0 holds an empty copy, ExifTool suppresses the
+ * IFD1 one in the main `-G0` dump. Used only as a summary fallback when the primary value is empty.
+ */
+export interface ExifIfd1Fallback {
+  description?: string
+  artist?: string
+  copyright?: string
+}
+
 /** Full metadata for one image, grouped. Empty `groups` means a successful read with no tags. */
 export interface ExifMetadata {
   filePath: string
   groups: ExifGroup[]
+  /** Present only when at least one IFD1 fallback value was found; omitted otherwise. */
+  ifd1?: ExifIfd1Fallback
 }

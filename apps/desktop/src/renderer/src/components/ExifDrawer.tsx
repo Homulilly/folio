@@ -55,7 +55,11 @@ export function ExifDrawer(): React.JSX.Element {
 
   const groups = state.status === 'loaded' ? state.data.groups : []
   const filtered = useMemo(() => filterExifGroups(groups, search), [groups, search])
-  const summary = useMemo(() => summarizeExif(groups), [groups])
+  const ifd1 = state.status === 'loaded' ? state.data.ifd1 : undefined
+  const summary = useMemo(() => summarizeExif(groups, ifd1), [groups, ifd1])
+  // Raw view = the unprocessed `{ group: { key: value } }` JSON (search narrows it to matching
+  // groups, same as Grouped). filePath is carried through but unused by exifToJsonString.
+  const rawJson = useMemo(() => exifToJsonString({ filePath: '', groups: filtered }), [filtered])
 
   const showSearch = tab !== 'summary' && state.status === 'loaded' && groups.length > 0
 
@@ -143,8 +147,10 @@ export function ExifDrawer(): React.JSX.Element {
             <SummaryView rows={summary} t={t} />
           ) : filtered.length === 0 ? (
             <Centered>{t('exif.noMatches')}</Centered>
+          ) : tab === 'raw' ? (
+            <RawJsonView json={rawJson} />
           ) : (
-            <GroupedView groups={filtered} dense={tab === 'raw'} />
+            <GroupedView groups={filtered} />
           )}
         </div>
         <ScrollOverlay scrollRef={scrollRef} />
@@ -220,10 +226,8 @@ function SummaryView({
 
 function GroupedView({
   groups,
-  dense,
 }: {
   groups: { group: string; entries: { key: string; value: string }[] }[]
-  dense: boolean
 }): React.JSX.Element {
   return (
     <div className="flex flex-col gap-3.5 pt-1.5">
@@ -242,18 +246,10 @@ function GroupedView({
                 key={e.key}
                 title={`${e.key}: ${e.value}`}
                 onClick={() => copyText(e.value, 'toast.fieldCopied')}
-                className={`flex w-full items-center justify-between gap-2.5 border-b border-[rgba(84,84,88,0.3)] text-left transition-colors last:border-b-0 hover:bg-white/[0.04] ${
-                  dense ? 'px-3 py-1.5' : 'px-3 py-2'
-                }`}
+                className="flex w-full items-center justify-between gap-2.5 border-b border-[rgba(84,84,88,0.3)] px-3 py-2 text-left transition-colors last:border-b-0 hover:bg-white/[0.04]"
               >
-                <span
-                  className={`flex-none ${dense ? 'font-mono text-[11px]' : 'text-[12px]'} text-[rgba(235,235,245,0.55)]`}
-                >
-                  {e.key}
-                </span>
-                <span
-                  className={`truncate text-right font-mono text-[rgba(235,235,245,0.9)] ${dense ? 'text-[11px]' : 'text-[12px]'}`}
-                >
+                <span className="flex-none text-[12px] text-[rgba(235,235,245,0.55)]">{e.key}</span>
+                <span className="truncate text-right font-mono text-[12px] text-[rgba(235,235,245,0.9)]">
                   {e.value}
                 </span>
               </button>
@@ -262,5 +258,14 @@ function GroupedView({
         </div>
       ))}
     </div>
+  )
+}
+
+/** Raw view: the metadata serialised to JSON, selectable for copy (matches the footer's "copy all"). */
+function RawJsonView({ json }: { json: string }): React.JSX.Element {
+  return (
+    <pre className="mt-1.5 whitespace-pre-wrap break-words rounded-[10px] bg-[#1C1C1E] px-3 py-2.5 font-mono text-[11px] leading-[1.5] text-[rgba(235,235,245,0.85)] selection:bg-[#0A84FF]/30">
+      {json}
+    </pre>
   )
 }
