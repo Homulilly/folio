@@ -1,12 +1,14 @@
 import { type ExifSummaryRow, exifToJsonString, filterExifGroups, summarizeExif } from '@folio/core'
-import type { ExifMetadata } from '@folio/shared-types'
+import type { AppLanguage, ExifMetadata } from '@folio/shared-types'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '../i18n'
 import { copyText } from '../lib/actions'
 import { groupColor, SUMMARY_LABEL_KEYS, summaryValueColor } from '../lib/exif'
+import { tagLabel } from '../lib/exifTags'
 import { useEraseStore } from '../stores/eraseStore'
 import { type ExifTab, useExifStore } from '../stores/exifStore'
 import { useQueueStore } from '../stores/queueStore'
+import { useSettingsStore } from '../stores/settingsStore'
 import { CloseIcon, CopyIcon, SearchIcon, TrashIcon } from './icons'
 import { ScrollOverlay } from './ScrollOverlay'
 
@@ -26,6 +28,7 @@ export function ExifDrawer(): React.JSX.Element {
   const setSearch = useExifStore((s) => s.setSearch)
   const close = useExifStore((s) => s.close)
   const refreshToken = useExifStore((s) => s.refreshToken)
+  const language = useSettingsStore((s) => s.language)
   const openErase = useEraseStore((s) => s.openFor)
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -150,7 +153,7 @@ export function ExifDrawer(): React.JSX.Element {
           ) : tab === 'raw' ? (
             <RawJsonView json={rawJson} />
           ) : (
-            <GroupedView groups={filtered} />
+            <GroupedView groups={filtered} lang={language} />
           )}
         </div>
         <ScrollOverlay scrollRef={scrollRef} />
@@ -226,8 +229,10 @@ function SummaryView({
 
 function GroupedView({
   groups,
+  lang,
 }: {
   groups: { group: string; entries: { key: string; value: string }[] }[]
+  lang: AppLanguage
 }): React.JSX.Element {
   return (
     <div className="flex flex-col gap-3.5 pt-1.5">
@@ -248,7 +253,9 @@ function GroupedView({
                 onClick={() => copyText(e.value, 'toast.fieldCopied')}
                 className="flex w-full items-center justify-between gap-2.5 border-b border-[rgba(84,84,88,0.3)] px-3 py-2 text-left transition-colors last:border-b-0 hover:bg-white/[0.04]"
               >
-                <span className="flex-none text-[12px] text-[rgba(235,235,245,0.55)]">{e.key}</span>
+                <span className="flex-none text-[12px] text-[rgba(235,235,245,0.55)]">
+                  {tagLabel(e.key, lang)}
+                </span>
                 <span className="truncate text-right font-mono text-[12px] text-[rgba(235,235,245,0.9)]">
                   {e.value}
                 </span>

@@ -538,7 +538,7 @@ const zhCN: Record<keyof typeof en, string> = {
   'exif.summary.artist': '作者',
   'exif.summary.copyright': '版权',
   'exif.summary.comment': '注释',
-  'exif.summary.uniqueId': '唯一 ID',
+  'exif.summary.uniqueId': '图像 ID',
   'exif.erase': '擦除',
 
   'erase.title': '擦除元信息',
