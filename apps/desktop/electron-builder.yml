@@ -1,4 +1,4 @@
-appId: com.folio.app
+appId: me.nep.folio
 productName: Folio
 # Download filenames carry a leading "v" to match the git tag / release (e.g. Folio-v0.1.1-arm64.dmg).
 artifactName: ${productName}-v${version}-${arch}.${ext}

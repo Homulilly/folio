@@ -2,6 +2,12 @@
 
 本项目所有重要变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.2.2] - 2026-06-22
+
+### 变更
+
+- **应用包标识(appId)改为 `me.nep.folio`**:替换占位的反向域名,作为 macOS bundle ID 与 Windows AUMID,下次打包生效。
+
 ## [0.2.1] - 2026-06-21
 
 ### 新增
