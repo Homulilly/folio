@@ -67,5 +67,3 @@
 - **代码签名 / 公证**:暂为未签名构建,首次打开需绕过 Gatekeeper / SmartScreen 提示;待接入 Developer ID / Authenticode。
 - **Windows / Linux 产物**:配置就位但未在对应平台实跑(pnpm 不自动安装其它平台的 sharp 预编译二进制)。
 - 详见 `docs/mvp-tasks.md` 与 `docs/packaging.md`。
-
-[0.1.0]: https://github.com/Homulilly/folio/releases/tag/v0.1.0
