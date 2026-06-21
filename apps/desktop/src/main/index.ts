@@ -5,11 +5,14 @@ import { registerIpcHandlers } from './ipc'
 import { handleImageProtocol, registerImageProtocolSchemes } from './protocol'
 import { closeDb } from './services/db'
 import { endExifTool } from './services/exiftool'
+import { initLogging, startCrashReporter } from './services/logging'
 
 app.setName('Folio')
 
 // Must run before app `ready`.
 registerImageProtocolSchemes()
+// Capture native crashes locally (never uploaded); earliest possible so early crashes are caught.
+startCrashReporter()
 
 let mainWindow: BrowserWindow | null = null
 
@@ -61,6 +64,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  initLogging()
   handleImageProtocol()
   registerIpcHandlers(() => mainWindow)
   createWindow()

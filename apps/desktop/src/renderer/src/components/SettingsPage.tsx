@@ -411,6 +411,26 @@ export function SettingsPage(): React.JSX.Element {
           </Section>
 
           <QuickSaveSettings />
+
+          <Section title={t('settings.diagnosticsSection')} help={t('settings.diagnosticsHelp')}>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-[13px] text-[rgba(235,235,245,0.86)]">
+                  {t('settings.openLogsLabel')}
+                </div>
+                <div className="mt-0.5 text-[12px] leading-5 text-[rgba(235,235,245,0.42)]">
+                  {t('settings.openLogsHelp')}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => void window.gv.system.openLogs()}
+                className="flex-none rounded-lg bg-white/[0.06] px-3 py-1.5 text-[12px] font-medium text-[rgba(235,235,245,0.86)] transition-colors hover:bg-white/[0.1]"
+              >
+                {t('settings.openLogsButton')}
+              </button>
+            </div>
+          </Section>
         </div>
       </div>
     </div>

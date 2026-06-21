@@ -232,11 +232,13 @@
 
 ### E. 打包与发布（PRD §18 / §19.5）
 
-- [ ] electron-builder 打包 Windows / macOS / Linux
-- [ ] 原生模块 `asarUnpack`:exiftool-vendored(**M3 顺延**)+ sharp(**M6 顺延**)预编译二进制
-- [ ] sharp 跨平台二进制验证:Windows / Linux 预编译 libvips(**M6 顺延**;macOS 已 spike 验证)
-- [ ] macOS 代码签名 + 公证
-- [ ] 崩溃日志
+- [x] electron-builder 配置(`apps/desktop/electron-builder.yml`)+ 脚本(`pack:dir` / `dist` / `dist:mac` / `dist:win`);output=`release/`、buildResources=`resources/`(因 `build/` 已 gitignore)
+- [x] 原生模块 `asarUnpack`:exiftool-vendored(**M3 顺延**)+ sharp/@img(**M6 顺延**)+ better-sqlite3(**M7**)— `npmRebuild:false`(已由 postinstall electron-rebuild / N-API prebuild 处理,免二次重建)
+- [x] **macOS arm64 DMG 已验证产出可启动**:`Folio-0.0.0-arm64.dmg`(119–131MB);三个原生模块二进制都正确落到 `app.asar.unpacked`,`codesign --verify --deep --strict` 通过,实机启动写出 `[start]` 日志
+- [x] 崩溃日志:`services/logging.ts`——`crashReporter`(`uploadToServer:false`,转储留本机)+ `uncaughtException`/`unhandledRejection`/`render-process-gone`/`child-process-gone` 写 `userData/logs/main.log`;设置页「诊断」段「打开日志文件夹」(IPC `system:openLogs`)
+- [ ] **未签名(暂不接 Developer ID / 公证)**:`mac.identity:null` 跳过签名,故 `afterPack` 钩子(`scripts/afterPack.cjs`)对 bundle 做 **ad-hoc 签名**——否则 Apple Silicon 因 framework 原签名被破坏而拒绝启动(实测「damaged」)。拿到证书后换成真实签名 + notarize 即可(entitlements 已备 `resources/entitlements.mac.plist`)
+- [ ] Windows / Linux 产物 + sharp 跨平台预编译二进制验证(**M6 顺延**):pnpm 10+ 不装其它平台的 `@img/sharp-*`,需在目标平台构建或补 optionalDependencies;Windows NSIS / Linux AppImage 配置已就位但未实跑
+- [ ] 应用图标(现用 Electron 默认图标):需 `resources/icon.icns`(mac)/ `icon.ico`(win)
 
 **验收**（PRD §17 全量 + §19.5 发布清单）：三平台可装可启；1000 张不阻塞；四宫格连切不涨内存；擦除默认导出新文件；批处理有预览/确认/日志；不上传图片、不扫未选目录。
 

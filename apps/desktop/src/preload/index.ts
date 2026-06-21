@@ -10,6 +10,7 @@ const api: Bridge = {
   system: {
     ping: () => ipcRenderer.invoke(IpcChannel.systemPing),
     getInfo: () => ipcRenderer.invoke(IpcChannel.systemGetInfo),
+    openLogs: () => ipcRenderer.invoke(IpcChannel.systemOpenLogs),
   },
   image: {
     openFileDialog: () => ipcRenderer.invoke(IpcChannel.imageOpenFileDialog),

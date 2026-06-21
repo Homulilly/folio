@@ -2,6 +2,8 @@
   "name": "@folio/desktop",
   "version": "0.0.0",
   "productName": "Folio",
+  "description": "Fast, private cross-platform image viewer with Exif tools and side-by-side comparison.",
+  "author": "Folio",
   "private": true,
   "type": "module",
   "main": "./out/main/index.js",
@@ -13,7 +15,11 @@
     "rebuild:native": "electron-rebuild -f -w better-sqlite3",
     "typecheck:node": "tsc --noEmit -p tsconfig.node.json",
     "typecheck:web": "tsc --noEmit -p tsconfig.web.json",
-    "typecheck": "pnpm run typecheck:node && pnpm run typecheck:web"
+    "typecheck": "pnpm run typecheck:node && pnpm run typecheck:web",
+    "pack:dir": "electron-vite build && electron-builder --dir",
+    "dist": "electron-vite build && electron-builder",
+    "dist:mac": "electron-vite build && electron-builder --mac",
+    "dist:win": "electron-vite build && electron-builder --win"
   },
   "dependencies": {
     "@folio/config": "workspace:*",

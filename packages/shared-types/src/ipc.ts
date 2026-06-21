@@ -47,6 +47,8 @@ export interface FolioApi {
   system: {
     ping: () => Promise<'pong'>
     getInfo: () => Promise<SystemInfo>
+    /** Reveal the diagnostics log folder in the OS file manager. */
+    openLogs: () => Promise<void>
   }
   image: {
     openFileDialog: () => Promise<ScanResult | null>
@@ -142,6 +144,7 @@ export interface FolioApi {
 export const IpcChannel = {
   systemPing: 'system:ping',
   systemGetInfo: 'system:getInfo',
+  systemOpenLogs: 'system:openLogs',
   imageOpenFileDialog: 'image:openFileDialog',
   imageOpenDirectoryDialog: 'image:openDirectoryDialog',
   imageOpenPaths: 'image:openPaths',

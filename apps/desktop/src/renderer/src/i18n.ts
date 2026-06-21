@@ -258,6 +258,11 @@ const en = {
   'settings.quickAddFolder': 'Add folder…',
   'settings.quickNoTargets': 'No folders yet — add one (or save once via the dialog to set it up).',
   'settings.quickRemoveTarget': 'Remove folder',
+  'settings.diagnosticsSection': 'Diagnostics',
+  'settings.diagnosticsHelp': 'Logs and crash reports, kept on this device — never uploaded.',
+  'settings.openLogsLabel': 'Logs folder',
+  'settings.openLogsHelp': 'Open the folder with the app log and any crash dumps.',
+  'settings.openLogsButton': 'Open logs folder',
 
   'toolbar.saveTo': 'Save to folder…',
   'toolbar.quickSaveTo': 'Quick save → {dir} (T)',
@@ -628,6 +633,11 @@ const zhCN: Record<keyof typeof en, string> = {
   'settings.quickAddFolder': '添加文件夹…',
   'settings.quickNoTargets': '还没有文件夹——添加一个(或通过对话框保存一次以建立规则)。',
   'settings.quickRemoveTarget': '移除文件夹',
+  'settings.diagnosticsSection': '诊断',
+  'settings.diagnosticsHelp': '日志与崩溃报告,只保存在本机,绝不上传。',
+  'settings.openLogsLabel': '日志文件夹',
+  'settings.openLogsHelp': '打开存放应用日志与崩溃转储的文件夹。',
+  'settings.openLogsButton': '打开日志文件夹',
 
   'toolbar.saveTo': '保存到文件夹…',
   'toolbar.quickSaveTo': '快速保存 → {dir} (T)',

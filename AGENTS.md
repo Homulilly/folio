@@ -11,7 +11,7 @@
 - MVP 任务清单 / 里程碑:**`docs/mvp-tasks.md`**
 - UI 原型:**`.dev/design/GalleryViewer.dc.html`**(见下方「设计系统」)
 
-**当前状态**:**M0–M6 + M7 大部分已落地**(M0 脚手架 · M1 基础看图 · M2 多图并列 · M3 Exif 查看 · M4 Exif 擦除/批处理/自动模式 · M5 保存到目标 + 批量重命名 · M6 格式转换 · **M7 缓存/缩略图/预览显示/持久化设置/虚拟化/大图策略**)。**M7 仅剩 electron-builder 打包发布(签名/公证,需证书与平台)+ 多图长时内存压测 + 快捷键自定义 UI**。各里程碑范围/顺延说明见 `docs/mvp-tasks.md`。已落地的跨文件约定见下方「已落地架构」。
+**当前状态**:**M0–M6 + M7 大部分已落地**(M0 脚手架 · M1 基础看图 · M2 多图并列 · M3 Exif 查看 · M4 Exif 擦除/批处理/自动模式 · M5 保存到目标 + 批量重命名 · M6 格式转换 · **M7 缓存/缩略图/预览显示/持久化设置/虚拟化/大图策略 + electron-builder 打包(macOS 未签名 DMG 已验证可启动)+ 崩溃日志**)。**M7 仅剩:macOS Developer ID 签名 + 公证、Windows/Linux 产物(均需证书/平台)、多图长时内存压测、快捷键自定义 UI、应用图标**。各里程碑范围/顺延说明见 `docs/mvp-tasks.md`。已落地的跨文件约定见下方「已落地架构」。
 
 ## 技术栈
 
@@ -123,6 +123,15 @@ folio/
 - **多图网格(MultiView Slot)省内存**:每格探测 `image.dimensions`,**大图栅格(>2048px 且 `item.format!=null` 排除 svg/ico)→ preview**,小图栅格/svg/ico → original,不可解码 → preview;**等 variant 判定后再加载**(spinner 期间不抢拉原图),展开进单图仍原图。
 - **队列侧栏虚拟化**:`QueueRail` 固定行高(54px)窗口化,只渲染可视区 + overscan 行(绝对定位于全高占位 div),`scrollIntoView` 改手动滚动到选中项。
 
+### 打包与崩溃日志(M7 Phase E,`electron-builder.yml` + `services/logging.ts`)
+- **配置在 `apps/desktop/electron-builder.yml`**(非 package.json `build` 键):`output: release/`、`buildResources: resources/`(因 `build/` 已被 gitignore,**不能**放委托给 electron-builder 默认的 `build/`)。脚本:`pack:dir`(=`electron-vite build && electron-builder --dir`,快速产 `.app` 不打 DMG,验证用)/ `dist` / `dist:mac` / `dist:win`,根 package.json 也有 `pnpm dist`。
+- **只有 3 个原生模块需要进 `node_modules`**:主进程 bundle(electron-vite)**把 `@folio/*` 全部 inline**,只 external 了 `electron` + `sharp` + `exiftool-vendored` + `better-sqlite3`;react/zustand 进 renderer bundle。故 `asarUnpack` 只列这三个(+ `@img/**`、`exiftool-vendored.*/**`、`**/*.node`)——它们要 dlopen/spawn,不能留在 asar 内。
+- **`npmRebuild: false`**:better-sqlite3 已由 postinstall `electron-rebuild` 按 Electron ABI 编好、sharp 是 N-API prebuild,electron-builder 不必再 rebuild(pnpm 符号链接下二次 rebuild 易碎)。
+- **务必走 `pnpm` 调用 electron-builder**(`pnpm dist` / `pnpm --filter @folio/desktop exec electron-builder …`),它才能侦测到 pnpm;直接跑 `./node_modules/.bin/electron-builder` 会 fallback 到 npm 检测、刷一大串 `duplicate dependency` 噪声(产物仍只含 production deps,但很吵)。
+- **未签名 + Apple Silicon 启动坑(踩过)**:`mac.identity: null` 让 electron-builder **跳过签名**,但把 app 塞进 Electron 预签名 framework 会**破坏原签名**;arm64 内核拒绝启动签名损坏的 bundle(表现为「damaged」/卡住、`whenReady` 永不触发、无任何日志)。解法:`afterPack` 钩子(`scripts/afterPack.cjs`)对整 bundle 做 **ad-hoc 签名**(`codesign --force --deep --sign -`),`codesign --verify --deep --strict` 即过、实机可启动。拿到 Developer ID 后换真实签名 + notarize(entitlements 已备 `resources/entitlements.mac.plist`,hardened runtime 暂关)。
+- **pnpm 10+ 不装其它平台的 `@img/sharp-*`**:单平台机器只有本平台 libvips 二进制,跨平台产物(Windows/Linux)需在对应平台构建或补 optionalDependencies(electron-builder 会 warn 一串「optional dependencies not bundled」,本平台缺失项不在内即正常)。
+- **崩溃日志 `services/logging.ts`**:`startCrashReporter()`(app ready 前,`uploadToServer:false`,转储留本机 Crashpad)+ `initLogging()`(ready 后,`uncaughtException`/`unhandledRejection`/`render-process-gone`/`child-process-gone` 追加写 `userData/logs/main.log`,**写盘失败静默吞掉绝不拖垮进程**)。IPC `system:openLogs` → `shell.openPath(logsDir())`,设置页「诊断」段有「打开日志文件夹」。离线优先(§13):崩溃/日志只留本机,绝不上传。
+
 ### electron-vite 配置坑(`electron.vite.config.ts`)
 - `electron` 是 devDependency,需在 main/preload 的 `rollupOptions.external` 里**显式 external**,否则会打包 npm 启动桩、触发二进制下载。
 - **`exiftool-vendored` / `sharp` / `better-sqlite3` 都已显式 external**(`externalizeDepsPlugin({include})` + `rollupOptions.external`),否则其源码被 inline、原生二进制(vendored ExifTool / 预编译 libvips / 按 ABI 编译的 `.node`)按模块路径定位失效。新增原生模块照此处理。
@@ -148,7 +157,7 @@ pnpm build          # electron-vite 构建(打包用 electron-builder,M7)
 > ```
 > 后续新增有 build script 的依赖(如 sharp / better-sqlite3),需在 `allowBuilds` 中加一行并重装。
 
-> **原生模块 ABI(better-sqlite3,M7)**:`better-sqlite3` 不是 N-API(与 sharp 不同),`prebuild-install` 拉的是 **Node ABI** 二进制(如 ABI 141),Electron 42 需要 **ABI 146**,直接加载会报 `NODE_MODULE_VERSION` 不匹配。因此 `apps/desktop` 有 `postinstall: electron-rebuild -w better-sqlite3`,每次 `pnpm install` 后自动按 Electron ABI 重编译(M7 spike 已验证零失败,reinstall 后仍 OK)。手动强制重建用 `pnpm --filter @folio/desktop rebuild:native`。打包阶段(M7 Phase E)由 electron-builder 再做一次 rebuild + `asarUnpack`。
+> **原生模块 ABI(better-sqlite3,M7)**:`better-sqlite3` 不是 N-API(与 sharp 不同),`prebuild-install` 拉的是 **Node ABI** 二进制(如 ABI 141),Electron 42 需要 **ABI 146**,直接加载会报 `NODE_MODULE_VERSION` 不匹配。因此 `apps/desktop` 有 `postinstall: electron-rebuild -w better-sqlite3`,每次 `pnpm install` 后自动按 Electron ABI 重编译(M7 spike 已验证零失败,reinstall 后仍 OK)。手动强制重建用 `pnpm --filter @folio/desktop rebuild:native`。打包阶段(M7 Phase E)**不再 rebuild**(`electron-builder.yml` 设 `npmRebuild:false`,直接 `asarUnpack` postinstall 已编好的二进制);详见上「打包与崩溃日志」。
 
 ## 代码约定
 

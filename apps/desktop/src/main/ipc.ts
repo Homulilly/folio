@@ -27,6 +27,7 @@ import { app, type BrowserWindow, clipboard, dialog, ipcMain, nativeImage, shell
 import { convertFile } from './services/convert'
 import { eraseMetadata, readMetadata } from './services/exiftool'
 import { imageDimensions } from './services/imageInfo'
+import { openLogs } from './services/logging'
 import { suggestExportPath } from './services/paths'
 import {
   addRecentFolder,
@@ -93,6 +94,7 @@ export function registerIpcHandlers(getWindow: () => BrowserWindow | null): void
       arch: process.arch,
     }),
   )
+  ipcMain.handle(IpcChannel.systemOpenLogs, (): Promise<void> => openLogs())
 
   // --- image / queue ---
   const showOpen = (options: Electron.OpenDialogOptions) => {

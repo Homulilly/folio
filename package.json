@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "pnpm --filter @folio/desktop dev",
     "build": "pnpm --filter @folio/desktop build",
+    "pack:dir": "pnpm --filter @folio/desktop pack:dir",
+    "dist": "pnpm --filter @folio/desktop dist",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
