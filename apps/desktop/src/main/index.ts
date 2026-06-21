@@ -21,7 +21,13 @@ function createWindow(): void {
     minHeight: 600,
     show: false,
     backgroundColor: '#1C1C1E',
-    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
+    // macOS: hiddenInset keeps native traffic lights inset over our custom bar.
+    // Windows: hide the native frame and paint the min/max/close buttons as a Controls Overlay,
+    // themed to match the #1C1C1E title bar (38px to align with the custom TitleBar height).
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'hidden',
+    ...(process.platform === 'win32'
+      ? { titleBarOverlay: { color: '#1C1C1E', symbolColor: '#9b9b9f', height: 38 } }
+      : {}),
     webPreferences: {
       preload: fileURLToPath(new URL('../preload/index.cjs', import.meta.url)),
       contextIsolation: true,

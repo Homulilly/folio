@@ -4,6 +4,14 @@ function platform(): string {
   return navigator.platform.toLowerCase()
 }
 
+export function isWindows(): boolean {
+  return platform().includes('win')
+}
+
+export function isMac(): boolean {
+  return platform().includes('mac')
+}
+
 export function revealLabelKey(): I18nKey {
   const p = platform()
   if (p.includes('mac')) return 'context.revealInFinder'
