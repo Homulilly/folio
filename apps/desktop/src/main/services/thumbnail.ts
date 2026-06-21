@@ -1,41 +1,10 @@
-import { execFile } from 'node:child_process'
 import { mkdir, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import { promisify } from 'node:util'
 import { type CacheVariant, VARIANT_SPECS, variantCacheKey } from '@folio/image-processing'
-import type { ImageFormat } from '@folio/shared-types'
 import sharp from 'sharp'
 import { cacheDir, getDb } from './db'
-import { detectFileFormat } from './format'
+import { decodeToPng } from './decode'
 import { getSettings } from './settings'
-
-const execFileAsync = promisify(execFile)
-
-// Formats the bundled libvips can't decode (its libheif has no HEVC decoder; no JXL at all) but
-// macOS CoreImage (sips) can — HEIC/HEIF and, on macOS 14+, JPEG XL.
-const OS_DECODABLE_FORMATS = new Set<ImageFormat>(['heic', 'heif', 'jxl'])
-
-/**
- * Fallback decode for an image sharp can't handle — HEVC-coded HEIC (prebuilt libheif lacks the
- * HEVC decoder) and JPEG XL (libvips has no JXL). macOS only: shells out to `sips` to transcode the
- * source into a temporary PNG so the normal webp pipeline can still produce a preview. Args go through execFile
- * (no shell), so the source path can't inject. Returns the temp PNG path, or null if unavailable.
- * Gated on the sniffed magic-byte format, not the extension, so a HEIC named `.jpg` still works.
- */
-async function osDecodeToPng(srcPath: string, dir: string, key: string): Promise<string | null> {
-  if (process.platform !== 'darwin') return null
-  const fmt = await detectFileFormat(srcPath)
-  if (!fmt || !OS_DECODABLE_FORMATS.has(fmt)) return null
-  const tmp = join(dir, `${key}.src.png`)
-  try {
-    await execFileAsync('sips', ['-s', 'format', 'png', srcPath, '--out', tmp], { timeout: 30_000 })
-    await stat(tmp) // confirm sips actually wrote it
-    return tmp
-  } catch {
-    await rm(tmp, { force: true })
-    return null
-  }
-}
 
 /** Run the resize→webp pipeline from a decodable input file to the cache file. */
 function renderVariant(
@@ -179,10 +148,10 @@ async function produce(
     try {
       out = await renderVariant(srcPath, filePath, spec)
     } catch {
-      // sharp couldn't decode it (HEVC-coded HEIC, JXL, or a read error). Try the OS decoder
-      // (macOS sips) for formats it handles; otherwise let the caller fall back to a text badge.
-      const tmp = await osDecodeToPng(srcPath, dir, key)
-      if (!tmp) return null
+      // sharp couldn't decode it (HEVC-coded HEIC, JXL, or a read error). Try the OS decode layer
+      // for formats it handles; otherwise let the caller fall back to a text badge.
+      const tmp = join(dir, `${key}.src.png`)
+      if (!(await decodeToPng(srcPath, tmp))) return null
       try {
         out = await renderVariant(tmp, filePath, spec)
       } finally {

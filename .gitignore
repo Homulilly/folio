@@ -7,6 +7,9 @@ Thumbs.db
 # Marketing landing page (not part of the app build)
 landing/
 
+# Working planning doc (kept local, not tracked)
+docs/heic-jxl-support-plan.md
+
 # Dependencies
 node_modules/
 .pnpm-store

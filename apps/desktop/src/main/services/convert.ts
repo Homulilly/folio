@@ -1,8 +1,11 @@
-import { stat } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+import { mkdir, rm, stat } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { outputNameForConvert } from '@folio/core'
 import type { ConflictPolicy, ConvertOptions, ConvertResult } from '@folio/shared-types'
 import sharp from 'sharp'
+import { cacheDir } from './db'
+import { decodeToPng } from './decode'
 import { suggestExportPath } from './paths'
 
 // Format conversion (PRD §6.9). sharp's async pipeline offloads to libvips threads, so this runs in
@@ -73,7 +76,21 @@ export async function convertFile(
     if (skip) return { filePath, status: 'skipped', outputPath }
 
     // failOn:'error' tolerates non-fatal warnings (truncated trailers etc.) but rejects real corruption.
-    await encode(sharp(filePath, { failOn: 'error' }), options).toFile(outputPath)
+    try {
+      await encode(sharp(filePath, { failOn: 'error' }), options).toFile(outputPath)
+    } catch (sharpErr) {
+      // sharp can't decode the input (HEIC/JXL). Decode it via the OS layer to an intermediate PNG
+      // (orientation baked in, ICC preserved), then encode that. Original EXIF tags are lost on this
+      // path — the intermediate PNG doesn't carry them; exiftool re-copy is a later refinement.
+      const tmp = join(cacheDir(), 'convert', `${randomUUID()}.png`)
+      await mkdir(dirname(tmp), { recursive: true })
+      try {
+        if (!(await decodeToPng(filePath, tmp, 120_000))) throw sharpErr
+        await encode(sharp(tmp, { failOn: 'error' }), options).toFile(outputPath)
+      } finally {
+        await rm(tmp, { force: true })
+      }
+    }
     return { filePath, status: 'success', outputPath }
   } catch (e) {
     return { filePath, status: 'failed', error: e instanceof Error ? e.message : String(e) }
