@@ -3,7 +3,7 @@ import type { DirEntry, ImageQueueItem } from '@folio/shared-types'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { SORT_LABEL_KEYS, useT } from '../i18n'
 import { loadFolder, refreshQueue } from '../lib/actions'
-import { formatBytes, formatLabel, imageUrl } from '../lib/format'
+import { canRenderNatively, formatBytes, formatLabel, imageUrl } from '../lib/format'
 import { useFolderStore } from '../stores/folderStore'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
@@ -199,13 +199,14 @@ function FolderBrowser(): React.JSX.Element {
   )
 }
 
-/** Row thumbnail: lazily loads the cached gv-img://thumb variant, falling back to a format badge
- * (covers formats sharp can't decode, e.g. JXL, and any generation failure). `loading="lazy"` means
- * only on-screen rows trigger generation, so opening a huge folder doesn't request every thumb. */
+/** Row thumbnail: lazily loads the cached gv-img://thumb variant. For formats sharp can't decode but
+ * Chromium can (BMP, SVG, ICO), the sharp thumb 415s, so we fall back to the original — the browser
+ * decodes it and CSS sizes it down. Only when that fails too (e.g. JXL, which neither can decode) do
+ * we show a format badge. `loading="lazy"` means only on-screen rows trigger generation. */
 function Thumb({ item }: { item: ImageQueueItem }): React.JSX.Element {
-  const [failed, setFailed] = useState(false)
+  const [variant, setVariant] = useState<'thumb' | 'original' | 'failed'>('thumb')
   const badge = 'flex h-9 w-9 flex-none items-center justify-center rounded-md bg-white/[0.06]'
-  if (failed) {
+  if (variant === 'failed') {
     return (
       <span className={`${badge} font-mono text-[9px] font-bold text-[rgba(235,235,245,0.6)]`}>
         {formatLabel(item).toUpperCase().slice(0, 4)}
@@ -215,12 +216,15 @@ function Thumb({ item }: { item: ImageQueueItem }): React.JSX.Element {
   return (
     <span className={`${badge} overflow-hidden`}>
       <img
-        src={imageUrl('thumb', item.filePath)}
+        key={variant}
+        src={imageUrl(variant, item.filePath)}
         alt=""
         loading="lazy"
         draggable={false}
         className="h-full w-full object-cover"
-        onError={() => setFailed(true)}
+        onError={() =>
+          setVariant((v) => (v === 'thumb' && canRenderNatively(item) ? 'original' : 'failed'))
+        }
       />
     </span>
   )
