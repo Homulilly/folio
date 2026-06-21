@@ -263,6 +263,8 @@ export function SettingsPage(): React.JSX.Element {
   const toggleLoop = useMultiViewStore((s) => s.toggleLoop)
   const syncZoom = useMultiViewStore((s) => s.syncZoom)
   const toggleSync = useMultiViewStore((s) => s.toggleSync)
+  const startSidebarCollapsed = useSettingsStore((s) => s.startSidebarCollapsed)
+  const setStartSidebarCollapsed = useSettingsStore((s) => s.setStartSidebarCollapsed)
   const showViewer = useUiStore((s) => s.showViewer)
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false)
   const languageMenuRef = useRef<HTMLDivElement>(null)
@@ -374,6 +376,12 @@ export function SettingsPage(): React.JSX.Element {
           </section>
 
           <Section title={t('settings.browsingSection')} help={t('settings.browsingHelp')}>
+            <SwitchRow
+              label={t('settings.startSidebarCollapsedLabel')}
+              help={t('settings.startSidebarCollapsedHelp')}
+              on={startSidebarCollapsed}
+              onToggle={() => setStartSidebarCollapsed(!startSidebarCollapsed)}
+            />
             <SwitchRow
               label={t('settings.loopLabel')}
               help={t('settings.loopHelp')}

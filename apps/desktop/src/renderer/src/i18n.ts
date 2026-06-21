@@ -236,6 +236,9 @@ const en = {
   'settings.language.en': 'English',
   'settings.browsingSection': 'Browsing',
   'settings.browsingHelp': 'Defaults for navigating the queue and multi-view.',
+  'settings.startSidebarCollapsedLabel': 'Collapse sidebar on launch',
+  'settings.startSidebarCollapsedHelp':
+    'Start with the image list hidden; toggle it anytime from the toolbar.',
   'settings.loopLabel': 'Loop browsing',
   'settings.loopHelp': 'Wrap around past the first/last image.',
   'settings.syncZoomLabel': 'Sync zoom',
@@ -613,6 +616,8 @@ const zhCN: Record<keyof typeof en, string> = {
   'settings.language.en': '英文',
   'settings.browsingSection': '浏览',
   'settings.browsingHelp': '队列与多图浏览的默认行为。',
+  'settings.startSidebarCollapsedLabel': '启动时收起侧栏',
+  'settings.startSidebarCollapsedHelp': '启动时隐藏图片列表;可随时从工具栏切换显示。',
   'settings.loopLabel': '循环浏览',
   'settings.loopHelp': '到首张/末张后绕回另一端。',
   'settings.syncZoomLabel': '同步缩放',

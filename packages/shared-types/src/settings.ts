@@ -14,6 +14,8 @@ export interface AppSettings {
   defaultOpenDirectory: string
   defaultSaveDirectory: string
   sortMode: SortMode
+  /** Whether the queue side rail starts collapsed on launch (the live toggle is session-only). */
+  startSidebarCollapsed: boolean
   defaultMultiViewMode: MultiViewMode
   multiView: {
     loopEnabled: boolean

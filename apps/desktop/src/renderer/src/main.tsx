@@ -8,6 +8,7 @@ import { useMultiViewStore } from './stores/multiViewStore'
 import { useQueueStore } from './stores/queueStore'
 import { useSaveStore } from './stores/saveStore'
 import { type AppLanguage, useSettingsStore } from './stores/settingsStore'
+import { useUiStore } from './stores/uiStore'
 
 const LEGACY_LANGUAGE_KEY = 'folio.settings.language'
 
@@ -50,6 +51,7 @@ async function hydrateFromSettings(): Promise<void> {
     }
 
     useSettingsStore.getState().hydrate({ ...settings, language })
+    useUiStore.getState().setQueueCollapsed(settings.startSidebarCollapsed)
     useSaveStore.getState().hydrateQuickRule(normalizeQuickRule(settings.quickSaveRule))
     useQueueStore.getState().hydrateSortMode(settings.sortMode)
     useEraseStore.getState().hydrateDefault(settings.defaultErase)

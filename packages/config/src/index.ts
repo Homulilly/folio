@@ -9,6 +9,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultOpenDirectory: '',
   defaultSaveDirectory: '',
   sortMode: 'name_asc',
+  startSidebarCollapsed: true,
   defaultMultiViewMode: 'single',
   multiView: {
     loopEnabled: false,

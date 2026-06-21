@@ -14,16 +14,20 @@ interface UiState {
   showSettings: () => void
   showBatchTasks: () => void
   toggleQueue: () => void
+  /** Seed the rail's collapsed state from the persisted startup preference (boot only). */
+  setQueueCollapsed: (collapsed: boolean) => void
   setFullscreen: (fullscreen: boolean) => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
   activeView: 'viewer',
-  queueCollapsed: false,
+  // Collapsed by default; boot overrides this from settings.startSidebarCollapsed (main.tsx).
+  queueCollapsed: true,
   fullscreen: false,
   showViewer: () => set({ activeView: 'viewer' }),
   showSettings: () => set({ activeView: 'settings' }),
   showBatchTasks: () => set({ activeView: 'batch_tasks' }),
   toggleQueue: () => set((s) => ({ queueCollapsed: !s.queueCollapsed })),
+  setQueueCollapsed: (queueCollapsed) => set({ queueCollapsed }),
   setFullscreen: (fullscreen) => set({ fullscreen }),
 }))

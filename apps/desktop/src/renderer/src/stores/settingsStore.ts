@@ -16,11 +16,14 @@ interface SettingsState {
   confirmDeleteToTrash: boolean
   thumbnailCacheSizeMB: number
   previewCacheSizeMB: number
+  /** Whether the queue side rail starts collapsed on launch (startup preference). */
+  startSidebarCollapsed: boolean
   /** Seed from persisted settings on boot. */
   hydrate: (settings: AppSettings) => void
   setLanguage: (language: AppLanguage) => void
   setConfirmDeleteToTrash: (confirm: boolean) => void
   setCacheSizeMB: (which: 'thumbnail' | 'preview', mb: number) => void
+  setStartSidebarCollapsed: (collapsed: boolean) => void
 }
 
 export const useSettingsStore = create<SettingsState>((set) => ({
@@ -28,12 +31,14 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   confirmDeleteToTrash: true,
   thumbnailCacheSizeMB: 1024,
   previewCacheSizeMB: 2048,
+  startSidebarCollapsed: true,
   hydrate: (s) =>
     set({
       language: s.language,
       confirmDeleteToTrash: s.confirmDeleteToTrash,
       thumbnailCacheSizeMB: s.thumbnailCacheSizeMB,
       previewCacheSizeMB: s.previewCacheSizeMB,
+      startSidebarCollapsed: s.startSidebarCollapsed,
     }),
   setLanguage: (language) => {
     set({ language })
@@ -51,5 +56,9 @@ export const useSettingsStore = create<SettingsState>((set) => ({
       set({ previewCacheSizeMB: mb })
       void window.gv.settings.update({ previewCacheSizeMB: mb })
     }
+  },
+  setStartSidebarCollapsed: (startSidebarCollapsed) => {
+    set({ startSidebarCollapsed })
+    void window.gv.settings.update({ startSidebarCollapsed })
   },
 }))
