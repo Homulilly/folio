@@ -307,11 +307,14 @@ export function Canvas(): React.JSX.Element {
     }
   }, [targetScale, naturalWidth, naturalHeight])
 
-  let imgClassName = 'max-h-full max-w-full object-contain'
+  // Centre with `m-auto`, NOT the parent's justify/items-center: auto margins collapse to 0 when the
+  // image overflows the viewport, so it aligns to the top-left and BOTH overflow sides stay
+  // scrollable. Flex centring instead clips the leading (left/top) overflow and makes it unreachable.
+  let imgClassName = 'm-auto max-h-full max-w-full object-contain'
   let imgStyle: React.CSSProperties = { transform }
   if (naturalWidth && naturalHeight && targetScale !== null) {
     const scale = scaleReady.current ? displayScaleRef.current : targetScale
-    imgClassName = 'flex-none object-contain'
+    imgClassName = 'm-auto flex-none object-contain'
     imgStyle = {
       width: naturalWidth * scale,
       height: naturalHeight * scale,
@@ -374,9 +377,10 @@ export function Canvas(): React.JSX.Element {
         onPointerCancel={endDrag}
         onDoubleClick={onDoubleClick}
       >
-        {/* At least viewport-sized so a small image stays centered; grows to a zoomed image so
-            it scrolls (and pans) on both axes from the top-left, not from a clipped centre. */}
-        <div className="flex min-h-full min-w-full items-center justify-center">
+        {/* At least viewport-sized so a small image stays centered (via the image's m-auto); grows
+            to a zoomed image so it scrolls (and pans) on both axes from the top-left, not from a
+            clipped centre. Centring lives on the image (m-auto), NOT here — see imgClassName. */}
+        <div className="flex min-h-full min-w-full">
           {failed ? (
             !renderable ? (
               // Non-decodable original AND its sharp preview failed (e.g. JXL) — placeholder.
