@@ -11,13 +11,14 @@ import { getSettings } from './settings'
 
 const execFileAsync = promisify(execFile)
 
-// Formats the bundled libvips can't decode (its libheif has no HEVC decoder) but macOS CoreImage can.
-const OS_DECODABLE_FORMATS = new Set<ImageFormat>(['heic', 'heif'])
+// Formats the bundled libvips can't decode (its libheif has no HEVC decoder; no JXL at all) but
+// macOS CoreImage (sips) can — HEIC/HEIF and, on macOS 14+, JPEG XL.
+const OS_DECODABLE_FORMATS = new Set<ImageFormat>(['heic', 'heif', 'jxl'])
 
 /**
- * Fallback decode for an image sharp can't handle — currently HEVC-coded HEIC, whose prebuilt
- * libheif lacks the HEVC decoder. macOS only: shells out to `sips` to transcode the source into a
- * temporary PNG so the normal webp pipeline can still produce a preview. Args go through execFile
+ * Fallback decode for an image sharp can't handle — HEVC-coded HEIC (prebuilt libheif lacks the
+ * HEVC decoder) and JPEG XL (libvips has no JXL). macOS only: shells out to `sips` to transcode the
+ * source into a temporary PNG so the normal webp pipeline can still produce a preview. Args go through execFile
  * (no shell), so the source path can't inject. Returns the temp PNG path, or null if unavailable.
  * Gated on the sniffed magic-byte format, not the extension, so a HEIC named `.jpg` still works.
  */

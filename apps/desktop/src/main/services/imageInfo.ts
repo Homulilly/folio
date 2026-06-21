@@ -19,8 +19,9 @@ const LIMIT = 512
 const cache = new Map<string, { mtimeMs: number; dims: Dims | null }>()
 
 const execFileAsync = promisify(execFile)
-// HEIC/HEIF: handled by the macOS sips fallback (sharp's libheif can't read tiled grids — see below).
-const OS_DIM_FORMATS = new Set<ImageFormat>(['heic', 'heif'])
+// HEIC/HEIF/JXL: handled by the macOS sips fallback — sharp's libheif can't read tiled grids and
+// libvips has no JXL decoder; macOS CoreImage (sips) reads all three (see below).
+const OS_DIM_FORMATS = new Set<ImageFormat>(['heic', 'heif', 'jxl'])
 
 /**
  * macOS fallback for dimensions sharp can't read. Large HEICs are stored as tiled grids, and the
