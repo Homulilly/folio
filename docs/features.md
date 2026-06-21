@@ -51,7 +51,7 @@
 - **真实格式识别**:按 **magic bytes(文件头)** 判断真实格式,而非扩展名——扩展名说谎的图片(如 `.png` 实为 JPEG)也能正确判定与显示。
   - 覆盖 JPEG/PNG/GIF/WebP/BMP/TIFF/AVIF/HEIC/HEIF/JPEG XL;纯检测逻辑在 `@folio/image-processing`(含单测)。
   - `gv-img://` 协议据此返回正确的 `Content-Type`;渲染层据此判断可渲染性与格式标签。
-- **渲染范围**:Chromium 原生可解码的格式直接显示;**其余格式(HEIC/HEIF/TIFF 等)经 sharp 生成的 `preview` 变体显示**(M7),不再只是占位;仅当连 sharp 也无法解码(如缺 libjxl 的 JXL)才回退占位/解码失败提示。SVG/ICO 仍走原图(sharp 不栅格化)。
+- **渲染范围**:Chromium 原生可解码的格式直接显示;**其余格式(TIFF 等)经 sharp 生成的 `preview` 变体显示**(M7),不再只是占位。**HEIC/HEIF**:预置 libvips 不带 HEVC 解码器,**macOS 上经 `sips` 兜底转码**后显示预览,**Windows 暂不支持**。**JPEG XL** 无可用解码器,显示占位/解码失败提示。SVG/ICO 仍走原图(sharp 不栅格化)。
 - **加载失败按原因提示**:载入失败时回探文件状态,区分 **文件不存在** / **无法读取(权限)** / **无法解码**,单图与多图格子均给出对应文案。
 
 ## Exif 查看(M3)

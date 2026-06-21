@@ -1,9 +1,51 @@
+import { execFile } from 'node:child_process'
 import { mkdir, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
+import { promisify } from 'node:util'
 import { type CacheVariant, VARIANT_SPECS, variantCacheKey } from '@folio/image-processing'
 import sharp from 'sharp'
 import { cacheDir, getDb } from './db'
 import { getSettings } from './settings'
+
+const execFileAsync = promisify(execFile)
+
+// Formats the bundled libvips can't decode (its libheif has no HEVC decoder) but macOS CoreImage can.
+const OS_DECODABLE_EXT = new Set(['.heic', '.heif', '.hif'])
+
+/**
+ * Fallback decode for an image sharp can't handle — currently HEVC-coded HEIC, whose prebuilt
+ * libheif lacks the HEVC decoder. macOS only: shells out to `sips` to transcode the source into a
+ * temporary PNG so the normal webp pipeline can still produce a preview. Args go through execFile
+ * (no shell), so the source path can't inject. Returns the temp PNG path, or null if unavailable.
+ */
+async function osDecodeToPng(srcPath: string, dir: string, key: string): Promise<string | null> {
+  if (process.platform !== 'darwin') return null
+  const dot = srcPath.lastIndexOf('.')
+  const ext = dot >= 0 ? srcPath.slice(dot).toLowerCase() : ''
+  if (!OS_DECODABLE_EXT.has(ext)) return null
+  const tmp = join(dir, `${key}.src.png`)
+  try {
+    await execFileAsync('sips', ['-s', 'format', 'png', srcPath, '--out', tmp], { timeout: 30_000 })
+    await stat(tmp) // confirm sips actually wrote it
+    return tmp
+  } catch {
+    await rm(tmp, { force: true })
+    return null
+  }
+}
+
+/** Run the resize→webp pipeline from a decodable input file to the cache file. */
+function renderVariant(
+  inputPath: string,
+  filePath: string,
+  spec: (typeof VARIANT_SPECS)[CacheVariant],
+): Promise<sharp.OutputInfo> {
+  return sharp(inputPath, { failOn: 'none', animated: false })
+    .rotate() // bake in EXIF orientation so the thumbnail isn't sideways
+    .resize(spec.size, spec.size, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: spec.quality })
+    .toFile(filePath)
+}
 
 /** On-disk budget per variant before LRU eviction kicks in, from settings.json (thumbnail/previewCacheSizeMB). */
 function cacheBudgetBytes(variant: CacheVariant): number {
@@ -130,11 +172,20 @@ async function produce(
   await acquire()
   try {
     await mkdir(dir, { recursive: true })
-    const out = await sharp(srcPath, { failOn: 'none', animated: false })
-      .rotate() // bake in EXIF orientation so the thumbnail isn't sideways
-      .resize(spec.size, spec.size, { fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: spec.quality })
-      .toFile(filePath)
+    let out: sharp.OutputInfo
+    try {
+      out = await renderVariant(srcPath, filePath, spec)
+    } catch {
+      // sharp couldn't decode it (HEVC-coded HEIC, JXL, or a read error). Try the OS decoder
+      // (macOS sips) for formats it handles; otherwise let the caller fall back to a text badge.
+      const tmp = await osDecodeToPng(srcPath, dir, key)
+      if (!tmp) return null
+      try {
+        out = await renderVariant(tmp, filePath, spec)
+      } finally {
+        await rm(tmp, { force: true })
+      }
+    }
     const now = Date.now()
     db.prepare(
       `INSERT OR REPLACE INTO variants
