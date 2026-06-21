@@ -16,6 +16,20 @@ startCrashReporter()
 
 let mainWindow: BrowserWindow | null = null
 
+/**
+ * Only hand http/https URLs to the OS browser. file://, smb:// (NTLM leak on Windows) and custom
+ * protocol handlers invoke OS handlers directly — outside the renderer's CSP — so a compromised
+ * renderer must not be able to launch them via window.open.
+ */
+function isSafeExternalUrl(url: string): boolean {
+  try {
+    const { protocol } = new URL(url)
+    return protocol === 'http:' || protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 function createWindow(): void {
   const win = new BrowserWindow({
     width: 1280,
@@ -50,10 +64,16 @@ function createWindow(): void {
   win.on('enter-full-screen', () => win.webContents.send(IpcChannel.winFullscreenChanged, true))
   win.on('leave-full-screen', () => win.webContents.send(IpcChannel.winFullscreenChanged, false))
 
-  // Keep navigation inside the app; open external links in the OS browser.
+  // Open external links in the OS browser, but only safe web schemes (see isSafeExternalUrl).
   win.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url)
+    if (isSafeExternalUrl(url)) void shell.openExternal(url)
     return { action: 'deny' }
+  })
+  // Lock top-level navigation to the app's own content: block any attempt to navigate the window
+  // away (e.g. an injected location change to file:// or a remote origin). Reloads to the same URL
+  // are allowed so dev HMR / refresh still work.
+  win.webContents.on('will-navigate', (e, url) => {
+    if (url !== win.webContents.getURL()) e.preventDefault()
   })
 
   if (process.env.ELECTRON_RENDERER_URL) {
