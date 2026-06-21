@@ -276,15 +276,21 @@ export const SaveIcon = (p: IconProps) =>
     1.7,
   )
 
-// Tray on the left with an arrow sending outward — format conversion.
+// Magic wand with sparkles (lucide wand-sparkles) — format conversion.
 export const ConvertIcon = (p: IconProps) =>
   svg(
     <>
-      <path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" />
-      <path d="M8 12h11m-3.5-3.5 3.5 3.5-3.5 3.5" />
+      <path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z" />
+      <path d="m14 7 3 3" />
+      <path d="M5 6v4" />
+      <path d="M19 14v4" />
+      <path d="M10 2v2" />
+      <path d="M7 8H3" />
+      <path d="M21 16h-4" />
+      <path d="M11 3H9" />
     </>,
     p,
-    1.7,
+    1.6,
   )
 
 // Arrow into a tray — quick save (one-click send to the remembered folder).

@@ -27,6 +27,8 @@ interface QueueState {
   /** Remove the current item (e.g. after trashing) and keep the selection sensible. */
   removeCurrent: () => void
   removeItem: (id: string) => void
+  /** Close the current folder: drop all items and the directory, back to the empty/start state. */
+  clear: () => void
 }
 
 /** Re-sort while keeping the same item focused by file path. */
@@ -104,4 +106,7 @@ export const useQueueStore = create<QueueState>((set) => ({
       else if (currentIndex >= items.length) currentIndex = Math.max(0, items.length - 1)
       return { items, currentIndex, version: s.version + 1 }
     }),
+
+  clear: () =>
+    set((s) => ({ directory: undefined, items: [], currentIndex: 0, version: s.version + 1 })),
 }))

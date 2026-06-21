@@ -1,6 +1,7 @@
 import type { MultiViewMode } from '@folio/shared-types'
 import { type I18nKey, useT } from '../i18n'
 import {
+  closeFolder,
   openConvertDialog,
   openFile,
   openFolder,
@@ -18,6 +19,7 @@ import { useViewerStore } from '../stores/viewerStore'
 import {
   ChevronLeft,
   ChevronRight,
+  CloseIcon,
   ConvertIcon,
   FolderIcon,
   FullscreenIcon,
@@ -146,6 +148,12 @@ export function Toolbar(): React.JSX.Element {
       <TbButton title={t('toolbar.openFile')} onClick={openFile}>
         <ImageIcon />
       </TbButton>
+      <TbButton title={t('toolbar.closeFolder')} onClick={closeFolder} disabled={!hasImages}>
+        <CloseIcon size={17} />
+      </TbButton>
+
+      <Divider />
+
       {/* One quick-save button: uses the remembered rule (first use asks). The full dialog lives in
           the right-click menu. */}
       <TbButton

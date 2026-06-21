@@ -2,6 +2,8 @@
 
 Folio 是一款专为「快速浏览成套相册」打造的跨平台桌面看图应用。项目采用 Electron + React + TypeScript 技术栈构建，由 Vibe Coding 驱动。
 
+![Multiview](images/preview.webp)
+
 MVP 需求和架构说明见：
 
 - `docs/prd.md`

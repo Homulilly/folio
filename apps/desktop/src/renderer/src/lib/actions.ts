@@ -27,6 +27,12 @@ export async function openFolder(): Promise<void> {
   applyResult(await window.gv.image.openDirectoryDialog())
 }
 
+/** Close the current folder: clear the queue and return to the start screen (EmptyState). */
+export function closeFolder(): void {
+  queue().clear()
+  useUiStore.getState().showViewer()
+}
+
 export async function openFile(): Promise<void> {
   applyResult(await window.gv.image.openFileDialog())
 }
