@@ -1,6 +1,6 @@
 {
   "name": "@folio/desktop",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "productName": "Folio",
   "description": "Fast, private cross-platform image viewer with Exif tools and side-by-side comparison.",
   "author": "Folio",

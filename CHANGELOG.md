@@ -2,6 +2,12 @@
 
 本项目所有重要变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.2.3] - 2026-06-22
+
+### 修复
+
+- **macOS 应用图标改为圆角 squircle**:此前是满铺白底方图,在 Dock / 访达显示为未裁剪的大白方块(macOS 不会自动为图标加圆角)。现把图标重塑为标准 macOS 模板——圆角磁贴 + 四周透明留白 + 轻微投影,重新生成 `icon.icns`。Windows `.ico`(满铺方图)不受影响。
+
 ## [0.2.2] - 2026-06-22
 
 ### 新增
