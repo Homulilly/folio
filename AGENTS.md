@@ -124,6 +124,7 @@ folio/
 - **队列侧栏虚拟化**:`QueueRail` 固定行高(54px)窗口化,只渲染可视区 + overscan 行(绝对定位于全高占位 div),`scrollIntoView` 改手动滚动到选中项。
 
 ### 打包与崩溃日志(M7 Phase E,`electron-builder.yml` + `services/logging.ts`)
+> 完整打包/发布说明(命令、首次启动、跨平台、接入签名步骤)见 **`docs/packaging.md`**。
 - **配置在 `apps/desktop/electron-builder.yml`**(非 package.json `build` 键):`output: release/`、`buildResources: resources/`(因 `build/` 已被 gitignore,**不能**放委托给 electron-builder 默认的 `build/`)。脚本:`pack:dir`(=`electron-vite build && electron-builder --dir`,快速产 `.app` 不打 DMG,验证用)/ `dist` / `dist:mac` / `dist:win`,根 package.json 也有 `pnpm dist`。
 - **只有 3 个原生模块需要进 `node_modules`**:主进程 bundle(electron-vite)**把 `@folio/*` 全部 inline**,只 external 了 `electron` + `sharp` + `exiftool-vendored` + `better-sqlite3`;react/zustand 进 renderer bundle。故 `asarUnpack` 只列这三个(+ `@img/**`、`exiftool-vendored.*/**`、`**/*.node`)——它们要 dlopen/spawn,不能留在 asar 内。
 - **`npmRebuild: false`**:better-sqlite3 已由 postinstall `electron-rebuild` 按 Electron ABI 编好、sharp 是 N-API prebuild,electron-builder 不必再 rebuild(pnpm 符号链接下二次 rebuild 易碎)。
