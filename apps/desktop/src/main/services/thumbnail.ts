@@ -3,26 +3,28 @@ import { mkdir, rm, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { type CacheVariant, VARIANT_SPECS, variantCacheKey } from '@folio/image-processing'
+import type { ImageFormat } from '@folio/shared-types'
 import sharp from 'sharp'
 import { cacheDir, getDb } from './db'
+import { detectFileFormat } from './format'
 import { getSettings } from './settings'
 
 const execFileAsync = promisify(execFile)
 
 // Formats the bundled libvips can't decode (its libheif has no HEVC decoder) but macOS CoreImage can.
-const OS_DECODABLE_EXT = new Set(['.heic', '.heif', '.hif'])
+const OS_DECODABLE_FORMATS = new Set<ImageFormat>(['heic', 'heif'])
 
 /**
  * Fallback decode for an image sharp can't handle — currently HEVC-coded HEIC, whose prebuilt
  * libheif lacks the HEVC decoder. macOS only: shells out to `sips` to transcode the source into a
  * temporary PNG so the normal webp pipeline can still produce a preview. Args go through execFile
  * (no shell), so the source path can't inject. Returns the temp PNG path, or null if unavailable.
+ * Gated on the sniffed magic-byte format, not the extension, so a HEIC named `.jpg` still works.
  */
 async function osDecodeToPng(srcPath: string, dir: string, key: string): Promise<string | null> {
   if (process.platform !== 'darwin') return null
-  const dot = srcPath.lastIndexOf('.')
-  const ext = dot >= 0 ? srcPath.slice(dot).toLowerCase() : ''
-  if (!OS_DECODABLE_EXT.has(ext)) return null
+  const fmt = await detectFileFormat(srcPath)
+  if (!fmt || !OS_DECODABLE_FORMATS.has(fmt)) return null
   const tmp = join(dir, `${key}.src.png`)
   try {
     await execFileAsync('sips', ['-s', 'format', 'png', srcPath, '--out', tmp], { timeout: 30_000 })

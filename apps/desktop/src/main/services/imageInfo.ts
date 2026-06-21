@@ -1,7 +1,9 @@
 import { execFile } from 'node:child_process'
 import { stat } from 'node:fs/promises'
 import { promisify } from 'node:util'
+import type { ImageFormat } from '@folio/shared-types'
 import sharp from 'sharp'
+import { detectFileFormat } from './format'
 
 // Cheap source-dimension probe: sharp.metadata() reads the header only (no full decode), so the
 // viewer can decide whether an image is large enough to display via the preview variant instead of
@@ -18,19 +20,19 @@ const cache = new Map<string, { mtimeMs: number; dims: Dims | null }>()
 
 const execFileAsync = promisify(execFile)
 // HEIC/HEIF: handled by the macOS sips fallback (sharp's libheif can't read tiled grids — see below).
-const OS_DIM_EXT = new Set(['.heic', '.heif', '.hif'])
+const OS_DIM_FORMATS = new Set<ImageFormat>(['heic', 'heif'])
 
 /**
  * macOS fallback for dimensions sharp can't read. Large HEICs are stored as tiled grids, and the
  * prebuilt libheif rejects them at metadata time ("Security limit exceeded: Number of references in
  * iref box exceeds 16") — so without this the viewer gets no natural size and can't zoom/fit. `sips`
  * reads the true pixel dimensions. Args go through execFile (no shell), so the path can't inject.
+ * Gated on the sniffed magic-byte format, not the extension, so a HEIC named `.jpg` still works.
  */
 async function sipsDimensions(filePath: string): Promise<Dims | null> {
   if (process.platform !== 'darwin') return null
-  const dot = filePath.lastIndexOf('.')
-  const ext = dot >= 0 ? filePath.slice(dot).toLowerCase() : ''
-  if (!OS_DIM_EXT.has(ext)) return null
+  const fmt = await detectFileFormat(filePath)
+  if (!fmt || !OS_DIM_FORMATS.has(fmt)) return null
   try {
     const { stdout } = await execFileAsync(
       'sips',
