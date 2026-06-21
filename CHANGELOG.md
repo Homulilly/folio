@@ -2,6 +2,29 @@
 
 本项目所有重要变更记录于此。格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.2.0] - 2026-06-21
+
+### 新增
+
+- **macOS 浏览 JPEG XL**:经系统 `sips`(ImageIO)解码显示与缩放(沿用 HEIC 的兜底管线)。
+- **格式转换支持 HEIC / HEIF / JPEG XL / BMP 作为输入**(macOS):sharp 无法解码时,经统一解码层 `services/decode.ts` 用系统解码器转中间 PNG 再编码到目标格式,修复了「能看不能转」。
+- **文件列表纳入 SVG / ICO**:由 Chromium 原生显示;sharp 不可栅格化时缩略图回退到原图。
+- **工具栏「关闭文件夹(返回首页)」**:清空当前队列回到起始页。
+
+### 变更
+
+- 格式转换图标改为魔法棒(wand-sparkles)。
+- 下载产物名加 `v` 前缀(如 `Folio-v0.2.0-arm64.dmg`),与发布 tag 对齐。
+
+### 修复
+
+- 「暂不支持」占位 / 加载失败提示在单图视图中错位,改回居中。
+
+### 已知限制
+
+- ICO 仅显示,不作为格式转换输入。
+- Windows / Linux 的 HEIC / HEIF / JPEG XL 暂不支持(显示与转换均依赖系统解码器 / 后续随包 djxl·libheif)。
+
 ## [0.1.1] - 2026-06-21
 
 ### 修复
