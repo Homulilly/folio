@@ -65,9 +65,9 @@ const en = {
   'folder.nextCancel': 'Stay',
   'folder.nextConfirm': 'Load folder',
 
-  'canvas.previewUnavailable': '{format} preview not available yet',
+  'canvas.previewUnavailable': '{format} not supported yet',
   'canvas.previewUnavailableDetail':
-    '{fileName} - rendering for this format arrives with the sharp preview pipeline (M6/M7).',
+    "{fileName} - this format can't be decoded on this system yet.",
   'canvas.failedToDecode': 'Failed to decode {fileName}',
   'canvas.fileNotFound': 'File not found: {fileName}',
   'canvas.fileUnreadable': 'Can’t read {fileName} (permission denied)',
@@ -76,7 +76,7 @@ const en = {
   'canvas.backToGrid': 'Back to grid (Esc)',
 
   'multi.noMoreImages': 'No more images',
-  'multi.previewUnavailable': '{format} preview not available yet',
+  'multi.previewUnavailable': '{format} not supported yet',
   'multi.failedToDecode': 'Failed to decode',
   'multi.fileNotFound': 'File not found',
   'multi.fileUnreadable': 'Can’t read file',
@@ -443,9 +443,8 @@ const zhCN: Record<keyof typeof en, string> = {
   'folder.nextCancel': '留在本页',
   'folder.nextConfirm': '载入文件夹',
 
-  'canvas.previewUnavailable': '暂不支持预览 {format}',
-  'canvas.previewUnavailableDetail':
-    '{fileName} - 该格式的渲染会随 sharp 预览管线一起到来 (M6/M7)。',
+  'canvas.previewUnavailable': '暂不支持 {format}',
+  'canvas.previewUnavailableDetail': '{fileName} - 当前系统暂时无法解码该格式。',
   'canvas.failedToDecode': '无法解码 {fileName}',
   'canvas.fileNotFound': '文件不存在：{fileName}',
   'canvas.fileUnreadable': '无法读取 {fileName}（权限不足）',
@@ -454,7 +453,7 @@ const zhCN: Record<keyof typeof en, string> = {
   'canvas.backToGrid': '返回网格 (Esc)',
 
   'multi.noMoreImages': '没有更多图片',
-  'multi.previewUnavailable': '暂不支持预览 {format}',
+  'multi.previewUnavailable': '暂不支持 {format}',
   'multi.failedToDecode': '无法解码',
   'multi.fileNotFound': '文件不存在',
   'multi.fileUnreadable': '无法读取文件',
