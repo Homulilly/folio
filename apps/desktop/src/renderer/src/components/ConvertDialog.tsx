@@ -14,11 +14,78 @@ import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
 import { useToastStore } from '../stores/toastStore'
 import { useUiStore } from '../stores/uiStore'
-import { Field, inputClass, RadioRow, ScopeButton, Toggle } from './DialogPrimitives'
+import { Field, RadioRow, ScopeButton, Toggle } from './DialogPrimitives'
 import { ConvertIcon, FolderIcon } from './icons'
 
 const CONFLICTS: ConflictPolicy[] = ['number', 'skip', 'overwrite']
 const baseName = (p: string): string => p.replaceAll('\\', '/').split('/').pop() ?? p
+
+/** A numeric parameter as a slider plus a small synced number box (quality / compression / effort). */
+function SliderInput({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  onChange: (v: number) => void
+}): React.JSX.Element {
+  const clamp = (v: number): number => Math.max(min, Math.min(max, v))
+  return (
+    <Field label={label}>
+      <div className="flex items-center gap-3">
+        <input
+          type="range"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="h-1 flex-1 cursor-pointer accent-[#0A84FF]"
+        />
+        <input
+          type="number"
+          min={min}
+          max={max}
+          value={value}
+          onChange={(e) => onChange(clamp(Number(e.target.value)))}
+          className="w-14 flex-none rounded-lg bg-[#2C2C2E] px-2 py-1.5 text-center font-mono text-[12px] text-white outline-none"
+        />
+      </div>
+    </Field>
+  )
+}
+
+/** A compact single-value number box with a label above — AVIF speed/effort, sits beside quality. */
+function SpeedBox({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  onChange: (v: number) => void
+}): React.JSX.Element {
+  return (
+    <Field label={label}>
+      <input
+        type="number"
+        min={min}
+        max={max}
+        value={value}
+        onChange={(e) => onChange(Math.max(min, Math.min(max, Number(e.target.value))))}
+        className="w-full rounded-lg bg-[#2C2C2E] px-2 py-1.5 text-center font-mono text-[12px] text-white outline-none"
+      />
+    </Field>
+  )
+}
 
 export function ConvertDialog(): React.JSX.Element | null {
   const t = useT()
@@ -174,42 +241,45 @@ export function ConvertDialog(): React.JSX.Element | null {
           </div>
 
           {/* Format parameters */}
-          <div className="grid grid-cols-2 gap-3">
-            {format !== 'png' && (
-              <Field label={t('convert.quality')}>
-                <input
-                  type="number"
-                  min={1}
-                  max={100}
-                  className={inputClass}
-                  value={options.quality}
-                  onChange={(e) => setOptions({ quality: Number(e.target.value) })}
-                />
-              </Field>
-            )}
-            {format === 'png' && (
-              <Field label={t('convert.compression')}>
-                <input
-                  type="number"
-                  min={0}
-                  max={9}
-                  className={inputClass}
-                  value={options.compressionLevel ?? 9}
-                  onChange={(e) => setOptions({ compressionLevel: Number(e.target.value) })}
-                />
-              </Field>
-            )}
-            {format === 'avif' && (
-              <Field label={t('convert.effort')}>
-                <input
-                  type="number"
-                  min={0}
-                  max={9}
-                  className={inputClass}
-                  value={options.effort ?? 4}
-                  onChange={(e) => setOptions({ effort: Number(e.target.value) })}
-                />
-              </Field>
+          <div className="flex flex-col gap-3">
+            {format === 'avif' ? (
+              // Quality slider takes the row; speed (effort) sits at the right in ~1/5 of the width.
+              <div className="flex items-end gap-3">
+                <div className="flex-1">
+                  <SliderInput
+                    label={t('convert.quality')}
+                    value={options.quality}
+                    min={1}
+                    max={100}
+                    onChange={(quality) => setOptions({ quality })}
+                  />
+                </div>
+                <div className="w-1/5">
+                  <SpeedBox
+                    label={t('convert.effort')}
+                    value={options.effort ?? 4}
+                    min={0}
+                    max={9}
+                    onChange={(effort) => setOptions({ effort })}
+                  />
+                </div>
+              </div>
+            ) : format === 'png' ? (
+              <SliderInput
+                label={t('convert.compression')}
+                value={options.compressionLevel ?? 9}
+                min={0}
+                max={9}
+                onChange={(compressionLevel) => setOptions({ compressionLevel })}
+              />
+            ) : (
+              <SliderInput
+                label={t('convert.quality')}
+                value={options.quality}
+                min={1}
+                max={100}
+                onChange={(quality) => setOptions({ quality })}
+              />
             )}
           </div>
 
