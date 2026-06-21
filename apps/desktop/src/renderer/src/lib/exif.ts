@@ -37,9 +37,8 @@ export const SUMMARY_LABEL_KEYS: Record<ExifSummaryId, I18nKey> = {
   uniqueId: 'exif.summary.uniqueId',
 }
 
-/** Accent for a summary row value (GPS red, date orange; rest inherit). */
+/** Accent for a summary row value. Date and the GPS-presence badge share the orange privacy tone. */
 export function summaryValueColor(id: ExifSummaryId): string | undefined {
-  if (id === 'gps') return '#FF453A'
-  if (id === 'dateTime') return '#FF9F0A'
+  if (id === 'gps' || id === 'dateTime') return '#FF9F0A'
   return undefined
 }

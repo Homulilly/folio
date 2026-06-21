@@ -219,7 +219,9 @@ function SummaryView({
             style={{ color: summaryValueColor(r.id) ?? '#fff' }}
             title={r.value}
           >
-            {r.value}
+            {/* GPS: don't print coordinates in the overview — show a presence badge, reveal the
+                actual location on hover (the title above). */}
+            {r.id === 'gps' ? t('exif.summary.gpsPresent') : r.value}
           </span>
         </div>
       ))}
