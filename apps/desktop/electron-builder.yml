@@ -1,5 +1,7 @@
 appId: com.folio.app
 productName: Folio
+# Download filenames carry a leading "v" to match the git tag / release (e.g. Folio-v0.1.1-arm64.dmg).
+artifactName: ${productName}-v${version}-${arch}.${ext}
 # Keep ASAR on (smaller, faster startup) but unpack native binaries so they load by a real
 # filesystem path at runtime (you can't dlopen a .node / spawn ExifTool from inside an asar).
 asar: true
