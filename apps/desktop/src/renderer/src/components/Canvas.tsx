@@ -11,6 +11,10 @@ import { ScrollOverlay } from './ScrollOverlay'
 const WHEEL_LINE_DELTA_PX = 16
 const WHEEL_PAGE_DELTA_PX = 120
 const WHEEL_ZOOM_SENSITIVITY = 0.002
+// Cap the accumulated wheel delta applied per frame so a hyper free-spin wheel (Logitech MX, etc.)
+// dumping a big burst can't request a violent single-frame zoom jump. With the sensitivity above,
+// ±50 bounds one frame to ~exp(0.1) ≈ ±10% — fast spins become a steady ramp instead of pulsing.
+const WHEEL_DELTA_MAX_PER_FRAME = 50
 const WHEEL_ZOOM_ANIMATION_MS = 70
 const BUTTON_ZOOM_ANIMATION_MS = 140
 const WHEEL_ANCHOR_TTL_MS = 240
@@ -175,7 +179,10 @@ export function Canvas(): React.JSX.Element {
 
       if (zoomRaf.current) return
       zoomRaf.current = requestAnimationFrame(() => {
-        const pendingDelta = wheelDelta.current
+        const pendingDelta = Math.max(
+          -WHEEL_DELTA_MAX_PER_FRAME,
+          Math.min(WHEEL_DELTA_MAX_PER_FRAME, wheelDelta.current),
+        )
         wheelDelta.current = 0
         zoomRaf.current = null
 
