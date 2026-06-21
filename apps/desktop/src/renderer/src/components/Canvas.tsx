@@ -384,7 +384,8 @@ export function Canvas(): React.JSX.Element {
           {failed ? (
             !renderable ? (
               // Non-decodable original AND its sharp preview failed (e.g. JXL) — placeholder.
-              <div className="max-w-sm px-6 text-center">
+              // m-auto centres it, since the wrapper no longer centres (that lives on the image).
+              <div className="m-auto max-w-sm px-6 text-center">
                 <div className="text-base font-medium text-[rgba(235,235,245,0.85)]">
                   {t('canvas.previewUnavailable', { format: formatLabel(item) })}
                 </div>
@@ -393,7 +394,7 @@ export function Canvas(): React.JSX.Element {
                 </div>
               </div>
             ) : (
-              <div className="px-6 text-center text-[13px] text-[#FF453A]">
+              <div className="m-auto px-6 text-center text-[13px] text-[#FF453A]">
                 {t(
                   failReason === 'missing'
                     ? 'canvas.fileNotFound'
