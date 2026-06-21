@@ -21,6 +21,15 @@ export function registerImageProtocolSchemes(): void {
   ])
 }
 
+/** Extension-based MIME for formats we don't magic-byte sniff (SVG/ICO). Undefined otherwise. */
+function extMimeType(filePath: string): string | undefined {
+  const dot = filePath.lastIndexOf('.')
+  const ext = dot >= 0 ? filePath.slice(dot + 1).toLowerCase() : ''
+  if (ext === 'svg') return 'image/svg+xml'
+  if (ext === 'ico') return 'image/x-icon'
+  return undefined
+}
+
 /** Stream a file from disk as a 200 response, labelled with the given Content-Type. */
 function streamFile(path: string, contentType?: string): Response {
   const headers = contentType ? { 'Content-Type': contentType } : undefined
@@ -56,9 +65,11 @@ export function handleImageProtocol(): void {
     try {
       const info = await stat(filePath)
       if (!info.isFile()) return new Response('Not found', { status: 404 })
-      // Label the response by the file's true format (magic bytes), not its extension.
+      // Label the response by the file's true format (magic bytes), not its extension. SVG/ICO
+      // aren't magic-byte sniffed (format is null); fall back to an extension-based MIME so the
+      // browser renders them — SVG in particular won't render in <img> without image/svg+xml.
       const format = await detectFileFormat(filePath)
-      return streamFile(filePath, format ? mimeTypeForFormat(format) : undefined)
+      return streamFile(filePath, format ? mimeTypeForFormat(format) : extMimeType(filePath))
     } catch {
       return new Response('Not found', { status: 404 })
     }

@@ -18,6 +18,10 @@ export const SUPPORTED_EXTENSIONS: ReadonlySet<string> = new Set([
   'heic',
   'heif',
   'jxl',
+  // Vector / icon: not magic-byte sniffed (format stays undefined), rendered by Chromium via the
+  // original variant; the queue thumbnail falls back to the original when sharp can't rasterize them.
+  'svg',
+  'ico',
 ])
 
 /** Lower-cased extension without the dot, or '' when there is none. */
