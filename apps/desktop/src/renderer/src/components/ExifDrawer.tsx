@@ -7,7 +7,7 @@ import { groupColor, SUMMARY_LABEL_KEYS, summaryValueColor } from '../lib/exif'
 import { useEraseStore } from '../stores/eraseStore'
 import { type ExifTab, useExifStore } from '../stores/exifStore'
 import { useQueueStore } from '../stores/queueStore'
-import { CloseIcon, CopyIcon, SearchIcon, ShieldIcon } from './icons'
+import { CloseIcon, CopyIcon, SearchIcon, TrashIcon } from './icons'
 import { ScrollOverlay } from './ScrollOverlay'
 
 type LoadState =
@@ -156,16 +156,16 @@ export function ExifDrawer(): React.JSX.Element {
         <ScrollOverlay scrollRef={scrollRef} />
       </div>
 
-      {/* Footer: erase (privacy) + copy everything */}
+      {/* Footer: erase (privacy) + copy everything, side by side */}
       {item && (
-        <div className="flex flex-none flex-col gap-2 border-t border-white/[0.06] p-3">
+        <div className="flex flex-none gap-2 border-t border-white/[0.06] p-3">
           <button
             type="button"
             onClick={() => openErase(item.filePath, item.fileName)}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#2C2C2E] py-2.5 text-[13px] text-white transition-colors hover:bg-white/[0.12]"
+            className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#2C2C2E] py-2.5 text-[13px] text-white transition-colors hover:bg-white/[0.12]"
           >
             <span className="text-[#FF9F0A]">
-              <ShieldIcon size={15} />
+              <TrashIcon size={15} />
             </span>
             {t('exif.erase')}
           </button>
@@ -173,7 +173,7 @@ export function ExifDrawer(): React.JSX.Element {
             <button
               type="button"
               onClick={() => copyText(exifToJsonString(state.data), 'toast.metadataCopied')}
-              className="flex w-full items-center justify-center gap-2 rounded-lg py-2 text-[12px] text-[rgba(235,235,245,0.6)] transition-colors hover:bg-white/[0.06] hover:text-white"
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-white/[0.06] py-2.5 text-[13px] text-[rgba(235,235,245,0.86)] transition-colors hover:bg-white/[0.1]"
             >
               <CopyIcon size={14} />
               {t('exif.copyAll')}
