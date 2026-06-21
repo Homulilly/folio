@@ -4,6 +4,9 @@ Thumbs.db
 # Ignore development environment files
 .dev
 
+# Marketing landing page (not part of the app build)
+landing/
+
 # Dependencies
 node_modules/
 .pnpm-store
