@@ -111,7 +111,7 @@ folio/
 - **HEIC sips 兜底(仅 macOS)**:sharp 解码失败时,`osDecodeToPng` 对 `.heic/.heif/.hif` 调 `sips -s format png`(`execFile` 传参数组,无 shell 注入)转临时 PNG,再走同一条 webp 管线,完后删临时文件;非 darwin 或非这些扩展名直接 null,回落到文字占位。**Windows HEIC 与 JXL 仍无解**(需各自系统编解码器 / 自带解码器),顺延。
 - **Exif 摘要 / 哈希** `services/metaCache.ts`(`exif` + `hashes` 表)作 **L2 持久层**,坐在 `exiftool.ts`/`hash.ts` 既有内存 L1 之后,mtime 失效 + 行数 LRU;就地擦除调 `dropExif`。跨重启免重跑 ExifTool / 重算哈希。
 - **任务历史** `services/taskHistory.ts`:终态任务存 `task_history`(上限 200),`scheduler.init()`(app ready 后,setEmitter 之后调)加载并标 `restored`;`restored` 任务无运行期 Control 故 `canRetry` 返回 false(隐藏重试),`clearFinished` 连带清历史。
-- **真实尺寸** `services/imageInfo.ts` 的 `imageDimensions(path)`:sharp `metadata()` 只读文件头(不全解码)+ EXIF 方向校正,mtime 内存缓存;IPC `image:dimensions`。供「大图策略」判断尺寸、给非可解码格式喂正确 `setNatural`。
+- **真实尺寸** `services/imageInfo.ts` 的 `imageDimensions(path)`:sharp `metadata()` 只读文件头(不全解码)+ EXIF 方向校正,mtime 内存缓存;IPC `image:dimensions`。供「大图策略」判断尺寸、给非可解码格式喂正确 `setNatural`。**HEIC sips 兜底(仅 macOS)**:大 HEIC 是分块网格,预置 libheif 在 metadata 阶段就拒绝(`Security limit exceeded: Number of references in iref box exceeds 16`),`metadata()` 抛错 → 退回 `sips -g pixelWidth -g pixelHeight`。**没有这条,单图 HEIC 拿不到 `naturalWidth` 就无法缩放/fit**(预览仍由 sips 兜底正常显示,故症状是「能看不能缩放」)。
 
 ### 持久化设置(M7,settings.json + 类型化 IPC)
 - **类型在 shared-types**:`AppSettings`/`AppLanguage`/`QuickSaveRule`/`DefaultEraseRule`/`SettingsPatch` 都在 `shared-types`(属 IPC 契约);`@folio/config` 改为 **re-export 类型 + 持有 `DEFAULT_SETTINGS`**(别再在 config 定义类型)。`SettingsPatch` 把嵌套 `multiView` 设为深 Partial。

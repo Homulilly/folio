@@ -1,4 +1,6 @@
+import { execFile } from 'node:child_process'
 import { stat } from 'node:fs/promises'
+import { promisify } from 'node:util'
 import sharp from 'sharp'
 
 // Cheap source-dimension probe: sharp.metadata() reads the header only (no full decode), so the
@@ -13,6 +15,36 @@ interface Dims {
 
 const LIMIT = 512
 const cache = new Map<string, { mtimeMs: number; dims: Dims | null }>()
+
+const execFileAsync = promisify(execFile)
+// HEIC/HEIF: handled by the macOS sips fallback (sharp's libheif can't read tiled grids — see below).
+const OS_DIM_EXT = new Set(['.heic', '.heif', '.hif'])
+
+/**
+ * macOS fallback for dimensions sharp can't read. Large HEICs are stored as tiled grids, and the
+ * prebuilt libheif rejects them at metadata time ("Security limit exceeded: Number of references in
+ * iref box exceeds 16") — so without this the viewer gets no natural size and can't zoom/fit. `sips`
+ * reads the true pixel dimensions. Args go through execFile (no shell), so the path can't inject.
+ */
+async function sipsDimensions(filePath: string): Promise<Dims | null> {
+  if (process.platform !== 'darwin') return null
+  const dot = filePath.lastIndexOf('.')
+  const ext = dot >= 0 ? filePath.slice(dot).toLowerCase() : ''
+  if (!OS_DIM_EXT.has(ext)) return null
+  try {
+    const { stdout } = await execFileAsync(
+      'sips',
+      ['-g', 'pixelWidth', '-g', 'pixelHeight', filePath],
+      { timeout: 15_000 },
+    )
+    const width = Number(stdout.match(/pixelWidth:\s*(\d+)/)?.[1])
+    const height = Number(stdout.match(/pixelHeight:\s*(\d+)/)?.[1])
+    if (width > 0 && height > 0) return { width, height }
+  } catch {
+    // sips missing/failed — fall through to null.
+  }
+  return null
+}
 
 export async function imageDimensions(filePath: string): Promise<Dims | null> {
   let mtimeMs: number
@@ -36,6 +68,8 @@ export async function imageDimensions(filePath: string): Promise<Dims | null> {
   } catch {
     dims = null
   }
+  // sharp couldn't read it (e.g. tiled HEIC the prebuilt libheif rejects) — try the OS probe.
+  if (!dims) dims = await sipsDimensions(filePath)
 
   cache.set(filePath, { mtimeMs, dims })
   if (cache.size > LIMIT) {
