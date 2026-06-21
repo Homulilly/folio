@@ -82,7 +82,9 @@ folio/
 - 渲染端 `folderStore` 持有浏览态(`browsePath`/`listing`),**与已载入队列解耦**:打开浏览面板默认定位到当前文件夹的 parent(故同级夹直接可见);`offerNextFolder` 在末图按「下一张」时算出下一个含图同级夹并弹 `FolderPrompt`。刷新走 `lib/actions.ts` 的 `refreshQueue` → `queueStore.loadResult(result, { keepFocus: true })`(按 filePath 保持停留在当前图);`advance()` 统一「下一张/到尾则提示下一夹」,接在 `→`/`D` 上。`fs.ts`(`DirEntry`/`DirListing`)是这套类型的单一来源。
 
 ### Exif 查看 / 擦除 / 任务系统(M3–M4,核心是「纯逻辑在 core,fs/exiftool 编排在 main」)
-- **读取(M3)**:`services/exiftool.ts` 薄封装 exiftool-vendored 的 `readRaw(file,{readArgs:['-G0']})`(family-0 分组),值预先字符串化;纯转换(`buildExifGroups`/`summarizeExif`/`filterExifGroups`/`exifToJsonString`)在 `packages/core/exif.ts`。主进程内存 LRU(path+mtime 失效)代替 SQLite,后者顺延 M7。
+- **读取(M3)**:`services/exiftool.ts` 薄封装 exiftool-vendored 的 `readRaw(file,{readArgs:['-G0']})`(family-0 分组),值预先字符串化;纯转换(`buildExifGroups`/`summarizeExif`/`filterExifGroups`/`exifToJsonString`)在 `packages/core/exif.ts`。主进程内存 LRU(path+mtime 失效)代替 SQLite,后者顺延 M7。**只在渲染端 `ExifDrawer`(抽屉打开时)/ `EraseDialog` 调 `metadata.read` 时才读**——扫描/队列/缩略图都不碰 exiftool(§13 懒读)。
+- **概览的 IFD1 回退(v0.2.1)**:`-G0` 在 IFD0 持有空副本时会压制 IFD1 的同名标签,故 `readMetadata` **并行**多跑一次组限定读 `readIfd1Fallback`(`-IFD1:ImageDescription/Artist/Copyright` = 0x010E/0x013B/0x8298),结果挂在 `ExifMetadata.ifd1`(可选);`summarizeExif(groups, ifd1?)` 在描述/作者/版权主值为空时回退它。概览的 **GPS 不显示坐标**(`'包含 GPS 信息'` 徽标 + hover 看真值),坐标只在 `title` 里。
+- **字段名翻译(v0.2.1)**:Grouped 视图字段名经 `renderer/src/lib/exifTags.ts` 的 `tagLabel(key, lang)` 按语言显示中文(覆盖常见拍摄/容器/ICC 标签,缺失回退原名);**只影响 Grouped 展示**,Raw 是原始 JSON、tooltip 也是原始标签名。Raw 视图渲染 `exifToJsonString` 的文本(随搜索过滤)。
 - **擦除(M4)**:规则/预设/校验/差异预览/验证全是纯函数,在 `packages/core/erase.ts`(`presetRule`/`partitionExifByRule`/`verifyRemoval`/`buildRemoveArgs`,单一来源 `ERASE_CATEGORIES`+`CATEGORY_PRESETS`);`services/exiftool.ts` 的 `eraseMetadata` 做 fs 编排(export=copyFile→strip→verify,在 place 直接 strip)。`remove_selected` 走 `write(…,{writeArgs:['-tag=',…]})` 且**对每个具体 tag 追加 `-IFD1:tag=`**(否则缩略图 IFD 残留副本);keep 模式走 `deleteAllTags({retain})`。
 - **验证踩坑**:`File`/`Composite`/`ExifTool` 三个 family-0 组是文件系统/派生/版本伪标签,exiftool **永远删不掉**——`isRemovableGroup` 把它们排除在预览与验证之外,否则 keep 模式会误报「未擦除」而整批失败。
 - **安全铁律(§13)**:默认导出新文件、绝不覆盖原图、失败绝不动/删原文件;就地覆盖需二次确认,批量就地覆盖再加一次 arm。
@@ -117,12 +119,13 @@ folio/
 - **类型在 shared-types**:`AppSettings`/`AppLanguage`/`QuickSaveRule`/`DefaultEraseRule`/`SettingsPatch` 都在 `shared-types`(属 IPC 契约);`@folio/config` 改为 **re-export 类型 + 持有 `DEFAULT_SETTINGS`**(别再在 config 定义类型)。`SettingsPatch` 把嵌套 `multiView` 设为深 Partial。
 - **主进程** `services/settings.ts`:sync 读写(文件小、用得少)+ 合并默认(`multiView` 深合并)+ 原子写(tmp→rename);首启无文件按 `app.getLocale()` 取系统语言。IPC `settings.get/update/reset`。
 - **渲染端 boot 先读后渲染**:`main.tsx` `await settings.get()` 再 `createRoot().render`(语言无闪烁),并把状态 hydrate 进各 store;旧 `localStorage` 语言 key 一次性迁入后删除;旧单目标 `quickSaveRule` 结构迁移成 `targetDirs[]`。
-- **「记住上次」模式**:排序(`queueStore`)、多图模式/循环/同步缩放(`multiViewStore`)、擦除默认规则(`eraseStore`)、快速保存规则(`saveStore`)——**各自 mutator 里 `window.gv.settings.update({...})`**,boot 时对应 `hydrate*` 回灌。设置页(`SettingsPage`)只暴露无操作入口的「纯设置」(语言、删除确认、缓存大小、快速保存目标列表)。
+- **「记住上次」模式**:排序(`queueStore`)、多图模式/循环/同步缩放(`multiViewStore`)、擦除默认规则(`eraseStore`)、快速保存规则(`saveStore`)——**各自 mutator 里 `window.gv.settings.update({...})`**,boot 时对应 `hydrate*` 回灌。设置页(`SettingsPage`)只暴露无操作入口的「纯设置」(语言、删除确认、缓存大小、快速保存目标列表、**启动时收起侧栏** `startSidebarCollapsed`——默认 `true`,boot 时灌进 `uiStore.queueCollapsed`)。
 
 ### 显示变体策略(M7,Canvas 单图 vs MultiView 网格)
 - **单图(Canvas)按偏好一律原图**:可解码格式 → `original`(全质量,无 preview 替换);仅不可解码格式(HEIC/TIFF/JXL)→ `preview`,并经 `image.dimensions` 喂真实尺寸(`<img>` 报的是 preview 尺寸,**只在 `variant==='original'` 时用 onLoad 的 naturalWidth**)。
 - **多图网格(MultiView Slot)省内存**:每格探测 `image.dimensions`,**大图栅格(>2048px 且 `item.format!=null` 排除 svg/ico)→ preview**,小图栅格/svg/ico → original,不可解码 → preview;**等 variant 判定后再加载**(spinner 期间不抢拉原图),展开进单图仍原图。
 - **队列侧栏虚拟化**:`QueueRail` 固定行高(54px)窗口化,只渲染可视区 + overscan 行(绝对定位于全高占位 div),`scrollIntoView` 改手动滚动到选中项。
+- **多图每格独立缩放(v0.2.1)**:`viewerStore.zoom` 只是 **焦点格** 的实时值;非焦点格各自的缩放记在 `multiViewStore.zoomMemory`(按 image id,`setMode` 时清)。`MultiView` 用 `useLayoutEffect`(绘制前、无闪烁)在焦点变化时 **存出旧焦点格、恢复新焦点格** 的 `{fit,zoom}`(经 `viewerStore.restore`);渲染时焦点格/同步缩放用实时值,其余格读 `zoomMemory` ?? fit。**同步缩放(syncZoom)仍全格共享、跨焦点保留**(对比模式)。
 
 ### 打包与崩溃日志(M7 Phase E,`electron-builder.yml` + `services/logging.ts`)
 > 完整打包/发布说明(命令、首次启动、跨平台、接入签名步骤)见 **`docs/packaging.md`**。
@@ -165,7 +168,7 @@ pnpm build          # electron-vite 构建(打包用 electron-builder,M7)
 
 - TypeScript 全程;IPC 契约类型集中放 `packages/shared-types`,main/preload/renderer 共享同一份。
 - IPC 按命名空间分组:`image.*` / `queue.*` / `multiView.*` / `metadata.*` / `file.*` / `task.*`(见 prd §9.2)。
-- Electron 安全基线:`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`;preload 仅用 `contextBridge`。
+- Electron 安全基线:`contextIsolation: true`、`nodeIntegration: false`、`sandbox: true`;preload 仅用 `contextBridge`。**外链/导航硬化(v0.2.1)**:`index.ts` 的 `setWindowOpenHandler` 仅对 http/https 调 `shell.openExternal`(封 `file://`/`smb://`/自定义 scheme——它们走 OS 处理器、绕过 CSP),`will-navigate` 守卫禁止窗口导航离开自身内容(同 URL 重载放行)。gv-img 任意本地读的路径白名单仍是后续项(渲染 CSP `script-src 'self'` + 无外部 `connect-src` 已挡住执行与外传)。
 - 渲染进程状态按 slice 拆:`queueStore` / `multiViewStore` / `viewerStore` / `settingsStore`。
 - 写代码前对齐周边风格(命名、注释密度、目录习惯);纯逻辑优先放 `packages/core` 并补单测。
 - 跨平台 UI 文案不要写死 macOS 术语。涉及系统文件管理器/删除位置时按平台区分:macOS 用「访达 / 废纸篓」(Finder / Trash),Windows 用「资源管理器 / 回收站」(File Explorer / Recycle Bin),其他平台用通用「文件夹 / Trash」;相关文案统一走 i18n 与平台 helper。
