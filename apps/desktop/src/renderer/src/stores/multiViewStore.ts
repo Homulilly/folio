@@ -40,8 +40,16 @@ interface MultiViewStore {
   loopEnabled: boolean
   /** Enter temporarily blows the focused image up to a single full view; Esc returns. */
   expanded: boolean
+  /**
+   * Per-image grid zoom (image id → fit/zoom), so each slot keeps its own zoom when sync-zoom is
+   * off — focusing another slot no longer carries the previous slot's zoom onto it. Reset on mode
+   * change. Sync-zoom ignores this (all slots share the live viewer zoom).
+   */
+  zoomMemory: Record<string, { fit: boolean; zoom: number }>
 
   setMode: (mode: MultiViewMode) => void
+  /** Record a slot's grid zoom by image id (called when it loses focus). */
+  rememberZoom: (id: string, state: { fit: boolean; zoom: number }) => void
   /** Seed persisted multi-view prefs on boot (mode + loop/sync), without the setMode side effects. */
   hydrate: (prefs: { mode: MultiViewMode; loopEnabled: boolean; syncZoom: boolean }) => void
   cycleMode: () => void
@@ -69,6 +77,7 @@ export const useMultiViewStore = create<MultiViewStore>((set, get) => ({
   syncZoom: false,
   loopEnabled: false,
   expanded: false,
+  zoomMemory: {},
 
   setMode: (mode) => {
     // Realign so the previously focused image lands in slot 0 of its new group.
@@ -78,9 +87,12 @@ export const useMultiViewStore = create<MultiViewStore>((set, get) => ({
     const v = useViewerStore.getState()
     if (mode === 'single') v.fitWindow()
     else v.fitForGrid()
-    set({ mode, layout: DEFAULT_LAYOUT[mode], expanded: false })
+    // Slot composition changes with the mode, so old per-slot zoom no longer applies.
+    set({ mode, layout: DEFAULT_LAYOUT[mode], expanded: false, zoomMemory: {} })
     void window.gv.settings.update({ defaultMultiViewMode: mode })
   },
+
+  rememberZoom: (id, state) => set((s) => ({ zoomMemory: { ...s.zoomMemory, [id]: state } })),
 
   // Boot-time seed: set mode + its default layout and the loop/sync prefs directly, without the
   // queue/viewer realignment setMode does (the queue is empty at boot).

@@ -1,6 +1,6 @@
 import { groupSlots, groupStartForIndex } from '@folio/core'
 import type { FileProbe, ImageQueueItem, MultiViewLayout } from '@folio/shared-types'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useT } from '../i18n'
 import { canRenderNatively, formatBytes, formatLabel, imageUrl } from '../lib/format'
 import { useMultiViewStore } from '../stores/multiViewStore'
@@ -34,7 +34,6 @@ function Slot({
   item,
   slot,
   focused,
-  active,
   fit,
   zoom,
   rotation,
@@ -44,8 +43,7 @@ function Slot({
   item: ImageQueueItem | null
   slot: number
   focused: boolean
-  /** Whether zoom applies to this slot (focused, or any slot when sync-zoom is on). */
-  active: boolean
+  /** This slot's own fit/zoom (independent per slot unless sync-zoom is on). */
   fit: boolean
   zoom: number
   /** Shared rotation applied to every slot; carried into the focused single view. */
@@ -98,7 +96,7 @@ function Slot({
   }
 
   const renderable = canRenderNatively(item)
-  const scaled = active && !fit
+  const scaled = !fit
   // Focused cell: a soft accent glow on the cell (outside the box, never covered) + a neutral
   // hairline. The accent ring itself is an overlay painted ABOVE the image (see below) so a
   // full-bleed photo can't hide it. Both states inset so focus changes never shift the cell box.
@@ -188,6 +186,7 @@ export function MultiView(): React.JSX.Element {
   const mode = useMultiViewStore((s) => s.mode)
   const layout = useMultiViewStore((s) => s.layout)
   const syncZoom = useMultiViewStore((s) => s.syncZoom)
+  const zoomMemory = useMultiViewStore((s) => s.zoomMemory)
   const focusSlot = useMultiViewStore((s) => s.focusSlot)
   const expand = useMultiViewStore((s) => s.expand)
   const nextGroup = useMultiViewStore((s) => s.nextGroup)
@@ -199,7 +198,24 @@ export function MultiView(): React.JSX.Element {
   const start = groupStartForIndex(currentIndex, mode)
   const slots = groupSlots(items, start, mode)
   const focusedSlot = currentIndex - start
+  const focusedId = items[currentIndex]?.id ?? null
   const { container, slotClass } = LAYOUTS[layout]
+
+  // Per-slot zoom: when sync-zoom is off, each slot keeps its own zoom. The live viewer store holds
+  // the *focused* slot's zoom; on focus change we stash the outgoing slot's zoom (by image id) and
+  // restore the incoming slot's (or fit, if it has none). useLayoutEffect runs before paint so the
+  // swap is flash-free. Sync-zoom keeps the shared live zoom across focus changes (comparison mode).
+  const prevFocusedId = useRef(focusedId)
+  useLayoutEffect(() => {
+    const prev = prevFocusedId.current
+    if (prev === focusedId) return
+    prevFocusedId.current = focusedId
+    if (useMultiViewStore.getState().syncZoom) return
+    const v = useViewerStore.getState()
+    if (prev !== null) useMultiViewStore.getState().rememberZoom(prev, { fit: v.fit, zoom: v.zoom })
+    const mem = focusedId !== null ? useMultiViewStore.getState().zoomMemory[focusedId] : undefined
+    v.restore(mem?.fit ?? true, mem?.zoom ?? 100)
+  }, [focusedId])
 
   // Wheel over the grid steps whole groups (down → next, up → previous), throttled so a
   // single mouse notch or trackpad flick doesn't fly through many groups at once.
@@ -214,27 +230,35 @@ export function MultiView(): React.JSX.Element {
 
   return (
     <div className={`grid min-h-0 flex-1 gap-1.5 p-1.5 ${container}`} onWheel={onWheel}>
-      {slots.map((item, slot) => (
-        <div
-          key={item ? item.id : `blank-${slot}`}
-          className={`min-h-0 min-w-0 ${slotClass?.(slot) ?? ''}`}
-        >
-          <Slot
-            item={item}
-            slot={slot}
-            focused={slot === focusedSlot}
-            active={slot === focusedSlot || syncZoom}
-            fit={fit}
-            zoom={zoom}
-            rotation={rotation}
-            onFocus={() => focusSlot(slot)}
-            onExpand={() => {
-              focusSlot(slot)
-              expand()
-            }}
-          />
-        </div>
-      ))}
+      {slots.map((item, slot) => {
+        const isFocused = slot === focusedSlot
+        // Focused slot (and every slot under sync-zoom) uses the live viewer zoom; other slots use
+        // their own remembered zoom, defaulting to fit.
+        const mem = item ? zoomMemory[item.id] : undefined
+        const useLive = isFocused || syncZoom
+        const slotFit = useLive ? fit : (mem?.fit ?? true)
+        const slotZoom = useLive ? zoom : (mem?.zoom ?? 100)
+        return (
+          <div
+            key={item ? item.id : `blank-${slot}`}
+            className={`min-h-0 min-w-0 ${slotClass?.(slot) ?? ''}`}
+          >
+            <Slot
+              item={item}
+              slot={slot}
+              focused={isFocused}
+              fit={slotFit}
+              zoom={slotZoom}
+              rotation={rotation}
+              onFocus={() => focusSlot(slot)}
+              onExpand={() => {
+                focusSlot(slot)
+                expand()
+              }}
+            />
+          </div>
+        )
+      })}
     </div>
   )
 }

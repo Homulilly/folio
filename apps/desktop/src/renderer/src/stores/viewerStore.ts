@@ -30,6 +30,8 @@ interface ViewerState {
   zoomOut: () => void
   /** Multiply current zoom by a scale factor (mouse wheel / pinch style); leaves fit mode. */
   zoomByFactor: (factor: number) => void
+  /** Restore a remembered fit/zoom pair (multi-view per-slot zoom on focus change). */
+  restore: (fit: boolean, zoom: number) => void
   rotateCW: () => void
   resetRotation: () => void
 }
@@ -90,6 +92,7 @@ export const useViewerStore = create<ViewerState>((set) => ({
       fit: false,
       zoom: clampZoom(currentPercent(s) * (Number.isFinite(factor) ? factor : 1)),
     })),
+  restore: (fit, zoom) => set({ fit, zoom: clampZoom(zoom) }),
   rotateCW: () => set((s) => ({ rotation: ((s.rotation + 90) % 360) as 0 | 90 | 180 | 270 })),
   resetRotation: () => set({ rotation: 0 }),
 }))
