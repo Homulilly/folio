@@ -83,7 +83,18 @@ export function Canvas(): React.JSX.Element {
   const activeZoomAnchor = useRef<ZoomAnchor | null>(null)
   const clearZoomAnchorTimer = useRef<number | null>(null)
   const lastWheelZoomAt = useRef(0)
-  const scaleReady = useRef(false)
+  // The geometry the live scale belongs to: `${itemId}:${w}x${h}`. displayScaleRef and any in-flight
+  // zoom animation are only valid while this matches the current image+dims; on a freshly-loaded
+  // image the key won't match, so we snap straight to the fit target instead of animating from (or
+  // sizing with) the previous image's scale. null until this image's real dims have loaded.
+  const scaleGeomKey = useRef<string | null>(null)
+  // Which image the store's natural dims actually describe. App.resetViewer() nulls the dims in an
+  // effect, i.e. AFTER the navigation render — so the first render of a new image still holds the
+  // PREVIOUS image's dims. This ref records the id setNatural was called for, so that stale render
+  // is recognised (id mismatch) and falls back to object-contain rather than sizing the new image
+  // with the old one's geometry. Guards against the same-size case where an id+dims key alone would
+  // collide with the previous image's key.
+  const naturalForId = useRef<string | null>(null)
   // The live, possibly-mid-animation scale. Single source of truth: the rAF loop writes it
   // (and the DOM) directly, and the render reads it — so a re-render during a zoom animation
   // re-applies the same value rather than fighting the in-flight DOM mutation.
@@ -103,7 +114,10 @@ export function Canvas(): React.JSX.Element {
     if (!item || canRenderNatively(item)) return
     let cancelled = false
     void window.gv.image.dimensions(item.filePath).then((d) => {
-      if (!cancelled && d) setNatural(d.width, d.height)
+      if (!cancelled && d) {
+        naturalForId.current = item.id
+        setNatural(d.width, d.height)
+      }
     })
     return () => {
       cancelled = true
@@ -219,10 +233,16 @@ export function Canvas(): React.JSX.Element {
   // honoured. Fit scales the image down to fit inside the viewport (never upscaling); zoom
   // is an explicit percentage. Rotation by 90/270 swaps which natural side bounds each axis.
   // Falls back to CSS object-contain until natural/viewport sizes are known.
+  // The store's natural dims are only trustworthy once they've been written FOR this image (see
+  // naturalForId) — otherwise a freshly-navigated image would be sized with the previous image's
+  // dimensions/scale and flash oversized for a frame before snapping to fit.
+  const freshNatural =
+    hasItem && naturalForId.current === itemId && naturalWidth != null && naturalHeight != null
+  const geomKey = freshNatural ? `${itemId}:${naturalWidth}x${naturalHeight}` : null
   const rotated = rotation === 90 || rotation === 270
-  const sizable = naturalWidth && naturalHeight && (!fit || (viewportWidth && viewportHeight))
+  const sizable = freshNatural && (!fit || (viewportWidth && viewportHeight))
   let targetScale: number | null = null
-  if (naturalWidth && naturalHeight && sizable) {
+  if (sizable) {
     const boundW = rotated ? naturalHeight : naturalWidth
     const boundH = rotated ? naturalWidth : naturalHeight
     targetScale = fit
@@ -234,12 +254,6 @@ export function Canvas(): React.JSX.Element {
   // preview-substitution); only formats the browser can't decode (HEIC/TIFF/…) fall back to the
   // sharp-generated preview. The large-image preview optimisation is reserved for multi-view.
   const variant: 'original' | 'preview' = renderable ? 'original' : 'preview'
-
-  useEffect(() => {
-    if (!itemId) return
-    scaleReady.current = false
-    displayScaleRef.current = 1
-  }, [itemId])
 
   // Animate the displayed scale toward targetScale by mutating the <img> (and anchor scroll)
   // directly inside the rAF loop — no per-frame setState, so React doesn't reconcile the whole
@@ -266,9 +280,10 @@ export function Canvas(): React.JSX.Element {
       }
     }
 
-    if (!scaleReady.current) {
-      // First scale for this image — snap, don't animate (the render already used targetScale).
-      scaleReady.current = true
+    if (scaleGeomKey.current !== geomKey) {
+      // First scale for this image's freshly-loaded geometry — snap, don't animate (the render
+      // already sized to targetScale because the geom key didn't match displayScaleRef yet).
+      scaleGeomKey.current = geomKey
       displayScaleRef.current = targetScale
       return
     }
@@ -312,19 +327,31 @@ export function Canvas(): React.JSX.Element {
         zoomAnimationRaf.current = null
       }
     }
-  }, [targetScale, naturalWidth, naturalHeight])
+  }, [targetScale, naturalWidth, naturalHeight, geomKey])
 
   // Centre with `m-auto`, NOT the parent's justify/items-center: auto margins collapse to 0 when the
   // image overflows the viewport, so it aligns to the top-left and BOTH overflow sides stay
   // scrollable. Flex centring instead clips the leading (left/top) overflow and makes it unreachable.
   let imgClassName = 'm-auto max-h-full max-w-full object-contain'
-  let imgStyle: React.CSSProperties = { transform }
-  if (naturalWidth && naturalHeight && targetScale !== null) {
-    const scale = scaleReady.current ? displayScaleRef.current : targetScale
+  // Until this image's real dims are known we can't compute the explicit fit size, so the image
+  // is laid out by CSS. `max-h/max-w-full` (percentages) DON'T resolve against the auto-height
+  // flex wrapper, so a large image decoded before onLoad would paint at its natural (overflowing)
+  // size for a frame — the "full-screen → fit" flash. Clamp to the viewport in px instead (inline
+  // style wins over the Tailwind classes), which always resolves and keeps it bounded to fit.
+  let imgStyle: React.CSSProperties = {
+    transform,
+    maxWidth: viewportWidth ?? undefined,
+    maxHeight: viewportHeight ?? undefined,
+  }
+  if (freshNatural && targetScale !== null) {
+    // Use the live (possibly mid-animation) scale only while it belongs to THIS geometry; on a
+    // freshly-loaded image the key won't match yet, so size straight to the fit target instead of
+    // the previous image's scale (which would flash oversized for a frame).
+    const scale = scaleGeomKey.current === geomKey ? displayScaleRef.current : targetScale
     imgClassName = 'm-auto flex-none object-contain'
     imgStyle = {
-      width: naturalWidth * scale,
-      height: naturalHeight * scale,
+      width: (naturalWidth as number) * scale,
+      height: (naturalHeight as number) * scale,
       maxWidth: 'none',
       transform,
     }
@@ -426,6 +453,7 @@ export function Canvas(): React.JSX.Element {
                 // The preview is downscaled, so its <img> size isn't the true size — natural dims
                 // come from the dimensions IPC instead. Only trust the element for the original.
                 if (variant === 'original') {
+                  naturalForId.current = item.id
                   setNatural(e.currentTarget.naturalWidth, e.currentTarget.naturalHeight)
                 }
               }}
