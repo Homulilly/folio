@@ -10,7 +10,7 @@ Folio can preview up to 4 images at once:
 
 ![Multiview](images/preview.webp)
 
-Implemented features are tracked in [features.md](docs/features.md).
+Implemented features are tracked in [features.md](docs/en/features.md).
 
 ## Highlights
 
