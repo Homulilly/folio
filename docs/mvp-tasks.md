@@ -67,7 +67,7 @@
 - [x] 状态栏：当前模式 / 组范围（第 X-Y 张/共 N）/ 焦点信息 / Sync 指示
 - [x] `Enter` 焦点临时放大为单图，`Esc` 返回
 - [ ] 🔴 **预览图加载策略**：只加载当前组原图 + 下一组轻量预览；50MP+ 优先格子尺寸预览 → **顺延 M7**
-- [x] 🔴 **资源释放策略**：只挂载当前组原图,离屏格子 `<img>` 卸载交还解码位图(基础达成;主动预览/预加载随 M7)
+- [x] **资源释放策略**：只挂载当前组原图,离屏格子 `<img>` 卸载交还解码位图(基础达成;主动预览/预加载随 M7)
 - [ ] 多图预览任务接入调度器（优先级 + 翻组取消过期任务）→ **顺延 M7**
 
 > M2 范围说明 / 顺延项：
@@ -88,7 +88,7 @@
 - [x] 搜索：按字段名/值、按分组筛选（输入分组名展开整组）
 - [x] 复制单字段 / 复制全部为 JSON
 - [x] 多图模式：面板默认显示焦点图片元信息（订阅 `queueStore.currentIndex` 即焦点图，单/多图通用）
-- [ ] 🔴 SQLite 缓存 Exif 摘要 → **顺延 M7**（M3 用主进程内存缓存,path+mtime 失效）
+- [x] SQLite 缓存 Exif 摘要（**已于 M7-A 完成**：`services/metaCache.ts` 的 `exif` 表作 L2 持久层,坐在主进程内存 L1 之后,mtime 失效 + 行数 LRU）
 
 **验收**（PRD §17.3）：✅ typecheck/test(39)/lint/build 全绿,`pnpm dev` 启动无错;exiftool 真实读取（family-0 `-G0` 分组键）经核心纯函数转换可看可搜;读取失败返回 null、不致浏览失败;多图下面板跟随焦点图。
 > M3 范围说明 / 顺延项：
@@ -112,7 +112,7 @@
 - [x] 自定义字段（PRD §6.5 mode 7）：弹窗内自由输入标签（`parseTagList` 校验,无效项忽略并提示），叠加在勾选分类之上
 - [~] 保留指定字段（PRD §6.5 mode 8）：核心 `remove_all_except_keep` + keepTags 已支持,目前仅经 分享/完全 预设暴露;字段级 keep-list 编辑器待后续
 - [x] 内置预设：隐私 / 分享 / 完全清理 / 保留版权 / 自定义（`presetRule` + `CATEGORY_PRESETS` 单一来源,PRD §11.2）
-- [x] 🔴 安全：默认导出新文件不覆盖原图（拒绝覆盖已存在目标 + 失败清理半成品副本）；就地覆盖保留 `_original` 备份；失败绝不动原文件
+- [x] 安全：默认导出新文件不覆盖原图（拒绝覆盖已存在目标 + 失败清理半成品副本）；就地覆盖保留 `_original` 备份；失败绝不动原文件
 - [x] 擦除后验证字段已移除（`verifyRemoval`,擦除后重读比对,残留则告警）
 - [x] 标签模式校验防命令注入（`isValidTagPattern`;exiftool-vendored 以参数数组传递,本身不过 shell）
 
@@ -136,7 +136,7 @@
 - [x] `ExifAutoRule` 结构（`shared-types`,记录完整目标形态）+ 会话级 `session_directory` 落地（`autoModeStore`,内存态）
 - [x] 自动应用：开启后在该目录内导航到未处理图片时**自动导出去元信息副本**（`useAutoErase`,始终 export-new、永不动原图,故浏览触发安全）
 - [x] 防误操作：顶部琥珀色状态条（`AutoModeStrip`,显示规则 + 目录）+ 一键关闭；首张提示每目录只弹一次
-- [~] 持久化 scope（directory / directory_recursive / global）+「存为默认规则」+ applyOn 多模式 → **顺延 M7**（依赖 settings.json,与语言设置一并迁移）
+- [x] 持久化「存为默认规则」（**已于 M7-D 完成**：擦除对话框记住上次 preset/分类/自定义标签 → `settings.defaultErase`,下次预填）。**全局/递归 scope(directory_recursive/global)经评估刻意不做**（会在每个浏览过的文件夹散落导出副本,UX 风险大;跨图应用仍走 session-directory 自动模式）
 
 **验收**（PRD §17.3）：能擦 GPS/指定字段并验证移除（✅ A）；默认不覆盖原图（✅ A/B）；自动模式可应用同目录、可关闭（✅ D）；批量有确认+日志（✅ C）。
 > M4 范围说明：
@@ -155,7 +155,7 @@
 - [x] 命名模板引擎（`packages/core/naming.ts`,纯函数 + 单测）：`{name}{ext}{md5}{sha1}{date}{time}{mtime}{width}{height}{index}{nr:001}` + `sanitizeFilename`
 - [x] 冲突处理：跳过/覆盖/追加序号/MD5 比对(相同跳过,否则递增);**「弹窗询问」(交互式逐文件)顺延后续**——四种非交互策略已覆盖安全默认
 - [x] `file.batchRename(options)`：替换删除字符（含正则/大小写/仅文件名）/ 指定位置删除(前 N/后 N/区间/标记前后) / 按序号编号
-- [x] 🔴 重命名安全：预览表格 + 重名检测 + 非法字符检测 + 循环冲突(A→B,B→A)避免(执行期两阶段临时名 + 失败回滚) + dry-run(预览即 dry-run) + 日志(复制/导出);**撤销以重命名日志替代**(PRD §6.8「撤销，或生成日志」二选一)
+- [x] 重命名安全：预览表格 + 重名检测 + 非法字符检测 + 循环冲突(A→B,B→A)避免(执行期两阶段临时名 + 失败回滚) + dry-run(预览即 dry-run) + 日志(复制/导出);**撤销以重命名日志替代**(PRD §6.8「撤销，或生成日志」二选一)
 - [x] 多图：保存焦点图(scope=image,直接 IPC);保存当前组/文件夹走 `task.startSaveBatch` + 批处理页(任务预览/进度)
 
 **验收**（PRD §17.4）：✅ typecheck/test(111 core + 6 服务集成,已验证后移除)/lint/build 全绿；MD5/SHA1/自定义命名、批量重命名预览+冲突检测、失败不破坏原文件(save 只复制不动原图、rename 两阶段回滚)、多图当前组保存前有预览——均经临时集成测试覆盖(keep/md5/number/md5_compare + A↔B 交换 + 外部冲突回滚)。
@@ -171,10 +171,10 @@
 - [x] convert（sharp）：输出 JPEG / PNG / WebP / AVIF / TIFF（sharp async 自带 libvips 线程池,**直接跑主进程**,Worker Threads 离线化顺延 M7)
 - [x] 转换参数：JPEG(质量/渐进/保留Exif/ICC)、PNG(压缩/透明)、WebP(有损无损/质量)、AVIF(质量/速度/色深)
 - [x] 转换流程 UI：选图(scope 图/组/夹)→格式→参数→输出位置(原地同目录/选文件夹)→预览→执行→结果(`ConvertDialog`)
-- [x] 🔴 安全：默认不覆盖原文件(只写新文件,原地 jpg→jpg 强制改名);失败保留原文件;批量可取消(复用 scheduler);失败重试(复用)；**保留目录结构顺延**(队列为单层非递归夹,暂不涉及递归)
+- [x] 安全：默认不覆盖原文件(只写新文件,原地 jpg→jpg 强制改名);失败保留原文件;批量可取消(复用 scheduler);失败重试(复用)；**保留目录结构顺延**(队列为单层非递归夹,暂不涉及递归)
 - [x] 转换后可打开目标文件夹（单图转换成功后 `showInFolder` 新文件）
 - [x] 多图：焦点图转换(scope=image,直接 IPC) / 当前组·文件夹走 `task.startConvertBatch` 批处理页（带预览）
-- [x] 🔴 **spike**：✅ sharp 0.35.1 / libvips 8.18.3 在 Electron 42(ABI 146)**零 rebuild 加载**(N-API);**HEIC 读+写均支持**(libheif 内置);JPEG/PNG/WebP/AVIF/TIFF 全通(见 `spike/sharp` 分支 commit)
+- [x] **spike**：✅ sharp 0.35.1 / libvips 8.18.3 在 Electron 42(ABI 146)**零 rebuild 加载**(N-API);**HEIC 读+写均支持**(libheif 内置);JPEG/PNG/WebP/AVIF/TIFF 全通(见 `spike/sharp` 分支 commit)
 
 **验收**（PRD §17.5）：✅ typecheck/test(120 core + 4 服务集成,验证后移除)/lint/build 全绿；JPEG/PNG/WebP/AVIF/TIFF 转换可用;任务可取消/重试/有错误日志;默认不覆盖(只写新文件+原地强制改名,集成测试验证原图字节不变);可选保留 Exif/ICC;多图当前组可入队并预览。
 > M6 范围说明 / 顺延项：
@@ -238,7 +238,7 @@
 - [x] 崩溃日志:`services/logging.ts`——`crashReporter`(`uploadToServer:false`,转储留本机)+ `uncaughtException`/`unhandledRejection`/`render-process-gone`/`child-process-gone` 写 `userData/logs/main.log`;设置页「诊断」段「打开日志文件夹」(IPC `system:openLogs`)
 - [ ] **未签名(暂不接 Developer ID / 公证)**:`mac.identity:null` 跳过签名,故 `afterPack` 钩子(`scripts/afterPack.cjs`)对 bundle 做 **ad-hoc 签名**——否则 Apple Silicon 因 framework 原签名被破坏而拒绝启动(实测「damaged」)。拿到证书后换成真实签名 + notarize 即可(entitlements 已备 `resources/entitlements.mac.plist`)
 - [ ] Windows / Linux 产物 + sharp 跨平台预编译二进制验证(**M6 顺延**):pnpm 10+ 不装其它平台的 `@img/sharp-*`,需在目标平台构建或补 optionalDependencies;Windows NSIS / Linux AppImage 配置已就位但未实跑
-- [ ] 应用图标(现用 Electron 默认图标):需 `resources/icon.icns`(mac)/ `icon.ico`(win)
+- [x] 应用图标:`resources/icons/icon.icns`(mac)/ `icon.ico`(win) 已就位并在 `electron-builder.yml` 引用(v0.2.3 重塑为圆角 squircle + 留白 + 投影)
 
 **验收**（PRD §17 全量 + §19.5 发布清单）：三平台可装可启；1000 张不阻塞；四宫格连切不涨内存；擦除默认导出新文件；批处理有预览/确认/日志；不上传图片、不扫未选目录。
 
