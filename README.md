@@ -1,5 +1,7 @@
 # Folio
 
+简体中文 | [English](README_en.md)
+
 Folio 是一款为「快速浏览成套相册」打造的跨平台桌面看图应用。基于频繁需要批量重命名、擦除 Exif 信息、保存图片至特定文件夹需求开发。 
 
 项目采用 Electron + React + TypeScript 技术栈构建，由 Vibe Coding 驱动。
