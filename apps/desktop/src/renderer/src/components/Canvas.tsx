@@ -19,6 +19,8 @@ const WHEEL_ZOOM_ANIMATION_MS = 70
 const BUTTON_ZOOM_ANIMATION_MS = 140
 const WHEEL_ANCHOR_TTL_MS = 240
 const ZOOM_EPSILON = 0.0005
+// Ctrl/Cmd + wheel steps prev/next image; throttle so one notch (or flick) advances a single image.
+const NAV_WHEEL_THROTTLE_MS = 180
 // Large originals stream in over gv-img:// and paint top-to-bottom — the visible "top strip then
 // full image" two-stage. For files this big we show the cached preview as a full-frame placeholder
 // and keep the original hidden until it's fully decoded (then swap), so a crisp image appears at
@@ -66,8 +68,10 @@ export function Canvas(): React.JSX.Element {
   const expanded = useMultiViewStore((s) => s.expanded)
   const collapse = useMultiViewStore((s) => s.collapse)
   const loopEnabled = useMultiViewStore((s) => s.loopEnabled)
-  const prevGroup = useMultiViewStore((s) => s.prevGroup)
-  const nextGroup = useMultiViewStore((s) => s.nextGroup)
+  // Step one image at a time (within the current group first, then into the next) — so the on-screen
+  // arrows match the keyboard ←/→ instead of jumping a whole group when expanded from a grid mode.
+  const prevImage = useMultiViewStore((s) => s.prevImage)
+  const nextImage = useMultiViewStore((s) => s.nextImage)
   const fit = useViewerStore((s) => s.fit)
   const zoom = useViewerStore((s) => s.zoom)
   const fitWindow = useViewerStore((s) => s.fitWindow)
@@ -91,6 +95,7 @@ export function Canvas(): React.JSX.Element {
   const activeZoomAnchor = useRef<ZoomAnchor | null>(null)
   const clearZoomAnchorTimer = useRef<number | null>(null)
   const lastWheelZoomAt = useRef(0)
+  const lastNavWheel = useRef(0)
   // The geometry the live scale belongs to: `${itemId}:${w}x${h}`. displayScaleRef and any in-flight
   // zoom animation are only valid while this matches the current image+dims; on a freshly-loaded
   // image the key won't match, so we snap straight to the fit target instead of animating from (or
@@ -181,6 +186,18 @@ export function Canvas(): React.JSX.Element {
     if (!el) return
     const onWheel = (e: WheelEvent): void => {
       e.preventDefault()
+      // Ctrl/Cmd + wheel navigates prev/next image (down/right → next, up/left → prev), throttled to
+      // one step per notch. NOTE: a macOS trackpad pinch also reports ctrlKey, so a pinch navigates
+      // here rather than zooming. Plain wheel keeps zooming (below).
+      if (e.ctrlKey || e.metaKey) {
+        const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
+        if (Math.abs(delta) >= 2 && e.timeStamp - lastNavWheel.current >= NAV_WHEEL_THROTTLE_MS) {
+          lastNavWheel.current = e.timeStamp
+          if (delta > 0) useMultiViewStore.getState().nextImage()
+          else useMultiViewStore.getState().prevImage()
+        }
+        return
+      }
       const unit =
         e.deltaMode === 1 ? WHEEL_LINE_DELTA_PX : e.deltaMode === 2 ? WHEEL_PAGE_DELTA_PX : 1
       const img = el.querySelector<HTMLImageElement>('img')
@@ -517,7 +534,7 @@ export function Canvas(): React.JSX.Element {
         <button
           type="button"
           title={t('canvas.previous')}
-          onClick={prevGroup}
+          onClick={prevImage}
           className="group/nav absolute inset-y-0 left-0 flex w-[20%] items-center justify-start pl-3 opacity-0 transition-opacity hover:opacity-100"
         >
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white/85 backdrop-blur transition-colors group-hover/nav:bg-black/65 group-hover/nav:text-white">
@@ -529,7 +546,7 @@ export function Canvas(): React.JSX.Element {
         <button
           type="button"
           title={t('canvas.next')}
-          onClick={nextGroup}
+          onClick={nextImage}
           className="group/nav absolute inset-y-0 right-0 flex w-[20%] items-center justify-end pr-3 opacity-0 transition-opacity hover:opacity-100"
         >
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-black/45 text-white/85 backdrop-blur transition-colors group-hover/nav:bg-black/65 group-hover/nav:text-white">
