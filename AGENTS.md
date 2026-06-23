@@ -124,6 +124,7 @@ folio/
 ### 显示变体策略(M7,Canvas 单图 vs MultiView 网格)
 - **单图(Canvas)按偏好一律原图**:可解码格式 → `original`(全质量,无 preview 替换);仅不可解码格式(HEIC/TIFF/JXL)→ `preview`,并经 `image.dimensions` 喂真实尺寸(`<img>` 报的是 preview 尺寸,**只在 `variant==='original'` 时用 onLoad 的 naturalWidth**)。
 - **多图网格(MultiView Slot)省内存**:每格探测 `image.dimensions`,**大图栅格(>2048px 且 `item.format!=null` 排除 svg/ico)→ preview**,小图栅格/svg/ico → original,不可解码 → preview;**等 variant 判定后再加载**(spinner 期间不抢拉原图),展开进单图仍原图。
+- **多图组预加载(opt-in)**:`multiViewStore.preloadGroups`(0/1/2,持久化在 `settings.multiView.preloadGroups`,设置页「浏览」段下拉)。`MultiView` 一个 effect 在切组(`start`/`items` 变,非组内换焦点)时,按 `nextGroupStart` 算出后续 1–2 组的图,**复刻 Slot 的 variant 判定**(大图/不可解码→preview,小图/svg/ico→original)后用 `new Image()` 预热——主进程借此提前生成并落盘缓存 preview(贵的那一步),用户翻过去即缓存命中。**默认关**;`PRELOAD_DEFER_MS`(250ms)延迟 + cancel 标志让可见组先进 sharp 队列(PRD §9.3 当前组优先),快速翻组丢弃过期预热;refs 每次导航替换,只驻留当前一组预热位图。单图模式的邻图预热见 `Canvas.tsx`(上一张+下一张)。
 - **队列侧栏虚拟化**:`QueueRail` 固定行高(54px)窗口化,只渲染可视区 + overscan 行(绝对定位于全高占位 div),`scrollIntoView` 改手动滚动到选中项。
 - **多图每格独立缩放(v0.2.1)**:`viewerStore.zoom` 只是 **焦点格** 的实时值;非焦点格各自的缩放记在 `multiViewStore.zoomMemory`(按 image id,`setMode` 时清)。`MultiView` 用 `useLayoutEffect`(绘制前、无闪烁)在焦点变化时 **存出旧焦点格、恢复新焦点格** 的 `{fit,zoom}`(经 `viewerStore.restore`);渲染时焦点格/同步缩放用实时值,其余格读 `zoomMemory` ?? fit。**同步缩放(syncZoom)仍全格共享、跨焦点保留**(对比模式)。
 

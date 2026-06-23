@@ -22,6 +22,8 @@ export interface AppSettings {
     syncZoom: boolean
     tripleLayout: Extract<MultiViewLayout, 'triple_main_left' | 'triple_equal_columns'>
     dualLayout: Extract<MultiViewLayout, 'dual_horizontal' | 'dual_vertical'>
+    /** How many groups ahead to warm previews for (0 = off, 1, or 2). Opt-in; trades memory/CPU for instant forward stepping. */
+    preloadGroups: number
   }
   /** Never overwrite the original when erasing/converting/saving (PRD §13). */
   alwaysExportNewFile: boolean

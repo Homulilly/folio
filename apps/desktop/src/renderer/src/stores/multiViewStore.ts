@@ -11,6 +11,9 @@ import { useViewerStore } from './viewerStore'
 
 const MODE_CYCLE: readonly MultiViewMode[] = ['single', 'dual', 'triple', 'quad']
 
+/** Preload is 0/1/2 groups; clamp anything else (e.g. a hand-edited settings file) to off. */
+const clampPreload = (n: number): number => (n === 1 || n === 2 ? n : 0)
+
 /** Default layout when a mode is selected. */
 const DEFAULT_LAYOUT: Record<MultiViewMode, MultiViewLayout> = {
   single: 'single',
@@ -38,6 +41,8 @@ interface MultiViewStore {
   syncZoom: boolean
   /** Wrap around past the queue ends when stepping groups (PRD "循环浏览"). */
   loopEnabled: boolean
+  /** How many groups ahead to warm previews for (0 = off, 1, or 2). Opt-in (PRD §9.3 preload). */
+  preloadGroups: number
   /** Enter temporarily blows the focused image up to a single full view; Esc returns. */
   expanded: boolean
   /**
@@ -50,8 +55,15 @@ interface MultiViewStore {
   setMode: (mode: MultiViewMode) => void
   /** Record a slot's grid zoom by image id (called when it loses focus). */
   rememberZoom: (id: string, state: { fit: boolean; zoom: number }) => void
-  /** Seed persisted multi-view prefs on boot (mode + loop/sync), without the setMode side effects. */
-  hydrate: (prefs: { mode: MultiViewMode; loopEnabled: boolean; syncZoom: boolean }) => void
+  /** Seed persisted multi-view prefs on boot (mode + loop/sync/preload), without the setMode side effects. */
+  hydrate: (prefs: {
+    mode: MultiViewMode
+    loopEnabled: boolean
+    syncZoom: boolean
+    preloadGroups: number
+  }) => void
+  /** Set how many groups ahead to preload (clamped to 0/1/2); persists to settings. */
+  setPreloadGroups: (groups: number) => void
   cycleMode: () => void
   cycleLayout: () => void
   /** Make slot `slot` (0-based) of the current group the focused image. No-op for blank slots. */
@@ -76,6 +88,7 @@ export const useMultiViewStore = create<MultiViewStore>((set, get) => ({
   layout: 'single',
   syncZoom: false,
   loopEnabled: false,
+  preloadGroups: 0,
   expanded: false,
   zoomMemory: {},
 
@@ -96,8 +109,21 @@ export const useMultiViewStore = create<MultiViewStore>((set, get) => ({
 
   // Boot-time seed: set mode + its default layout and the loop/sync prefs directly, without the
   // queue/viewer realignment setMode does (the queue is empty at boot).
-  hydrate: ({ mode, loopEnabled, syncZoom }) =>
-    set({ mode, layout: DEFAULT_LAYOUT[mode], loopEnabled, syncZoom }),
+  hydrate: ({ mode, loopEnabled, syncZoom, preloadGroups }) =>
+    set({
+      mode,
+      layout: DEFAULT_LAYOUT[mode],
+      loopEnabled,
+      syncZoom,
+      preloadGroups: clampPreload(preloadGroups),
+    }),
+
+  setPreloadGroups: (groups) =>
+    set(() => {
+      const preloadGroups = clampPreload(groups)
+      void window.gv.settings.update({ multiView: { preloadGroups } })
+      return { preloadGroups }
+    }),
 
   cycleMode: () => {
     const i = MODE_CYCLE.indexOf(get().mode)

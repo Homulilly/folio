@@ -16,6 +16,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     syncZoom: false,
     tripleLayout: 'triple_main_left',
     dualLayout: 'dual_horizontal',
+    preloadGroups: 0,
   },
   alwaysExportNewFile: true,
   confirmDeleteToTrash: true,

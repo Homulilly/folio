@@ -59,6 +59,7 @@ async function hydrateFromSettings(): Promise<void> {
       mode: settings.defaultMultiViewMode,
       loopEnabled: settings.multiView.loopEnabled,
       syncZoom: settings.multiView.syncZoom,
+      preloadGroups: settings.multiView.preloadGroups,
     })
   } catch {
     /* Keep the in-memory defaults; viewing must not depend on settings being readable. */

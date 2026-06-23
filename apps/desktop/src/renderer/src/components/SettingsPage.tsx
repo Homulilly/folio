@@ -119,18 +119,25 @@ function CacheSizeRow({
 /** A label + native dropdown row, styled for the dark settings page. */
 function SelectRow<T extends string>({
   label,
+  help,
   value,
   options,
   onChange,
 }: {
   label: string
+  help?: string
   value: T
   options: ReadonlyArray<{ value: T; label: string }>
   onChange: (v: T) => void
 }): React.JSX.Element {
   return (
     <div className="flex items-center justify-between gap-4">
-      <div className="text-[13px] text-[rgba(235,235,245,0.86)]">{label}</div>
+      <div className="min-w-0">
+        <div className="text-[13px] text-[rgba(235,235,245,0.86)]">{label}</div>
+        {help && (
+          <div className="mt-0.5 text-[12px] leading-5 text-[rgba(235,235,245,0.42)]">{help}</div>
+        )}
+      </div>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value as T)}
@@ -467,6 +474,8 @@ export function SettingsPage(): React.JSX.Element {
   const toggleLoop = useMultiViewStore((s) => s.toggleLoop)
   const syncZoom = useMultiViewStore((s) => s.syncZoom)
   const toggleSync = useMultiViewStore((s) => s.toggleSync)
+  const preloadGroups = useMultiViewStore((s) => s.preloadGroups)
+  const setPreloadGroups = useMultiViewStore((s) => s.setPreloadGroups)
   const startSidebarCollapsed = useSettingsStore((s) => s.startSidebarCollapsed)
   const setStartSidebarCollapsed = useSettingsStore((s) => s.setStartSidebarCollapsed)
   const showViewer = useUiStore((s) => s.showViewer)
@@ -597,6 +606,17 @@ export function SettingsPage(): React.JSX.Element {
               help={t('settings.syncZoomHelp')}
               on={syncZoom}
               onToggle={toggleSync}
+            />
+            <SelectRow
+              label={t('settings.preloadLabel')}
+              help={t('settings.preloadHelp')}
+              value={String(preloadGroups)}
+              options={[
+                { value: '0', label: t('settings.preload.off') },
+                { value: '1', label: t('settings.preload.one') },
+                { value: '2', label: t('settings.preload.two') },
+              ]}
+              onChange={(v) => setPreloadGroups(Number(v))}
             />
           </Section>
 

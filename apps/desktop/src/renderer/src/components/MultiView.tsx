@@ -1,4 +1,4 @@
-import { groupSlots, groupStartForIndex } from '@folio/core'
+import { groupSlots, groupStartForIndex, nextGroupStart, viewCountForMode } from '@folio/core'
 import type { FileProbe, ImageQueueItem, MultiViewLayout } from '@folio/shared-types'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useT } from '../i18n'
@@ -23,6 +23,10 @@ const LAYOUTS: Record<
   triple_equal_columns: { container: 'grid-cols-3 grid-rows-1' },
   quad_grid: { container: 'grid-cols-2 grid-rows-2' },
 }
+
+/** Delay before warming preloads, so the visible group's loads reach main's sharp queue first
+ *  (PRD §9.3 prioritizes the current group over preload). Cancelled if the user steps away sooner. */
+const PRELOAD_DEFER_MS = 250
 
 function Spinner(): React.JSX.Element {
   return (
@@ -191,6 +195,8 @@ export function MultiView(): React.JSX.Element {
   const expand = useMultiViewStore((s) => s.expand)
   const nextGroup = useMultiViewStore((s) => s.nextGroup)
   const prevGroup = useMultiViewStore((s) => s.prevGroup)
+  const preloadGroups = useMultiViewStore((s) => s.preloadGroups)
+  const loopEnabled = useMultiViewStore((s) => s.loopEnabled)
   const fit = useViewerStore((s) => s.fit)
   const zoom = useViewerStore((s) => s.zoom)
   const rotation = useViewerStore((s) => s.rotation)
@@ -216,6 +222,73 @@ export function MultiView(): React.JSX.Element {
     const mem = focusedId !== null ? useMultiViewStore.getState().zoomMemory[focusedId] : undefined
     v.restore(mem?.fit ?? true, mem?.zoom ?? 100)
   }, [focusedId])
+
+  // Warm the next group(s) so stepping forward is instant: each gv-img request makes main generate
+  // and disk-cache the preview (the costly part), and Chromium serves the live resource from its
+  // in-memory cache when the real Slot mounts. Opt-in (Settings → Browsing, 1 or 2 groups). Held in
+  // a ref (replaced each navigation) so only the current preload set's bitmaps live at once; the
+  // deferred timer + cancel flag keep preloads from stealing decode slots from the visible group and
+  // drop stale work when the user steps quickly. Re-runs only on group/queue change (start/items),
+  // not intra-group focus changes (start is group-aligned).
+  const preloadRefs = useRef<HTMLImageElement[]>([])
+  useEffect(() => {
+    preloadRefs.current = []
+    if (preloadGroups <= 0 || items.length === 0) return
+    const step = viewCountForMode(mode)
+    const total = items.length
+    // Items filling the next `preloadGroups` groups (forward, wrapping when loop is on).
+    const candidates: ImageQueueItem[] = []
+    const seen = new Set<number>([start])
+    let s = start
+    for (let g = 0; g < preloadGroups; g++) {
+      const ns = nextGroupStart({ startIndex: s, mode, total, loop: loopEnabled })
+      if (ns === s || seen.has(ns)) break // clamped at the end, or wrapped back to a seen group
+      seen.add(ns)
+      s = ns
+      for (let i = 0; i < step; i++) {
+        const it = items[ns + i]
+        if (it) candidates.push(it)
+      }
+    }
+    if (candidates.length === 0) return
+
+    let cancelled = false
+    const warm = (src: string): void => {
+      if (cancelled) return
+      const img = new Image()
+      img.src = src // a preview that can't be generated (e.g. JXL) just fails silently — harmless
+      preloadRefs.current.push(img)
+    }
+    const timer = window.setTimeout(() => {
+      for (const it of candidates) {
+        // Mirror the Slot's variant choice so the warmed URL matches what it will mount: big rasters
+        // (and non-decodable formats) use the lightweight preview; small rasters & svg/ico use the
+        // original. Non-decodable formats skip the dimensions probe (always preview).
+        if (!canRenderNatively(it)) {
+          warm(imageUrl('preview', it.filePath))
+          continue
+        }
+        void window.gv.image
+          .dimensions(it.filePath)
+          .then((d) => {
+            const large = d != null && (d.width > 2048 || d.height > 2048) && it.format != null
+            warm(imageUrl(large ? 'preview' : 'original', it.filePath))
+          })
+          .catch(() => warm(imageUrl('original', it.filePath)))
+      }
+    }, PRELOAD_DEFER_MS)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      // Abort any in-flight gv-img requests so stale preloads stop sitting ahead of the newly
+      // visible group in main's FIFO variant queue. Best-effort: this cancels the renderer-side
+      // request; a sharp job main already dispatched may still finish, but its result just lands in
+      // the disk cache (not wasted). Full priority/cancellation in the main queue is a later change.
+      for (const img of preloadRefs.current) img.src = ''
+      preloadRefs.current = []
+    }
+  }, [start, mode, preloadGroups, loopEnabled, items])
 
   // Wheel over the grid steps whole groups (down → next, up → previous), throttled so a
   // single mouse notch or trackpad flick doesn't fly through many groups at once.
