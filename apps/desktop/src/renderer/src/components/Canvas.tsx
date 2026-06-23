@@ -19,6 +19,11 @@ const WHEEL_ZOOM_ANIMATION_MS = 70
 const BUTTON_ZOOM_ANIMATION_MS = 140
 const WHEEL_ANCHOR_TTL_MS = 240
 const ZOOM_EPSILON = 0.0005
+// Large originals stream in over gv-img:// and paint top-to-bottom — the visible "top strip then
+// full image" two-stage. For files this big we show the cached preview as a full-frame placeholder
+// and keep the original hidden until it's fully decoded (then swap), so a crisp image appears at
+// once. Small files load fast enough that a placeholder (and generating its preview) isn't worth it.
+const PLACEHOLDER_MIN_BYTES = 6 * 1024 * 1024
 
 interface ZoomAnchor {
   x: number
@@ -75,6 +80,9 @@ export function Canvas(): React.JSX.Element {
 
   const [failed, setFailed] = useState(false)
   const [failReason, setFailReason] = useState<FileProbe | null>(null)
+  // Whether the displayed image has finished loading. Until then it's kept invisible (no progressive
+  // top-strip paint), with a preview placeholder for large files; reset on navigation to re-arm.
+  const [originalReady, setOriginalReady] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const drag = useRef<{ x: number; y: number; left: number; top: number } | null>(null)
   const zoomRaf = useRef<number | null>(null)
@@ -104,6 +112,7 @@ export function Canvas(): React.JSX.Element {
   useEffect(() => {
     setFailed(false)
     setFailReason(null)
+    setOriginalReady(false)
   }, [itemId])
 
   // Non-decodable formats display the downscaled preview, whose <img> size isn't the real size —
@@ -125,20 +134,28 @@ export function Canvas(): React.JSX.Element {
   }, [itemId])
 
   // Warm the next/prev images so single-view navigation is instant: Chromium serves the live
-  // resource from its in-memory cache when the real <img> mounts with the same URL. Hold at most
-  // two Image() refs (replaced each navigation), so only two extra decoded bitmaps live at once —
-  // bounded memory, in line with the multi-view decode limit (architecture rule §6).
+  // resource from its in-memory cache when the real <img> mounts with the same URL. For a large
+  // decodable neighbor we also warm its preview, so the placeholder (above) is ready the instant we
+  // navigate instead of waiting on a cold generation. Refs are replaced each navigation, so only the
+  // current neighbours' bitmaps live at once — bounded memory, in line with architecture rule §6.
   const preloadRefs = useRef<HTMLImageElement[]>([])
   useEffect(() => {
     const { items } = useQueueStore.getState()
     const neighbors = [items[currentIndex + 1], items[currentIndex - 1]].filter(
       (it): it is NonNullable<typeof it> => it != null,
     )
-    preloadRefs.current = neighbors.map((it) => {
+    const warmed: HTMLImageElement[] = []
+    const warm = (src: string): void => {
       const img = new Image()
-      img.src = displaySrc(it)
-      return img
-    })
+      img.src = src
+      warmed.push(img)
+    }
+    for (const it of neighbors) {
+      warm(displaySrc(it))
+      if (canRenderNatively(it) && it.size >= PLACEHOLDER_MIN_BYTES)
+        warm(imageUrl('preview', it.filePath))
+    }
+    preloadRefs.current = warmed
   }, [currentIndex])
 
   // On load failure, ask main *why* (the <img> error gives no reason) so we can distinguish a
@@ -220,6 +237,16 @@ export function Canvas(): React.JSX.Element {
   }, [hasItem])
 
   const renderable = item ? canRenderNatively(item) : false
+  // Hide the main <img> until it's fully decoded so it never paints progressively (the top-strip
+  // flash) — applies to EVERY image, small or large: the first paint of a partially-arrived image
+  // would otherwise show just its top band for a frame. Revealed at once on load (see onLoad).
+  const imageHidden = hasItem && !failed && !originalReady
+  // Large decodable images additionally show the cached preview underneath during that gap, so a
+  // big file shows a full-frame low-res instead of the backdrop while its original streams in. Small
+  // files load fast (and are kept warm by neighbour preload), so a placeholder isn't worth it; and
+  // non-decodable formats already use the preview as their only variant.
+  const showPlaceholder =
+    !!item && renderable && !originalReady && item.size >= PLACEHOLDER_MIN_BYTES
   const transform = `rotate(${rotation}deg)`
   const canPan = !fit
   // Drag-out is only the "pick up the file" gesture while the image fully fits; once zoomed,
@@ -356,6 +383,9 @@ export function Canvas(): React.JSX.Element {
       transform,
     }
   }
+  // Keep the image invisible until it's fully decoded, then reveal at once — no progressive top
+  // strip. A large image shows its preview placeholder during this gap; a small one the backdrop.
+  imgStyle = { ...imgStyle, opacity: imageHidden ? 0 : 1 }
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (!canPan || !scrollRef.current) return
@@ -401,6 +431,20 @@ export function Canvas(): React.JSX.Element {
       className="relative min-h-0 min-w-0 flex-1 overflow-hidden"
       style={{ background: 'radial-gradient(circle at 50% 38%, #131315 0%, #000 78%)' }}
     >
+      {/* Full-frame preview placeholder for a large image still streaming in. Sits BEHIND the scroll
+          layer (and outside scrollRef, so the zoom code's querySelector('img') never grabs it) and
+          shows through while the original is opacity:0; object-contain matches the original's Fit
+          framing (large files always downscale, so no upscale mismatch). Unmounts once ready. */}
+      {showPlaceholder && (
+        <img
+          src={imageUrl('preview', item.filePath)}
+          alt=""
+          aria-hidden
+          draggable={false}
+          className="pointer-events-none absolute inset-0 h-full w-full object-contain"
+          style={{ transform }}
+        />
+      )}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: image pan/zoom surface; keyboard has Space/+/- /Enter equivalents */}
       <div
         ref={scrollRef}
@@ -450,6 +494,7 @@ export function Canvas(): React.JSX.Element {
               onDragStart={onImageDragStart}
               onLoad={(e) => {
                 setFailed(false)
+                setOriginalReady(true) // fully decoded — reveal it and drop the placeholder
                 // The preview is downscaled, so its <img> size isn't the true size — natural dims
                 // come from the dimensions IPC instead. Only trust the element for the original.
                 if (variant === 'original') {
