@@ -8,18 +8,31 @@ import { Toolbar } from './Toolbar'
 
 type Edge = 'top' | 'bottom' | 'left'
 
+// `bg` backs each panel with the base colour its chrome assumes. Without it the panel is transparent
+// and the chrome's semi-transparent dividers/borders (e.g. the title bar's `white/0.06` separator)
+// composite over the dark canvas instead of the chrome's own base — reading as a thin gap/seam.
 const EDGE = {
   top: {
-    trigger: 'inset-x-0 top-0 h-2',
+    // Tall hover band (not just the top edge): on macOS the very top reveals the system menu bar,
+    // so a thin edge trigger fights it. Extending the band well below the menu bar gives a zone that
+    // reveals only this chrome.
+    trigger: 'inset-x-0 top-0 h-12',
     panel: 'inset-x-0 top-0 flex-col',
     hidden: '-translate-y-full',
+    bg: 'bg-[#1C1C1E]',
   },
   bottom: {
     trigger: 'inset-x-0 bottom-0 h-2',
     panel: 'inset-x-0 bottom-0 flex-col',
     hidden: 'translate-y-full',
+    bg: 'bg-[#161618]',
   },
-  left: { trigger: 'inset-y-0 left-0 w-2', panel: 'inset-y-0 left-0', hidden: '-translate-x-full' },
+  left: {
+    trigger: 'inset-y-0 left-0 w-2',
+    panel: 'inset-y-0 left-0',
+    hidden: '-translate-x-full',
+    bg: 'bg-[#161618]',
+  },
 } as const
 
 /**
@@ -41,7 +54,7 @@ function EdgeReveal({
       <div className={`absolute z-40 ${cfg.trigger}`} onMouseEnter={() => setOpen(true)} />
       {/* biome-ignore lint/a11y/noStaticElementInteractions: revealed chrome panel */}
       <div
-        className={`absolute z-40 flex shadow-2xl transition-transform duration-200 ease-out ${cfg.panel} ${open ? '' : cfg.hidden}`}
+        className={`absolute z-40 flex shadow-2xl transition-transform duration-200 ease-out ${cfg.panel} ${cfg.bg} ${open ? '' : cfg.hidden}`}
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
       >
