@@ -3,6 +3,7 @@ import type { FileProbe, ImageQueueItem, MultiViewLayout } from '@folio/shared-t
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useT } from '../i18n'
 import { canRenderNatively, formatBytes, formatLabel, imageUrl } from '../lib/format'
+import { createWheelGate, wheelStep } from '../lib/wheelGesture'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
 import { useViewerStore } from '../stores/viewerStore'
@@ -27,6 +28,13 @@ const LAYOUTS: Record<
 /** Delay before warming preloads, so the visible group's loads reach main's sharp queue first
  *  (PRD §9.3 prioritizes the current group over preload). Cancelled if the user steps away sooner. */
 const PRELOAD_DEFER_MS = 250
+
+/** Idle gap that marks a discrete wheel gesture (mouse notch / flick from rest) for group stepping.
+ *  Set above the trackpad momentum tail's inter-event spacing (~60–95ms while it winds down) but
+ *  well under the pause between deliberate swipes, so one flick = one group and re-arming happens
+ *  soon after the tail stops. (Measured: events with mag≥4 are ~8ms apart; only the sub-4 tail
+ *  stretches to ~95ms.) */
+const GROUP_WHEEL_GAP_MS = 140
 
 function Spinner(): React.JSX.Element {
   return (
@@ -290,15 +298,14 @@ export function MultiView(): React.JSX.Element {
     }
   }, [start, mode, preloadGroups, loopEnabled, items])
 
-  // Wheel over the grid steps whole groups (down → next, up → previous), throttled so a
-  // single mouse notch or trackpad flick doesn't fly through many groups at once.
-  const lastWheel = useRef(0)
+  // Wheel over the grid steps whole groups (down/right → next, up/left → previous). The gate makes a
+  // continuous trackpad flick advance just one group (one gesture = one step); discrete mouse notches
+  // still step individually. See lib/wheelGesture.
+  const wheelGate = useRef(createWheelGate())
   const onWheel = (e: React.WheelEvent): void => {
-    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
-    if (Math.abs(delta) < 2 || e.timeStamp - lastWheel.current < 140) return
-    lastWheel.current = e.timeStamp
-    if (delta > 0) nextGroup()
-    else prevGroup()
+    const step = wheelStep(wheelGate.current, e, GROUP_WHEEL_GAP_MS)
+    if (step > 0) nextGroup()
+    else if (step < 0) prevGroup()
   }
 
   return (

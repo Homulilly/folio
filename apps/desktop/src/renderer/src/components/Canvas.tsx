@@ -2,6 +2,7 @@ import type { FileProbe } from '@folio/shared-types'
 import { useEffect, useRef, useState } from 'react'
 import { useT } from '../i18n'
 import { canRenderNatively, displaySrc, formatLabel, imageUrl } from '../lib/format'
+import { createWheelGate, wheelStep } from '../lib/wheelGesture'
 import { useMultiViewStore } from '../stores/multiViewStore'
 import { useQueueStore } from '../stores/queueStore'
 import { useViewerStore } from '../stores/viewerStore'
@@ -19,8 +20,9 @@ const WHEEL_ZOOM_ANIMATION_MS = 70
 const BUTTON_ZOOM_ANIMATION_MS = 140
 const WHEEL_ANCHOR_TTL_MS = 240
 const ZOOM_EPSILON = 0.0005
-// Ctrl/Cmd + wheel steps prev/next image; throttle so one notch (or flick) advances a single image.
-const NAV_WHEEL_THROTTLE_MS = 180
+// Ctrl/Cmd + wheel steps prev/next image; idle gap that marks a discrete gesture (mouse notch / flick
+// from rest). Above the momentum tail's inter-event spacing, below the pause between deliberate flicks.
+const NAV_WHEEL_GAP_MS = 120
 // Large originals stream in over gv-img:// and paint top-to-bottom — the visible "top strip then
 // full image" two-stage. For files this big we show the cached preview as a full-frame placeholder
 // and keep the original hidden until it's fully decoded (then swap), so a crisp image appears at
@@ -95,7 +97,10 @@ export function Canvas(): React.JSX.Element {
   const activeZoomAnchor = useRef<ZoomAnchor | null>(null)
   const clearZoomAnchorTimer = useRef<number | null>(null)
   const lastWheelZoomAt = useRef(0)
-  const lastNavWheel = useRef(0)
+  const navWheelGate = useRef(createWheelGate())
+  // Whether a real Ctrl/Cmd key is physically held. Used to tell an intentional Ctrl+wheel
+  // navigation apart from a macOS trackpad pinch, which sets e.ctrlKey without any keydown.
+  const modHeld = useRef(false)
   // The geometry the live scale belongs to: `${itemId}:${w}x${h}`. displayScaleRef and any in-flight
   // zoom animation are only valid while this matches the current image+dims; on a freshly-loaded
   // image the key won't match, so we snap straight to the fit target instead of animating from (or
@@ -177,6 +182,26 @@ export function Canvas(): React.JSX.Element {
     })
   }
 
+  // Track the real Ctrl/Cmd key state so the wheel handler can distinguish an intentional
+  // Ctrl+wheel from a macOS pinch (which synthesises e.ctrlKey with no key press). Reset on blur so
+  // a key released while unfocused can't leave it stuck on.
+  useEffect(() => {
+    const sync = (e: KeyboardEvent): void => {
+      if (e.key === 'Control' || e.key === 'Meta') modHeld.current = e.type === 'keydown'
+    }
+    const clear = (): void => {
+      modHeld.current = false
+    }
+    window.addEventListener('keydown', sync)
+    window.addEventListener('keyup', sync)
+    window.addEventListener('blur', clear)
+    return () => {
+      window.removeEventListener('keydown', sync)
+      window.removeEventListener('keyup', sync)
+      window.removeEventListener('blur', clear)
+    }
+  }, [])
+
   // Mouse wheel zooms the image. A native, non-passive listener is required because React's
   // onWheel is passive, so preventDefault() there can't stop the canvas from scrolling. Canvas
   // tracks the viewport size so the store can resume zoom from the actual fit scale.
@@ -186,16 +211,14 @@ export function Canvas(): React.JSX.Element {
     if (!el) return
     const onWheel = (e: WheelEvent): void => {
       e.preventDefault()
-      // Ctrl/Cmd + wheel navigates prev/next image (down/right → next, up/left → prev), throttled to
-      // one step per notch. NOTE: a macOS trackpad pinch also reports ctrlKey, so a pinch navigates
-      // here rather than zooming. Plain wheel keeps zooming (below).
-      if (e.ctrlKey || e.metaKey) {
-        const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY
-        if (Math.abs(delta) >= 2 && e.timeStamp - lastNavWheel.current >= NAV_WHEEL_THROTTLE_MS) {
-          lastNavWheel.current = e.timeStamp
-          if (delta > 0) useMultiViewStore.getState().nextImage()
-          else useMultiViewStore.getState().prevImage()
-        }
+      // Real Ctrl/Cmd held + wheel navigates prev/next image (down/right → next, up/left → prev).
+      // A macOS trackpad pinch also sets e.ctrlKey, but without a real key press — modHeld (tracked
+      // from keydown/keyup) is false, so a pinch falls through to the zoom path below instead of
+      // navigating. Plain wheel also zooms.
+      if ((e.ctrlKey || e.metaKey) && modHeld.current) {
+        const step = wheelStep(navWheelGate.current, e, NAV_WHEEL_GAP_MS)
+        if (step > 0) useMultiViewStore.getState().nextImage()
+        else if (step < 0) useMultiViewStore.getState().prevImage()
         return
       }
       const unit =

@@ -19,6 +19,11 @@ function isEditable(target: EventTarget | null): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
 }
 
+// Cap how fast held arrow keys (OS key-repeat fires ~30/s) walk the queue, so navigation can't
+// outrun image loading. Single steps are lighter than a whole group, so they're allowed faster.
+const NAV_THROTTLE_SINGLE_MS = 100
+const NAV_THROTTLE_GROUP_MS = 150
+
 /** ⌘/Ctrl + digit → mode. */
 const MODE_BY_DIGIT: Record<string, MultiViewMode> = {
   '1': 'single',
@@ -30,7 +35,15 @@ const MODE_BY_DIGIT: Record<string, MultiViewMode> = {
 /** Global keyboard shortcuts for the viewer + multi-view (PRD §7.1 / §6.2). Reads stores lazily. */
 export function useShortcuts(): void {
   useEffect(() => {
+    // Min-interval gate shared by the navigation keys; persists across events via this closure.
+    let lastNavTs = 0
     const onKey = (e: KeyboardEvent): void => {
+      // Returns true (and records the time) when enough has elapsed since the last navigation step.
+      const navOk = (intervalMs: number): boolean => {
+        if (e.timeStamp - lastNavTs < intervalMs) return false
+        lastNavTs = e.timeStamp
+        return true
+      }
       if (isEditable(e.target)) return
       if (useUiStore.getState().activeView !== 'viewer') return
       const queue = useQueueStore.getState()
@@ -59,23 +72,25 @@ export function useShortcuts(): void {
         case 'D':
           e.preventDefault()
           // Plain step offers the next folder at the queue's end; Shift always jumps a group.
-          if (e.shiftKey) mv.nextGroup()
-          else void advance()
+          if (e.shiftKey) {
+            if (navOk(NAV_THROTTLE_GROUP_MS)) mv.nextGroup()
+          } else if (navOk(NAV_THROTTLE_SINGLE_MS)) void advance()
           break
         case 'ArrowLeft':
         case 'a':
         case 'A':
           e.preventDefault()
-          if (e.shiftKey) mv.prevGroup()
-          else mv.prevImage()
+          if (e.shiftKey) {
+            if (navOk(NAV_THROTTLE_GROUP_MS)) mv.prevGroup()
+          } else if (navOk(NAV_THROTTLE_SINGLE_MS)) mv.prevImage()
           break
         case 'ArrowDown':
           e.preventDefault()
-          mv.nextGroup()
+          if (navOk(NAV_THROTTLE_GROUP_MS)) mv.nextGroup()
           break
         case 'ArrowUp':
           e.preventDefault()
-          mv.prevGroup()
+          if (navOk(NAV_THROTTLE_GROUP_MS)) mv.prevGroup()
           break
         case 'Home':
           e.preventDefault()
