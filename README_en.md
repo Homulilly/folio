@@ -67,15 +67,23 @@ The missing runtime is usually under:
 node_modules/.pnpm/electron@*/node_modules/electron/dist/
 ```
 
-Run Electron's install script:
+Run Electron's install script.
+
+Windows (PowerShell):
 
 ```powershell
 node node_modules\.pnpm\electron@42.4.1\node_modules\electron\install.js
 ```
 
+macOS / Linux:
+
+```bash
+node node_modules/.pnpm/electron@42.4.1/node_modules/electron/install.js
+```
+
 Then start the app again:
 
-```powershell
+```bash
 pnpm dev
 ```
 
@@ -83,13 +91,25 @@ The workspace already allows the required install scripts in `pnpm-workspace.yam
 
 ## Common Commands
 
-```powershell
+```bash
 pnpm dev
 pnpm build
 pnpm typecheck
 pnpm test
 pnpm lint
 pnpm format
+```
+
+## Packaging
+
+```bash
+cd apps/desktop
+
+# macOS package
+pnpm dist:mac
+
+# Windows package
+pnpm dist:win
 ```
 
 ## License
