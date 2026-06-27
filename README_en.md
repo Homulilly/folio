@@ -43,6 +43,10 @@ Install dependencies:
 
 ```bash
 pnpm install --frozen-lockfile
+
+cd apps/desktop
+
+npx install-electron
 ```
 
 Start the desktop app:
@@ -59,26 +63,18 @@ If a fresh dependency install is followed by this error when running `pnpm dev`:
 Error: Electron uninstall
 ```
 
-the `electron` npm package is installed, but the Electron runtime binary was not downloaded. `electron-vite` may still build the main and preload bundles, but the app cannot start because `electron.exe` is missing.
+This is because Electron 42 [no longer downloads itself](https://www.electronjs.org/blog/electron-42-0#electron-no-longer-downloads-itself-via-postinstall-script) via the `postinstall` script.
 
-The missing runtime is usually under:
-
-```text
-node_modules/.pnpm/electron@*/node_modules/electron/dist/
+You need to manually execute:
+```bash
+npx install-electron
 ```
 
-Run Electron's install script.
-
-Windows (PowerShell):
-
-```powershell
-node node_modules\.pnpm\electron@42.4.1\node_modules\electron\install.js
-```
-
-macOS / Linux:
+The Electron dependency for this application is located in `apps/desktop/package.json`, so you need to execute:
 
 ```bash
-node node_modules/.pnpm/electron@42.4.1/node_modules/electron/install.js
+cd apps/desktop
+npx install-electron
 ```
 
 Then start the app again:
@@ -87,7 +83,13 @@ Then start the app again:
 pnpm dev
 ```
 
-The workspace already allows the required install scripts in `pnpm-workspace.yaml`.
+The workspace already allows the required install scripts in `pnpm-workspace.yaml`:
+
+```yaml
+allowBuilds:
+  electron: true
+  esbuild: true
+```
 
 ## Common Commands
 
